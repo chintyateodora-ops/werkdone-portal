@@ -1,0 +1,196 @@
+import { useState } from 'react';
+import { Button } from '../ui/button';
+import { Page } from '../../App';
+import scsLogo from 'figma:asset/c746685a88f5122ff76e36be88c91ccb7195cbed.png';
+
+interface SelfRegistrationProps {
+  onNavigate: (page: Page) => void;
+}
+
+export function SelfRegistration({ onNavigate }: SelfRegistrationProps) {
+  const [showManualForm, setShowManualForm] = useState(false);
+
+  return (
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#E9DDEF' }}>
+      {/* Header with Logo */}
+      <div className="bg-white border-b" style={{ borderColor: '#E5E7EB' }}>
+        <div className="px-8 py-4">
+          <button 
+            onClick={() => onNavigate('all-prospects')}
+            className="hover:opacity-80 transition-opacity"
+          >
+            <img src={scsLogo} alt="Singapore Cancer Society" className="h-10" />
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content with gradient background */}
+      <div 
+        className="flex-1 flex items-center justify-center p-8"
+        style={{
+          background: 'linear-gradient(180deg, #D5BDE3 0%, #E9DDEF 100%)'
+        }}
+      >
+        <div 
+          className="bg-white rounded-lg shadow-sm w-full max-w-lg p-8"
+          style={{ 
+            borderColor: '#E5E7EB',
+            border: '1px solid #E5E7EB'
+          }}
+        >
+          {/* Logo in Card */}
+          <div className="flex justify-center mb-6">
+            <img src={scsLogo} alt="Singapore Cancer Society" className="h-16" />
+          </div>
+
+          {/* Title */}
+          <h1 
+            className="text-center mb-4"
+            style={{ 
+              fontSize: 'var(--text-h3)',
+              fontWeight: 'var(--font-weight-semibold)',
+              color: '#111827',
+              lineHeight: '1.3'
+            }}
+          >
+            Singapore Cancer Society's (SCS)<br />
+            Against Cancer Pledge
+          </h1>
+
+          {/* Description */}
+          <p 
+            className="text-center mb-4"
+            style={{ 
+              fontSize: 'var(--text-base)',
+              fontWeight: 'var(--font-weight-normal)',
+              color: '#6B7280',
+              lineHeight: '1.6'
+            }}
+          >
+            Cancer remains the leading cause of death in Singapore — but together, we can fight it. This simple action could transform your life and protect the ones you love.
+          </p>
+
+          <p 
+            className="text-center mb-6"
+            style={{ 
+              fontSize: 'var(--text-base)',
+              fontWeight: 'var(--font-weight-normal)',
+              color: '#6B7280',
+              lineHeight: '1.6'
+            }}
+          >
+            By pledging, you're committing to stay informed, get screened, and be a voice for cancer prevention.
+          </p>
+
+          {!showManualForm ? (
+            <>
+              {/* Singpass Button */}
+              <Button
+                className="w-full mb-4"
+                style={{
+                  backgroundColor: '#E53935',
+                  color: '#FFFFFF',
+                  height: '48px',
+                  fontSize: 'var(--text-base)',
+                  fontWeight: 'var(--font-weight-medium)'
+                }}
+                onClick={() => {
+                  // Singpass login logic would go here
+                  console.log('Singpass login clicked');
+                }}
+              >
+                Retrieve MyInfo with <span style={{ fontWeight: 'var(--font-weight-semibold)', marginLeft: '6px' }}>singpass</span>
+              </Button>
+
+              {/* Helper Text */}
+              <p 
+                className="text-center mb-6"
+                style={{ 
+                  fontSize: 'var(--text-sm)',
+                  fontWeight: 'var(--font-weight-normal)',
+                  color: '#9CA3AF',
+                  lineHeight: '1.5'
+                }}
+              >
+                Singpass enables you to retrieve your personal data from participating Government sources to pre-fill the form.
+              </p>
+
+              {/* Divider */}
+              <div className="flex items-center mb-6">
+                <div className="flex-1 border-t" style={{ borderColor: '#E5E7EB' }}></div>
+                <span 
+                  className="px-4"
+                  style={{ 
+                    fontSize: 'var(--text-sm)',
+                    fontWeight: 'var(--font-weight-normal)',
+                    color: '#6B7280'
+                  }}
+                >
+                  or
+                </span>
+                <div className="flex-1 border-t" style={{ borderColor: '#E5E7EB' }}></div>
+              </div>
+
+              {/* Manual Registration Button */}
+              <Button
+                variant="outline"
+                className="w-full"
+                style={{
+                  height: '48px',
+                  fontSize: 'var(--text-base)',
+                  fontWeight: 'var(--font-weight-medium)',
+                  color: '#7C51A1',
+                  borderColor: '#7C51A1'
+                }}
+                onClick={() => setShowManualForm(true)}
+              >
+                Complete Registration Manually
+              </Button>
+            </>
+          ) : (
+            <div>
+              {/* Manual Registration Form would go here */}
+              <p 
+                className="text-center mb-6"
+                style={{ 
+                  fontSize: 'var(--text-base)',
+                  fontWeight: 'var(--font-weight-normal)',
+                  color: '#6B7280'
+                }}
+              >
+                Manual registration form coming soon...
+              </p>
+              <Button
+                variant="outline"
+                className="w-full"
+                style={{
+                  height: '48px',
+                  fontSize: 'var(--text-base)',
+                  fontWeight: 'var(--font-weight-medium)'
+                }}
+                onClick={() => setShowManualForm(false)}
+              >
+                Back
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="bg-white border-t" style={{ borderColor: '#E5E7EB' }}>
+        <div className="px-8 py-4 text-center">
+          <p 
+            style={{ 
+              fontSize: 'var(--text-sm)',
+              fontWeight: 'var(--font-weight-normal)',
+              color: '#6B7280'
+            }}
+          >
+            Copyright © 2025 WERKDONE PTE LTD.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}

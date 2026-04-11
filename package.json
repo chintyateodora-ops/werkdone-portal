@@ -1,0 +1,9 @@
+{
+  "name": "werkdone-prospect-portal-workspace",
+  "private": true,
+  "description": "Root scripts delegate to _figma_export (Vite + React + Shadcn). Open index.html for the static prototype.",
+  "scripts": {
+    "dev": "npm --prefix _figma_export run dev",
+    "build": "npm --prefix _figma_export run build"
+  }
+}

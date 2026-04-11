@@ -1,0 +1,291 @@
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Textarea } from '../ui/textarea';
+import { Calendar } from 'lucide-react';
+
+interface AddContactLogDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onAddContactLog: (log: {
+    contactType: string;
+    date: string;
+    time: string;
+    duration: string;
+    recordedBy: string;
+    outcome: string;
+    message: string;
+    notes: string;
+  }) => void;
+}
+
+export function AddContactLogDialog({ open, onOpenChange, onAddContactLog }: AddContactLogDialogProps) {
+  const [contactType, setContactType] = useState('');
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
+  const [duration, setDuration] = useState('');
+  const [recordedBy, setRecordedBy] = useState('');
+  const [outcome, setOutcome] = useState('');
+  const [message, setMessage] = useState('');
+  const [notes, setNotes] = useState('');
+
+  const handleSave = () => {
+    if (contactType && date && time && duration && recordedBy && outcome) {
+      onAddContactLog({
+        contactType,
+        date,
+        time,
+        duration,
+        recordedBy,
+        outcome,
+        message,
+        notes
+      });
+      // Reset form
+      setContactType('');
+      setDate('');
+      setTime('');
+      setDuration('');
+      setRecordedBy('');
+      setOutcome('');
+      setMessage('');
+      setNotes('');
+      onOpenChange(false);
+    }
+  };
+
+  const handleCancel = () => {
+    // Reset form
+    setContactType('');
+    setDate('');
+    setTime('');
+    setDuration('');
+    setRecordedBy('');
+    setOutcome('');
+    setMessage('');
+    setNotes('');
+    onOpenChange(false);
+  };
+
+  const isValid = contactType && date && time && duration && recordedBy && outcome;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl p-0 max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogDescription className="sr-only">
+          Add a new contact log entry with details about the interaction
+        </DialogDescription>
+        
+        {/* Header */}
+        <div className="px-6 py-4 border-b flex-shrink-0" style={{ borderColor: '#E9ECEF' }}>
+          <DialogTitle style={{ fontSize: 'var(--text-h4)', fontWeight: 'var(--font-weight-semibold)' }}>
+            Add Contact Log
+          </DialogTitle>
+        </div>
+
+        {/* Content - Scrollable */}
+        <div className="px-6 py-6 space-y-5 overflow-y-auto flex-1">
+          {/* Row 1: Contact Type */}
+          <div className="space-y-2">
+            <Label htmlFor="contactType" style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-normal)' }}>
+              Contact Type <span className="text-red-500">*</span>
+            </Label>
+            <select
+              id="contactType"
+              value={contactType}
+              onChange={(e) => setContactType(e.target.value)}
+              className="w-full h-9 rounded-md px-3 border transition-colors outline-none focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+              style={{
+                backgroundColor: 'var(--input-background)',
+                borderColor: 'var(--input-border)',
+                color: contactType ? 'var(--input-text)' : 'var(--input-placeholder)'
+              }}
+            >
+              <option value="">Select contact type</option>
+              <option value="Phone Call">Phone Call</option>
+              <option value="Email">Email</option>
+              <option value="In-Person Meeting">In-Person Meeting</option>
+              <option value="Video Call">Video Call</option>
+              <option value="SMS">SMS</option>
+            </select>
+          </div>
+
+          {/* Row 2: Date & Time */}
+          <div className="space-y-2">
+            <Label style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-normal)' }}>
+              Date & Time <span className="text-red-500">*</span>
+            </Label>
+            <div className="flex gap-2">
+              <div className="flex-1 relative">
+                <Input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="pr-10"
+                />
+                <Calendar 
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" 
+                  style={{ color: '#6B7280' }}
+                />
+              </div>
+              <div className="w-28">
+                <Input
+                  type="time"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Row 3: Duration and Recorded By */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* Duration */}
+            <div className="space-y-2">
+              <Label htmlFor="duration" style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-normal)' }}>
+                Duration <span className="text-red-500">*</span>
+              </Label>
+              <div className="relative">
+                <Input
+                  id="duration"
+                  type="number"
+                  min="0"
+                  placeholder="Enter duration"
+                  value={duration}
+                  onChange={(e) => setDuration(e.target.value)}
+                  className="pr-12"
+                />
+                <span 
+                  className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                  style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-weight-normal)', color: '#6B7280' }}
+                >
+                  min
+                </span>
+              </div>
+            </div>
+
+            {/* Recorded By */}
+            <div className="space-y-2">
+              <Label htmlFor="recordedBy" style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-normal)' }}>
+                Recorded By <span className="text-red-500">*</span>
+              </Label>
+              <select
+                id="recordedBy"
+                value={recordedBy}
+                onChange={(e) => setRecordedBy(e.target.value)}
+                className="w-full h-9 rounded-md px-3 border transition-colors outline-none focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                style={{
+                  backgroundColor: 'var(--input-background)',
+                  borderColor: 'var(--input-border)',
+                  color: recordedBy ? 'var(--input-text)' : 'var(--input-placeholder)'
+                }}
+              >
+                <option value="">Select staff member</option>
+                <option value="Jasmine Lim">Jasmine Lim</option>
+                <option value="Sarah Tan">Sarah Tan</option>
+                <option value="Michael Wong">Michael Wong</option>
+                <option value="Emily Chen">Emily Chen</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Row 4: Outcome */}
+          <div className="space-y-2">
+            <Label htmlFor="outcome" style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-normal)' }}>
+              Outcome <span className="text-red-500">*</span>
+            </Label>
+            <select
+              id="outcome"
+              value={outcome}
+              onChange={(e) => setOutcome(e.target.value)}
+              className="w-full h-9 rounded-md px-3 border transition-colors outline-none focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+              style={{
+                backgroundColor: 'var(--input-background)',
+                borderColor: 'var(--input-border)',
+                color: outcome ? 'var(--input-text)' : 'var(--input-placeholder)'
+              }}
+            >
+              <option value="">Select outcome</option>
+              <option value="Successful Contact">Successful Contact</option>
+              <option value="No Answer">No Answer</option>
+              <option value="Left Voicemail">Left Voicemail</option>
+              <option value="Appointment Scheduled">Appointment Scheduled</option>
+              <option value="Follow-up Required">Follow-up Required</option>
+              <option value="Not Interested">Not Interested</option>
+              <option value="Call Back Later">Call Back Later</option>
+            </select>
+          </div>
+
+          {/* Row 5: Message/Purpose */}
+          <div className="space-y-2">
+            <Label htmlFor="message" style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-normal)' }}>
+              Message/Purpose
+            </Label>
+            <Textarea
+              id="message"
+              placeholder="Enter message or purpose of contact"
+              value={message}
+              onChange={(e) => {
+                if (e.target.value.length <= 100) {
+                  setMessage(e.target.value);
+                }
+              }}
+              rows={2}
+              className="resize-none"
+            />
+            <div className="flex justify-end">
+              <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-weight-normal)', color: '#6B7280' }}>
+                {message.length}/100
+              </span>
+            </div>
+          </div>
+
+          {/* Row 6: Notes */}
+          <div className="space-y-2">
+            <Label htmlFor="notes" style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-normal)' }}>
+              Notes
+            </Label>
+            <Textarea
+              id="notes"
+              placeholder="Add any additional notes"
+              value={notes}
+              onChange={(e) => {
+                if (e.target.value.length <= 500) {
+                  setNotes(e.target.value);
+                }
+              }}
+              rows={4}
+              className="resize-none"
+            />
+            <div className="flex justify-end">
+              <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-weight-normal)', color: '#6B7280' }}>
+                {notes.length}/500
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t flex items-center justify-end gap-3 flex-shrink-0" style={{ borderColor: '#E9ECEF' }}>
+          <Button variant="outline" onClick={handleCancel}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={!isValid}
+            style={{ 
+              backgroundColor: 'var(--primary)', 
+              color: 'var(--primary-foreground)',
+              opacity: !isValid ? 0.5 : 1
+            }}
+            className="hover:opacity-90"
+          >
+            Save
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

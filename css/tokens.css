@@ -1,0 +1,99 @@
+/* Tokens merged from Figma Make export `src/styles/globals.css` + AllProspects table patterns */
+
+:root {
+  --font-size-root: 16px;
+
+  /* Core semantic colors (globals.css) */
+  --color-background: #ffffff;
+  --color-foreground: #272b30;
+  --color-card: #ffffff;
+  --color-border: #ced4da;
+  --color-muted: #dee2e6;
+  --color-muted-foreground: #6a7178;
+  --color-primary: #7c51a1;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f8f9fa;
+  --color-secondary-foreground: #272b30;
+  --color-accent: #f1f3f5;
+  --color-accent-foreground: #282d30;
+  --color-destructive: #bb2915;
+  --color-ring: #7c51a1;
+
+  /* Input (globals.css) */
+  --color-input-border: #ced4da;
+  --color-input-placeholder: #4f575e;
+  --color-input-text: #272b30;
+
+  /* Legacy aliases used across app.css */
+  --color-white: #ffffff;
+  --color-neutral-0: #ffffff;
+  --color-neutral-2: #f1f3f5;
+  --color-neutral-3: #e9ecef;
+  --color-neutral-4: #dee2e6;
+  --color-neutral-5: #ced4da;
+  --color-neutral-7: #6a7178;
+  --color-neutral-8: #4f575e;
+  --color-neutral-9: #272b30;
+
+  /* Tailwind-style grays used in AllProspects.tsx */
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-700: #374151;
+  --color-gray-900: #111827;
+
+  /* Page canvas = prospects view outer bg (bg-gray-50) */
+  --color-page-bg: var(--color-gray-50);
+
+  --color-primary-100: #f2eef6;
+  --color-primary-200: #d3c5e0;
+  --color-primary-400: #926eb1;
+  --color-primary-500: #7c51a1;
+
+  --color-error: #bb2915;
+
+  /* Status pill text colors (AllProspects getStatusColor) — bg uses ~12% alpha in export */
+  --color-status-qualified: #8b5cf6;
+  --color-status-booked: #10b981;
+  --color-status-screened: #7c51a1;
+
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: var(--font-body);
+  --font-title: var(--font-body);
+
+  /* Typography scale (globals.css) */
+  --text-body-l: 1rem;
+  --lh-body-l: 1.5;
+  --text-body-m: 0.875rem;
+  --lh-body-m: 1.375;
+  --text-page-title: 1.875rem;
+  --lh-page-title: 1.2;
+  --text-h1: 2.5rem;
+  --lh-h1: 1.2;
+  --text-h4: 1.25rem;
+  --lh-h4: 1.4;
+  --text-table-header: 0.75rem;
+  --lh-table-header: 1rem;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* Radii (globals.css): default 8px, button 5px, card 4px */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-button: 5px;
+  --radius-card: 4px;
+  --radius-pill: 999px;
+
+  --layout-max-width: 1280px;
+  --header-h: 4.05rem;
+  --space-page: 1.5rem;
+
+  /* globals.css --elevation-sm */
+  --shadow-card: 0 0 10px 0 rgba(188, 201, 192, 0.5);
+  --shadow-xl: var(--shadow-card);
+}
