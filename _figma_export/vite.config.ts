@@ -17,6 +17,8 @@ function figmaAssetResolver() {
 }
 
   export default defineConfig({
+    // Ensures index.html and public/ resolve correctly when CLI is run from repo root with --config
+    root: path.resolve(__dirname),
     plugins: [react(), tailwindcss(), figmaAssetResolver()],
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
@@ -64,7 +66,7 @@ function figmaAssetResolver() {
     },
     build: {
       target: 'esnext',
-      outDir: 'build',
+      outDir: 'dist',
     },
     server: {
       port: 3000,

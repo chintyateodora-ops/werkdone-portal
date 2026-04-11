@@ -1,9 +1,16 @@
 {
   "name": "werkdone-prospect-portal-workspace",
   "private": true,
-  "description": "Root scripts delegate to _figma_export (Vite + React + Shadcn). Open index.html for the static prototype.",
+  "engines": {
+    "node": ">=18.18.0"
+  },
+  "description": "Root scripts delegate to _figma_export (Vite + React + Shadcn). Static prototype lives at repo root (index.html).",
+  "workspaces": [
+    "_figma_export"
+  ],
   "scripts": {
-    "dev": "npm --prefix _figma_export run dev",
-    "build": "npm --prefix _figma_export run build"
+    "dev": "node scripts/run-vite.cjs --config _figma_export/vite.config.ts",
+    "build": "node scripts/run-vite.cjs build --config _figma_export/vite.config.ts",
+    "preview": "node scripts/run-vite.cjs preview --config _figma_export/vite.config.ts"
   }
 }

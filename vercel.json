@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "npm install --include=dev",
+  "buildCommand": "node scripts/run-vite.cjs build --config _figma_export/vite.config.ts",
+  "outputDirectory": "_figma_export/dist",
+  "framework": null
+}
