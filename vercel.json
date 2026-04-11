@@ -1,7 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "cd _figma_export && npm install --include=dev",
-  "buildCommand": "cd _figma_export && npx vite build",
-  "outputDirectory": "_figma_export/dist",
   "framework": null
 }
