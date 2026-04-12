@@ -66,6 +66,12 @@
   /* Typography scale (globals.css) */
   --text-body-l: 1rem;
   --lh-body-l: 1.5;
+  /** Alias: default “body” size for form labels, radios, checkboxes */
+  --text-body: var(--text-body-l);
+  --lh-body: var(--lh-body-l);
+  /** Registration forms: 16px body copy (eligibility, screening Q&A, consent) */
+  --text-reg-form: 1rem;
+  --lh-reg-form: 1.5;
   --text-body-m: 0.875rem;
   --lh-body-m: 1.375;
   --text-page-title: 1.875rem;

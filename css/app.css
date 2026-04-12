@@ -324,8 +324,18 @@ button {
 
 /* Section TOC: below header + primary bundle (tabs ± toolbar) */
 .app-main--detail-page .detail-reg-toc.registration__toc {
+  position: -webkit-sticky;
+  position: sticky;
   top: calc(var(--header-h) + var(--detail-primary-bundle-h));
   max-height: calc(100dvh - var(--header-h) - var(--detail-primary-bundle-h) - 4rem);
+  z-index: 12;
+}
+
+/* Sticky ToC needs visible overflow on ancestors (scrollport = #detail-flow-scroll-root) */
+.app-main--detail-page .detail-panels,
+.app-main--detail-page .detail-panel.detail-panel--form,
+.app-main--detail-page .registration__split.detail-reg-split {
+  overflow: visible;
 }
 
 /* Registration route: sticky chrome stack + single scroll column.
@@ -394,16 +404,24 @@ button {
 }
 
 .app-footer {
+  flex-shrink: 0;
   text-align: center;
-  padding: 1rem var(--space-page);
-  font-size: var(--text-body-m);
-  color: var(--color-muted-foreground);
-  border-top: 1px solid var(--color-border);
-  background: var(--color-page-bg);
+  padding: 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.25;
+  color: #808080;
+  background: #ffffff;
+  border-top: none;
 }
 
-.app-content--registration-flow > .app-footer {
-  flex-shrink: 0;
+/* Registration form: copyright sits after form content inside #registration-scroll-root (scrolls; not pinned to viewport) */
+.app-footer--registration-end {
+  position: static;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-gray-200);
 }
 
 /* —— Page title program dropdown (AllProspects) —— */
@@ -612,7 +630,7 @@ button {
   border-collapse: collapse;
   font-size: var(--text-body-m);
   line-height: var(--lh-body-m);
-  min-width: 1100px;
+  min-width: 980px;
 }
 
 .data-table thead th {
@@ -699,7 +717,12 @@ button {
   background: var(--color-gray-50);
 }
 
-.data-table tbody tr:focus-within {
+/* No full-row ring on click (avoid :focus-within when link/actions inside are focused). */
+.data-table tbody tr:focus {
+  outline: none;
+}
+
+.data-table tbody tr:focus-visible {
   outline: 2px solid var(--color-primary-400);
   outline-offset: -2px;
 }
@@ -711,6 +734,31 @@ button {
 }
 
 .cell-muted {
+  color: var(--color-gray-500);
+}
+
+/* Prospect listing: name link + masked NRIC / gender / age subline */
+.prospect-name-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.prospect-name-cell__link {
+  font-weight: var(--weight-medium);
+  color: var(--color-primary-500);
+  text-decoration: none;
+}
+
+.prospect-name-cell__link:hover {
+  text-decoration: underline;
+}
+
+.prospect-name-cell__meta {
+  font-size: 0.8125rem;
+  line-height: 1.35;
   color: var(--color-gray-500);
 }
 
@@ -754,6 +802,36 @@ button {
 .pill--low {
   background: var(--color-neutral-3);
   color: var(--color-neutral-8);
+}
+
+/* Risk level: dot + label (shared: list, Kanban, prospect detail) */
+.risk-level.pill {
+  gap: 0.35rem;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.risk-level__label {
+  white-space: nowrap;
+}
+
+.risk-level__dot {
+  flex-shrink: 0;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+}
+
+.pill--high .risk-level__dot {
+  background: #c62828;
+}
+
+.pill--medium .risk-level__dot {
+  background: #f57f17;
+}
+
+.pill--low .risk-level__dot {
+  background: #2e7d32;
 }
 
 /* —— Kanban —— */
@@ -858,20 +936,25 @@ button {
   transform: translateY(-1px);
 }
 
+/* 16px vertical rhythm between program tag → name → risk → demographics → tasks */
 .kanban-card__program {
-  margin-bottom: 0.5rem;
+  margin-bottom: 16px;
+}
+
+.kanban-card__risk {
+  margin-bottom: 16px;
 }
 
 .kanban-card__name {
   font-weight: var(--weight-bold);
   font-size: var(--text-body-l);
-  margin: 0 0 0.25rem;
+  margin: 0 0 16px;
 }
 
 .kanban-card__meta {
   font-size: var(--text-body-m);
   color: var(--color-neutral-8);
-  margin-bottom: 0.5rem;
+  margin: 0 0 16px;
 }
 
 .kanban-card__tasks {
@@ -879,7 +962,7 @@ button {
   color: var(--color-neutral-8);
   display: flex;
   justify-content: space-between;
-  margin-bottom: 0.25rem;
+  margin-bottom: 16px;
 }
 
 .kanban-card__bar {
@@ -896,35 +979,74 @@ button {
   border-radius: 3px;
 }
 
-/* —— Breadcrumb & detail —— */
-.breadcrumb {
+/* —— App breadcrumb (reusable: prospect detail + screening registration) —— */
+.app-breadcrumb {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.35rem;
+}
+
+.app-breadcrumb--page {
   font-size: var(--text-body-l);
   margin-bottom: 1rem;
 }
 
-.breadcrumb a {
-  color: var(--color-primary-500);
-  font-weight: var(--weight-medium);
+.app-breadcrumb--registration {
+  margin-bottom: 0;
+  padding: 0.5rem var(--space-page);
+  background: var(--color-white);
+  border-bottom: 1px solid var(--color-gray-200);
+  font-size: 14px;
+  line-height: 1.45;
 }
 
-.breadcrumb span {
+/* Prospect detail: same full-width strip as screening (counteract main horizontal + top padding) */
+.app-main--detail-page > .app-breadcrumb--registration:first-child {
+  margin-left: calc(-1 * var(--space-page));
+  margin-right: calc(-1 * var(--space-page));
+  margin-top: calc(-1 * var(--space-page));
+}
+
+/* Match screening: gap below breadcrumb border = .registration__toolbar padding-top (1rem) before back/title row */
+.app-main--detail-page > .app-breadcrumb--registration + .detail-hero {
+  padding-top: 1rem;
+}
+
+.app-breadcrumb__link {
+  color: var(--color-primary-500);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+}
+
+.app-breadcrumb__link:hover {
+  text-decoration: underline;
+}
+
+.app-breadcrumb__current,
+.app-breadcrumb__sep {
   color: var(--color-neutral-7);
 }
 
 .detail-hero {
   margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--color-neutral-4);
 }
 
-.detail-hero__row {
-  display: flex;
-  flex-wrap: wrap;
+/* Same row autolayout as screening registration toolbar: back | stacked titles | actions (risk) */
+.detail-hero__toolbar-row.registration__toolbar-row {
   align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.5rem;
+  gap: 1rem;
+}
+
+.detail-hero__toolbar-row .registration__toolbar-titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.detail-hero__toolbar-row .registration__toolbar-actions {
+  flex-shrink: 0;
 }
 
 .detail-hero__back {
@@ -936,18 +1058,68 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .detail-hero__back:hover {
   background: var(--color-neutral-2);
 }
 
-.detail-hero h1 {
+.registration__toolbar-actions .risk-level.pill {
+  flex-shrink: 0;
+}
+
+/* Optional second row: programme tags only (subtitle lives under name like screening form) */
+.detail-hero__meta--tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.detail-hero__tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
   margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--text-h4);
-  font-weight: var(--weight-bold);
-  letter-spacing: -0.02em;
+  padding: 0;
+  list-style: none;
+}
+
+.detail-hero__tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.65rem;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-body-m);
+  font-weight: var(--weight-medium);
+  background: color-mix(in srgb, var(--color-primary-500) 12%, transparent);
+  color: var(--color-primary-500);
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+@media (max-width: 639px) {
+  .detail-hero__toolbar-row.registration__toolbar-row {
+    flex-wrap: wrap;
+  }
+
+  .detail-hero__toolbar-row .registration__toolbar-actions {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-end;
+  }
+}
+
+/* Legacy hooks (if any markup still references these) */
+.detail-hero__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
 }
 
 .detail-hero__sub {
@@ -1168,17 +1340,39 @@ button {
 }
 
 .detail-card--flush .detail-card__title {
-  padding: 1.5rem 1.5rem 0;
+  padding: 1.5rem 1.5rem 0.75rem;
   margin-bottom: 1rem;
 }
 
-.detail-card__title {
-  margin: 0 0 1rem;
-  font-size: var(--text-table-header);
+.detail-review-next-date-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--color-primary-300);
+  border-radius: var(--radius-sm);
+  background: #f3f0ff;
+  color: var(--color-gray-900);
+  font: inherit;
+  cursor: default;
+}
+
+.detail-review-next-date-input:focus {
+  outline: 2px solid var(--color-primary-400);
+  outline-offset: 1px;
+}
+
+/* Form card section heading: uppercase label + full-width divider */
+.detail-card__title,
+.registration__section-label {
+  margin: 0 0 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.875rem;
   font-weight: var(--weight-semibold);
-  color: var(--color-gray-500);
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
+  color: #475569;
+  line-height: 1.3;
 }
 
 .detail-card__heading-primary {
@@ -1250,6 +1444,11 @@ button {
 
 .detail-fields--2 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Prospect details: align with screening registration residential address grid */
+.detail-fields.detail-fields--2.detail-fields--address {
+  gap: 1rem 1.25rem;
 }
 
 @media (max-width: 900px) {
@@ -1343,10 +1542,11 @@ button {
   max-height: calc(100dvh - 14rem);
 }
 
+/* Anchor ids live on .detail-card (includes section title in view when scrolling) */
 .detail-reg-main [id^="detail-"],
 .detail-reg-main [id^="mh-"],
 .detail-reg-main [id^="od-"] {
-  scroll-margin-top: 0.75rem;
+  scroll-margin-top: 1rem;
 }
 
 .detail-task-list {
@@ -1557,6 +1757,49 @@ button {
   color: var(--color-gray-500);
 }
 
+/* Prospect detail — Documents tab */
+.detail-documents__toolbar {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.detail-documents-file-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.detail-documents__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.detail-documents__empty {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--color-gray-500);
+  font-size: var(--text-body-m);
+}
+
+.detail-documents__name {
+  font-weight: var(--weight-medium);
+  word-break: break-word;
+}
+
+.detail-documents__hint {
+  margin: 0.75rem 0 0;
+  font-size: var(--text-body-m);
+  color: var(--color-gray-500);
+}
+
 .detail-notes-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -1625,6 +1868,20 @@ button {
   font-size: var(--text-body-m);
   color: var(--color-gray-700);
   line-height: 1.5;
+}
+
+.note-card__body--multiline {
+  white-space: pre-wrap;
+}
+
+/* Prospect detail — Add note dialog */
+.ui-dialog--add-note {
+  max-width: min(40rem, 100%);
+}
+
+.detail-add-note-textarea {
+  min-height: 9rem;
+  resize: vertical;
 }
 
 .detail-pagination {
@@ -1918,14 +2175,20 @@ button {
 
 .timeline__icon {
   width: 2rem;
-  height: 2rem;
-  border-radius: var(--radius-md);
-  background: var(--color-primary-100);
+  min-height: 0.75rem;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  color: var(--color-primary-500);
-  font-size: 0.75rem;
+  padding-top: 0.25rem;
+  background: transparent;
+}
+
+.timeline__dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--color-primary-500);
+  flex-shrink: 0;
 }
 
 .timeline__line {
@@ -1959,6 +2222,10 @@ button {
   margin: 0.25rem 0;
   font-size: var(--text-body-m);
   color: var(--color-neutral-8);
+}
+
+.timeline__body-text {
+  white-space: pre-wrap;
 }
 
 .timeline__item--empty {
@@ -2053,7 +2320,9 @@ button {
   color: var(--color-neutral-9);
 }
 
-.field input,
+/* Exclude radio/checkbox: width:100% on radios inside `.field` fieldsets stacks the control above the label on narrow viewports.
+   Exclude `.field__prefix`: full width on the +65 cell makes the country code look centered in the whole phone field */
+.field input:not([type="radio"]):not([type="checkbox"]):not(.field__prefix),
 .field select,
 .field textarea {
   width: 100%;
@@ -2061,6 +2330,32 @@ button {
   border: 1px solid var(--color-neutral-5);
   border-radius: var(--radius-md);
   font: inherit;
+}
+
+.field input[type="radio"],
+.field input[type="checkbox"] {
+  width: auto;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  vertical-align: middle;
+  font: inherit;
+}
+
+/* Dropdown: value + chevron inside the same border */
+.field select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.65rem center;
+  background-size: 1rem 1rem;
+  padding-right: 2.25rem;
+  cursor: pointer;
 }
 
 .field textarea {
@@ -2075,14 +2370,202 @@ button {
   border-color: var(--color-primary-400);
 }
 
-/* —— Mammobus registration (vanilla) — Figma-aligned shell —— */
-.registration__breadcrumb--chrome {
-  margin-bottom: 0;
-  padding: 0.75rem var(--space-page);
-  background: var(--color-white);
-  border-bottom: 1px solid var(--color-gray-200);
+/* Single-shell controls: focus ring on wrapper */
+.field .field__date:focus-within,
+.field .field__inline:focus-within,
+.detail-field .field__date:focus-within {
+  outline: 2px solid var(--color-primary-200);
+  border-color: var(--color-primary-400);
 }
 
+.field__date .field__date-text:focus,
+.detail-field .field__date .field__date-text:focus,
+.field__inline input:focus {
+  outline: none;
+}
+
+/* DD-MM-YYYY + calendar icon inside one bordered field (js/date-input.js) */
+.field__date {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  position: relative;
+  border: 1px solid var(--color-neutral-5);
+  border-radius: var(--radius-md);
+  background: var(--color-white);
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.field .field__date-text,
+.detail-field .field__date .detail-field__input.field__date-text {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+  border: none !important;
+  border-radius: 0;
+  box-shadow: none !important;
+}
+
+.field__date-btn {
+  flex-shrink: 0;
+  width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-left: 1px solid var(--color-neutral-5);
+  border-radius: 0;
+  background-color: var(--color-white);
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' fill='none' stroke='%2364748b' stroke-width='1.5'%3E%3Crect x='3' y='4' width='14' height='13' rx='2'/%3E%3Cpath d='M3 8h14M8 2v4M12 2v4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.field__date-btn:hover:not(:disabled) {
+  background-color: var(--color-gray-50);
+}
+
+.field__date-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Anchor native picker to bottom edge so OS calendar tends to open below the field */
+.field__date-native {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: auto;
+  width: 100%;
+  height: 1px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.field--singpass-locked .field__date-btn {
+  pointer-events: none;
+}
+
+.detail-field .field__date {
+  width: 100%;
+}
+
+/* NRIC: text field + visibility toggle (same shell idea as .field__date) */
+.field__nric {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  position: relative;
+  border: 1px solid var(--color-neutral-5);
+  border-radius: var(--radius-md);
+  background: var(--color-white);
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.field .field__nric:focus-within {
+  outline: 2px solid var(--color-primary-200);
+  border-color: var(--color-primary-400);
+}
+
+.field__nric-face {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  min-height: 2.5rem;
+}
+
+.field__nric-asterisks {
+  padding: 0.5rem 0.75rem;
+  font: inherit;
+  font-family: inherit;
+  letter-spacing: 0.12em;
+  color: var(--color-neutral-9);
+  user-select: none;
+}
+
+/* Default state: plain NRIC visible; bullets only when user masks a non-empty value */
+.field__nric--revealed .field__nric-asterisks {
+  display: none;
+}
+
+.field__nric-edit {
+  flex: 1;
+  min-width: 0;
+  border: none !important;
+  border-radius: 0;
+  box-shadow: none !important;
+  padding: 0.5rem 0.75rem;
+  font: inherit;
+}
+
+.field__nric-edit:focus {
+  outline: none;
+}
+
+/* Toggle: Flaticon Uicons — crossed eye when masked, open eye when revealed (no extra radii on the button) */
+.field__nric-toggle {
+  flex-shrink: 0;
+  width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-left: 1px solid var(--color-neutral-5);
+  border-radius: 0 !important;
+  background-color: var(--color-white);
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  box-shadow: none !important;
+}
+
+.field__nric-toggle:focus,
+.field__nric-toggle:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.field__nric-toggle::-moz-focus-inner {
+  border: 0;
+  padding: 0;
+}
+
+.field__nric-toggle-icons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.field__nric-toggle-ico {
+  font-size: 1.05rem;
+  color: #64748b;
+  line-height: 1;
+}
+
+.field__nric--masked .field__nric-toggle-ico--when-revealed,
+.field__nric--revealed .field__nric-toggle-ico--when-masked {
+  display: none;
+}
+
+.field__nric-toggle:hover {
+  background-color: var(--color-gray-50);
+}
+
+.field--singpass-locked .field__nric-toggle {
+  pointer-events: none;
+}
+
+/* —— Mammobus registration (vanilla) — Figma-aligned shell —— */
 .registration--body {
   display: flex;
   flex-direction: column;
@@ -2223,13 +2706,40 @@ button {
   scroll-margin-top: 0.75rem;
 }
 
-.registration__section-label {
+/* FIT consent: flat white body under section header (matches design reference) */
+.registration-card--fit-consent .registration__fit-consent-body {
+  margin: 0;
+  padding: 0;
+}
+
+.registration-card--fit-consent .registration__fit-consent-body > .registration__consent:first-child {
+  margin-top: 0;
+}
+
+.registration__fit-consent-lead {
+  margin: 0 0 1rem;
+  font-size: var(--text-reg-form);
+  color: var(--color-neutral-9);
+  line-height: var(--lh-reg-form);
+}
+
+.registration__fit-consent-checks {
   margin: 0 0 1.25rem;
-  font-size: 0.75rem;
-  font-weight: var(--weight-semibold);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--color-gray-500);
+}
+
+.registration__fit-consent-legal {
+  margin: 0;
+  font-size: var(--text-reg-form);
+  color: var(--color-neutral-9);
+  line-height: 1.55;
+}
+
+.registration__fit-consent-legal p {
+  margin: 0 0 1rem;
+}
+
+.registration__fit-consent-legal p:last-child {
+  margin-bottom: 0;
 }
 
 .registration__address-title {
@@ -2243,6 +2753,26 @@ button {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+/* Residential address: Block / Street, Floor / Unit, Postal / Country */
+.form-grid.form-grid--reg.form-grid--address {
+  gap: 1rem 1.25rem;
+}
+
+/* Healthier SG & Subsidies: CHAS + enrolment row, first screening + year row */
+.form-grid.form-grid--reg.form-grid--subsidies {
+  gap: 1rem 1.25rem;
+  align-items: start;
+}
+
+.form-grid--subsidies .registration__fieldset {
+  min-width: 0;
+}
+
+.registration__fieldset-legend--field {
+  font-weight: var(--weight-medium);
+  color: var(--color-neutral-9);
+}
+
 .field--full {
   grid-column: 1 / -1;
 }
@@ -2252,30 +2782,51 @@ button {
   margin-left: 0.125rem;
 }
 
+/* Phone: +prefix | number inside one bordered field */
 .field__inline {
   display: flex;
-  gap: 0.5rem;
+  gap: 0;
   align-items: stretch;
+  width: 100%;
+  border: 1px solid var(--color-neutral-5);
+  border-radius: var(--radius-md);
+  background: var(--color-white);
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .field__inline .field__prefix {
+  box-sizing: border-box;
   width: 3.75rem;
-  flex-shrink: 0;
-  text-align: center;
+  min-width: 3.75rem;
+  max-width: 3.75rem;
+  flex: 0 0 3.75rem;
+  padding: 0.5rem 0.5rem 0.5rem 0.75rem;
+  font: inherit;
+  text-align: left;
   background: var(--color-gray-100);
   color: var(--color-neutral-8);
+  border: none !important;
+  border-radius: 0;
+  border-right: 1px solid var(--color-neutral-5);
+  box-shadow: none !important;
 }
 
 .field__inline input:not(.field__prefix) {
-  flex: 1;
+  flex: 1 1 0;
   min-width: 0;
+  width: auto;
+  max-width: none;
+  border: none !important;
+  border-radius: 0;
+  box-shadow: none !important;
 }
 
 .registration__hint {
   margin: 0;
-  font-size: var(--text-body-m);
+  font-size: var(--text-reg-form);
   color: var(--color-neutral-8);
-  line-height: 1.5;
+  line-height: var(--lh-reg-form);
 }
 
 .registration__consent {
@@ -2286,16 +2837,16 @@ button {
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
-  font-size: var(--text-body-m);
-  line-height: 1.5;
+  font-size: var(--text-reg-form);
+  line-height: var(--lh-reg-form);
   cursor: pointer;
   color: var(--color-neutral-9);
 }
 
 .registration__consent-row input[type="checkbox"] {
-  margin-top: 0.2rem;
-  width: 1rem;
-  height: 1rem;
+  margin-top: 0.15rem;
+  width: 1.125rem;
+  height: 1.125rem;
   accent-color: var(--color-primary-500);
   flex-shrink: 0;
 }
@@ -2316,10 +2867,10 @@ button {
 .registration__fieldset-legend {
   padding: 0;
   margin-bottom: 0.35rem;
-  font-size: var(--text-body-m);
+  font-size: var(--text-reg-form);
   font-weight: var(--weight-normal);
   color: var(--color-neutral-9);
-  line-height: 1.4;
+  line-height: var(--lh-reg-form);
 }
 
 .registration__hint--tight {
@@ -2329,23 +2880,51 @@ button {
 .registration__radio-group {
   display: flex;
   flex-wrap: wrap;
-  gap: 1.25rem;
-  align-items: center;
+  gap: 0.75rem 1.25rem;
+  align-items: flex-start;
 }
 
 .registration__radio-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: var(--text-body-m);
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.5rem;
+  max-width: 100%;
+  font-size: var(--text-reg-form);
+  line-height: var(--lh-reg-form);
+  font-weight: var(--weight-regular);
   color: var(--color-neutral-9);
   cursor: pointer;
 }
 
 .registration__radio-label input {
-  width: 1rem;
-  height: 1rem;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0.15rem 0 0;
+  flex-shrink: 0;
   accent-color: var(--color-primary-500);
+}
+
+.registration__radio-group--stack {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
+}
+
+.registration__radio-label--block {
+  align-items: flex-start;
+}
+
+.registration__radio-label--block input {
+  margin-top: 0.15rem;
+  flex-shrink: 0;
+}
+
+.registration__radio-label--block span {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-reg-form);
+  line-height: var(--lh-reg-form);
 }
 
 .field__static-label {
@@ -2364,16 +2943,21 @@ button {
 
 .registration__check-label {
   display: flex;
-  align-items: center;
+  flex-direction: row;
+  align-items: flex-start;
   gap: 0.5rem;
-  font-size: var(--text-body-m);
+  max-width: 100%;
+  font-size: var(--text-reg-form);
+  line-height: var(--lh-reg-form);
+  font-weight: var(--weight-regular);
   color: var(--color-neutral-9);
   cursor: pointer;
 }
 
 .registration__check-label input {
-  width: 1rem;
-  height: 1rem;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0.15rem 0 0;
   accent-color: var(--color-primary-500);
   flex-shrink: 0;
 }
@@ -2390,9 +2974,9 @@ button {
 
 .registration__consent-intro {
   margin: 1rem 0;
-  font-size: var(--text-body-m);
+  font-size: var(--text-reg-form);
   color: var(--color-neutral-9);
-  line-height: 1.5;
+  line-height: var(--lh-reg-form);
 }
 
 .registration__channel-rows {
@@ -2408,7 +2992,7 @@ button {
   gap: 0.75rem 1rem;
   padding: 0.5rem 0;
   border-bottom: 1px solid var(--color-gray-200);
-  font-size: var(--text-body-m);
+  font-size: var(--text-reg-form);
   color: var(--color-neutral-9);
 }
 
@@ -2432,30 +3016,56 @@ button {
 }
 
 .registration__eligibility {
-  background: #fef9c3;
-  border: 1px solid #fde047;
+  background: var(--color-primary-100);
+  border: 1px solid var(--color-primary-200);
   border-radius: var(--radius-md);
   padding: 1rem 1.25rem;
   margin-bottom: 1.25rem;
-  font-size: var(--text-body-m);
+  font-size: var(--text-reg-form);
   color: var(--color-neutral-9);
-  line-height: 1.5;
+  line-height: var(--lh-reg-form);
 }
 
 .registration__eligibility-title {
   margin: 0 0 0.5rem;
   font-weight: var(--weight-semibold);
-  font-size: var(--text-body-m);
+  font-size: var(--text-reg-form);
   color: var(--color-neutral-9);
 }
 
-.registration__eligibility ul {
-  margin: 0;
+.registration__eligibility-block {
+  margin-top: 1rem;
+}
+
+.registration__eligibility-block:first-of-type {
+  margin-top: 0.35rem;
+}
+
+.registration__eligibility-subtitle {
+  margin: 0 0 0.35rem;
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-reg-form);
+  color: var(--color-neutral-9);
+}
+
+.registration__eligibility ul,
+.registration__eligibility ol.registration__eligibility-ol {
+  margin: 0.5rem 0 0;
   padding-left: 1.25rem;
 }
 
 .registration__eligibility li {
   margin: 0.15rem 0;
+}
+
+.registration__eligibility ol.registration__eligibility-ol {
+  list-style-type: lower-alpha;
+}
+
+/* Screening Questions: ensure long legends + any static labels match 16px body */
+#reg-screening .field__static-label {
+  font-size: var(--text-reg-form);
+  line-height: var(--lh-reg-form);
 }
 
 .field__inline .field__prefix--nric {
@@ -2476,7 +3086,7 @@ button {
   padding: 1rem 1.25rem;
   background: var(--color-gray-50);
   border-radius: var(--radius-md);
-  font-size: var(--text-body-s, 0.8125rem);
+  font-size: var(--text-reg-form);
   color: var(--color-neutral-8);
   line-height: 1.55;
 }
@@ -2493,11 +3103,14 @@ button {
 
 .registration__subsection-label {
   margin: 0 0 1rem;
-  font-size: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.875rem;
   font-weight: var(--weight-semibold);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--color-gray-500);
+  color: #475569;
+  line-height: 1.3;
 }
 
 .registration--placeholder-inner {
@@ -2660,9 +3273,22 @@ button {
     display: inline-flex;
   }
 
+  /* Title block left, hamburger top-right (override column stack from .registration__toolbar-row) */
+  .app-shell--registration-self-service .registration__toolbar--self-service .registration__toolbar-row--self-service-main {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
   .app-shell--registration-self-service .registration__toolbar-row--self-service-main .registration__toolbar-titles {
     flex: 1;
     min-width: 0;
+  }
+
+  .app-shell--registration-self-service .registration__toolbar-row--self-service-main .registration__nav-hamburger {
+    margin-left: auto;
+    align-self: flex-start;
   }
 }
 
@@ -2775,10 +3401,10 @@ body.registration-nav-drawer-open {
   padding-bottom: max(0.25rem, env(safe-area-inset-bottom));
 }
 
-.app-content--registration-self-service > .app-footer {
-  padding-left: max(var(--space-page), env(safe-area-inset-left));
-  padding-right: max(var(--space-page), env(safe-area-inset-right));
-  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+.app-content--registration-self-service .app-footer--registration-end {
+  padding-left: max(0.5rem, env(safe-area-inset-left));
+  padding-right: max(0.5rem, env(safe-area-inset-right));
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
 }
 
 .app-shell--registration-self-service .app-main--registration-scroll {
@@ -2786,17 +3412,32 @@ body.registration-nav-drawer-open {
   -webkit-overflow-scrolling: touch;
 }
 
-.registration--self-service .field input,
+.registration--self-service .field input:not([type="radio"]):not([type="checkbox"]),
 .registration--self-service .field select,
 .registration--self-service .field textarea {
   min-height: 2.75rem;
   font-size: 16px; /* avoids iOS zoom on focus */
 }
 
+/* Touch-friendly hit area without forcing a min-height that breaks flex row alignment */
 .registration--self-service .registration__radio-label,
 .registration--self-service .registration__check-label {
-  min-height: 2.75rem;
-  align-items: center;
+  min-height: unset;
+  padding-top: 0.375rem;
+  padding-bottom: 0.375rem;
+  align-items: flex-start;
+}
+
+@media (max-width: 640px) {
+  .registration__radio-group {
+    gap: 0.5rem 1rem;
+  }
+
+  .registration__radio-label,
+  .registration__check-label {
+    /* Prevent long labels from overflowing the viewport edge */
+    min-width: 0;
+  }
 }
 
 .app-shell--registration-self-service .btn {

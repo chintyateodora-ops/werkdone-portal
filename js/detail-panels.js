@@ -45,33 +45,46 @@
   /** Default field values for editable detail tabs (merged with state.detailFormValues in app.js) */
   const DETAIL_FORM_DEFAULTS = {
     details: {
-      firstName: "Lee",
-      lastName: "Wei Xiong",
+      fullName: "Lee Wei Xiong",
       gender: "Female",
       dob: "15/03/1988",
       email: "email@email.com",
       contact: "9876 5432",
-      address: "123 Bedok North Street 1, #05-123, Singapore 460123",
       nric: "S1234567D",
       race: "Chinese",
-      religion: "Islam",
-      preferredLang: "English",
+      religion: "Buddhism",
+      preferredLanguages: "English, Mandarin",
       residentialStatus: "Singapore Citizen",
-      chasType: "CHAS Blue",
-      healthierSg: "Enrolled",
-      cancerScreeningHistory: "Mammogram: 2023, HPV: Never",
+      chasCardType: "Blue",
+      healthierSg: "yes",
+      firstMammogramScreening: "no",
+      lastScreeningYear: "2023",
       riskLevel: "High",
       personalCancerHistory: "No",
-      cancerEligibilityCheck: "Eligible for Mammogram, HPV",
+      cancerScreeningEligibilityCheck: "No",
       preExistingConditions: "None",
       familyHistory: "Mother had breast cancer at age 55",
       screeningEligible: "Mammogram (Mammobus) - Booked\nHPV Screening - Interested",
       followUpNotes:
         "Booked for Mammobus on 15 Nov 2025 at Bedok CC. Follow up on HPV screening interest after mammogram results.",
-      heardAbout: "Community Health Roadshow - Bedok",
-      pdpaConsent: "Consented",
-      edmSubscription: "Subscribed",
-      consentContact: "Consented to be contacted for screening appointment booking",
+      sourceType: "Event",
+      sourceName: "Community Health Roadshow - Bedok",
+      pdpaConsent: "Yes",
+      edmSubscription: "Yes",
+      consentContact: "Yes",
+      block: "123",
+      street: "Ang Mo Kio Avenue 6",
+      floor: "12",
+      unit: "12-345",
+      postal: "560123",
+      country: "Singapore",
+      /** Maps to screening registration `reg-appointment` / `reg-hpv-appointment` / `reg-fit-appointment` */
+      preferredScreeningDate: "15-11-2025",
+      preferredTimeSlot: "morning",
+      screeningLocationEvent: "Bedok Community Centre — Mammobus",
+      /** Screening tab — review cadence (values match `fieldSelectValueLabel` options) */
+      reviewPeriod: "6months",
+      nextReviewDate: "09/10/2026",
     },
     medicalHistory: {
       breastCancer: "Yes",
@@ -105,7 +118,6 @@
       lastPapTest: "4/2/21",
       lastPapResult: "Negative",
       lastMammo: "6/4/26",
-      chasHolder: "Yes",
       menarche: "12",
       menopause: "48",
       firstChildbirth: "36",
@@ -116,11 +128,14 @@
   };
 
   const DETAILS_NAV = [
-    ["detail-basic", "Basic Information"],
-    ["detail-screening", "Screening & Subsidy"],
+    ["detail-personal", "Personal Information"],
+    ["detail-address", "Residential Address"],
+    ["detail-screening", "Healthier SG & Subsidies"],
+    ["detail-appointment", "Appointment Preferences"],
     ["detail-risk", "Risk Assessment"],
     ["detail-status", "Screening Status"],
     ["detail-engagement", "Engagement"],
+    ["detail-consent", "Consent"],
   ];
   const MEDICAL_NAV = [
     ["mh-family", "Family Cancer Background"],
@@ -149,28 +164,245 @@
       .join("");
   }
 
-  function fieldInput(e, label, key, tabKey, merged, editing) {
+  /** Text inputs: same `.field` + control chrome as screening registration (app.js `renderRegisterMammobus`). */
+  function fieldInput(e, label, key, tabKey, merged, editing, opts) {
+    opts = opts || {};
+    const required = !!opts.required;
+    const placeholder = opts.placeholder != null ? String(opts.placeholder) : "";
+    const fullWidth = !!opts.fullWidth;
+    const inputType = opts.inputType != null ? String(opts.inputType) : "text";
     const val = merged[key] != null ? String(merged[key]) : "";
     const fid = `df-${tabKey}-${key}`;
+    const reqHtml = required ? '<span class="field__req" aria-hidden="true">*</span>' : "";
+    const gridClass = fullWidth ? " field--full" : "";
     if (editing) {
-      return `<div class="detail-field">
-        <label class="detail-field__label" for="${e(fid)}">${e(label)}</label>
-        <input class="detail-field__input" id="${e(fid)}" type="text" data-detail-field="${e(key)}" value="${e(val)}" />
+      const phAttr = placeholder ? ` placeholder="${e(placeholder)}"` : "";
+      return `<div class="field${gridClass}">
+        <label for="${e(fid)}">${e(label)}${reqHtml}</label>
+        <input id="${e(fid)}" type="${e(inputType)}" data-detail-field="${e(key)}" value="${e(val)}"${phAttr}${required ? " required" : ""} />
       </div>`;
     }
-    return `<div class="detail-field"><span class="detail-field__label">${e(label)}</span><span class="detail-field__value">${e(val)}</span></div>`;
+    return `<div class="detail-field${fullWidth ? " detail-field--full" : ""}"><span class="detail-field__label">${e(label)}${reqHtml}</span><span class="detail-field__value">${e(val)}</span></div>`;
   }
 
-  function fieldTextarea(e, label, key, tabKey, merged, editing) {
+  /** NRIC with mask + reveal — pairs with `js/nric-toggle.js` */
+  function fieldNric(e, label, key, tabKey, merged, editing, opts) {
+    opts = opts || {};
+    const required = !!opts.required;
     const val = merged[key] != null ? String(merged[key]) : "";
     const fid = `df-${tabKey}-${key}`;
+    const reqHtml = required ? '<span class="field__req" aria-hidden="true">*</span>' : "";
     if (editing) {
-      return `<div class="detail-field detail-field--full">
-        <label class="detail-field__label" for="${e(fid)}">${e(label)}</label>
-        <textarea class="detail-field__textarea" id="${e(fid)}" rows="4" data-detail-field="${e(key)}">${e(val)}</textarea>
+      const toggleIcons = `<span class="field__nric-toggle-icons" aria-hidden="true"><i class="fi fi-rr-eye-crossed field__nric-toggle-ico field__nric-toggle-ico--when-masked"></i><i class="fi fi-rr-eye field__nric-toggle-ico field__nric-toggle-ico--when-revealed"></i></span>`;
+      return `<div class="field">
+        <label for="${e(fid)}">${e(label)}${reqHtml}</label>
+        <div class="field__nric field__nric--revealed">
+          <input type="hidden" class="field__nric-store" data-detail-field="${e(key)}" value="${e(val)}" />
+          <div class="field__nric-face">
+            <span class="field__nric-asterisks" aria-hidden="true"></span>
+            <input id="${e(fid)}" type="text" class="field__nric-edit" autocomplete="off" maxlength="20" placeholder="Enter NRIC No."${required ? " required" : ""} />
+          </div>
+          <button type="button" class="field__nric-toggle" aria-label="Hide NRIC" aria-pressed="true" title="Hide NRIC" data-nric-toggle>${toggleIcons}</button>
+        </div>
+      </div>`;
+    }
+    return `<div class="detail-field"><span class="detail-field__label">${e(label)}${reqHtml}</span><span class="detail-field__value">${e(val)}</span></div>`;
+  }
+
+  /** +65 | mobile — same shell as registration */
+  function fieldPhone(e, label, key, tabKey, merged, editing, opts) {
+    opts = opts || {};
+    const required = !!opts.required;
+    const val = merged[key] != null ? String(merged[key]) : "";
+    const fid = `df-${tabKey}-${key}`;
+    const reqHtml = required ? '<span class="field__req" aria-hidden="true">*</span>' : "";
+    if (editing) {
+      return `<div class="field">
+        <label for="${e(fid)}">${e(label)}${reqHtml}</label>
+        <div class="field__inline">
+          <input type="text" class="field__prefix" value="+65" disabled aria-label="Country code" />
+          <input id="${e(fid)}" type="tel" data-detail-field="${e(key)}" value="${e(val)}" placeholder="E.g. 8123 4567"${required ? " required" : ""} />
+        </div>
+      </div>`;
+    }
+    return `<div class="detail-field"><span class="detail-field__label">${e(label)}${reqHtml}</span><span class="detail-field__value">${e(val)}</span></div>`;
+  }
+
+  /** DD-MM-YYYY + calendar — same `.field` + `.field__date` shell as registration (js/date-input.js). */
+  function fieldDateInput(e, label, key, tabKey, merged, editing, opts) {
+    opts = opts || {};
+    const required = !!opts.required;
+    const raw = merged[key] != null ? String(merged[key]) : "";
+    const fid = `df-${tabKey}-${key}`;
+    const displayVal =
+      typeof window.WD_normalizeDateDisplay === "function" ? window.WD_normalizeDateDisplay(raw) : raw;
+    const reqHtml = required ? '<span class="field__req" aria-hidden="true">*</span>' : "";
+    if (editing) {
+      return `<div class="field">
+        <label for="${e(fid)}">${e(label)}${reqHtml}</label>
+        <div class="field__date">
+          <input class="field__date-text" id="${e(fid)}" type="text" data-detail-field="${e(
+        key
+      )}" value="${e(displayVal)}" placeholder="DD-MM-YYYY" inputmode="numeric" autocomplete="off" maxlength="10"${required ? " required" : ""} />
+          <button type="button" class="field__date-btn" aria-label="Choose date" title="Choose date"></button>
+          <input type="date" class="field__date-native" tabindex="-1" aria-hidden="true" />
+        </div>
+      </div>`;
+    }
+    return `<div class="detail-field"><span class="detail-field__label">${e(label)}${reqHtml}</span><span class="detail-field__value">${e(raw)}</span></div>`;
+  }
+
+  /** Dropdown — same `.field` + `select` chrome as registration (`app.js`). */
+  function fieldSelect(e, label, key, tabKey, merged, editing, optionList, opts) {
+    opts = opts || {};
+    const required = !!opts.required;
+    const placeholderLabel = opts.placeholderLabel != null ? String(opts.placeholderLabel) : "Select";
+    const val = merged[key] != null ? String(merged[key]) : "";
+    const fid = `df-${tabKey}-${key}`;
+    const reqHtml = required ? '<span class="field__req" aria-hidden="true">*</span>' : "";
+    const optionsRows = (optionList || [])
+      .map((opt) => `<option value="${e(opt)}"${val === opt ? " selected" : ""}>${e(opt)}</option>`)
+      .join("");
+    if (editing) {
+      return `<div class="field">
+        <label for="${e(fid)}">${e(label)}${reqHtml}</label>
+        <select id="${e(fid)}" data-detail-field="${e(key)}"${required ? " required" : ""}>
+          <option value="">${e(placeholderLabel)}</option>
+          ${optionsRows}
+        </select>
+      </div>`;
+    }
+    return `<div class="detail-field"><span class="detail-field__label">${e(label)}${reqHtml}</span><span class="detail-field__value">${e(val)}</span></div>`;
+  }
+
+  /** Dropdown with distinct option `value` vs visible label (matches screening registration value attributes). */
+  function fieldSelectValueLabel(e, label, key, tabKey, merged, editing, valueLabelPairs, opts) {
+    opts = opts || {};
+    const required = !!opts.required;
+    const placeholderLabel = opts.placeholderLabel != null ? String(opts.placeholderLabel) : "Select";
+    const val = merged[key] != null ? String(merged[key]) : "";
+    const fid = `df-${tabKey}-${key}`;
+    const reqHtml = required ? '<span class="field__req" aria-hidden="true">*</span>' : "";
+    const pairs = valueLabelPairs || [];
+    const optionsRows = pairs
+      .map(([v, lbl]) => `<option value="${e(v)}"${val === v ? " selected" : ""}>${e(lbl)}</option>`)
+      .join("");
+    const displayLabel = pairs.find(([v]) => v === val)?.[1] || val || "—";
+    if (editing) {
+      return `<div class="field">
+        <label for="${e(fid)}">${e(label)}${reqHtml}</label>
+        <select id="${e(fid)}" data-detail-field="${e(key)}"${required ? " required" : ""}>
+          <option value="">${e(placeholderLabel)}</option>
+          ${optionsRows}
+        </select>
+      </div>`;
+    }
+    return `<div class="detail-field"><span class="detail-field__label">${e(label)}${reqHtml}</span><span class="detail-field__value">${e(displayLabel)}</span></div>`;
+  }
+
+  /** Yes/No radios — values `yes` / `no` (screening registration mammogram question). */
+  function fieldRadioYesNo(e, legend, key, tabKey, merged, editing, opts) {
+    opts = opts || {};
+    const required = !!opts.required;
+    const val = merged[key] != null ? String(merged[key]) : "";
+    const name = `df-${tabKey}-${key}-radio`;
+    const reqHtml = required ? '<span class="field__req" aria-hidden="true">*</span>' : "";
+    if (editing) {
+      return `<fieldset class="registration__fieldset field field--full">
+        <legend class="registration__fieldset-legend registration__fieldset-legend--field">${e(legend)}${reqHtml}</legend>
+        <div class="registration__radio-group" role="radiogroup"${required ? ' aria-required="true"' : ""}>
+          <label class="registration__radio-label"><input type="radio" name="${e(name)}" data-detail-field="${e(
+        key
+      )}" value="yes"${val === "yes" ? " checked" : ""} /> Yes</label>
+          <label class="registration__radio-label"><input type="radio" name="${e(name)}" data-detail-field="${e(
+        key
+      )}" value="no"${val === "no" ? " checked" : ""} /> No</label>
+        </div>
+      </fieldset>`;
+    }
+    const display = val === "yes" ? "Yes" : val === "no" ? "No" : "—";
+    return `<div class="detail-field detail-field--full"><span class="detail-field__label">${e(legend)}${reqHtml}</span><span class="detail-field__value">${e(
+      display
+    )}</span></div>`;
+  }
+
+  /** Multi-select checkboxes — values joined with ", " on save (`data-detail-multi-select` in app.js). */
+  function fieldCheckboxMulti(e, label, key, tabKey, merged, editing, optionList) {
+    const valsRaw = merged[key] != null ? String(merged[key]) : "";
+    const selected = new Set(
+      valsRaw
+        .split(/[,;]+/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+    );
+    const groupId = `df-${tabKey}-${key}-multi`;
+    const labelId = `${groupId}-legend`;
+    if (editing) {
+      const boxes = (optionList || [])
+        .map((opt) => {
+          const oid = `${groupId}-${String(opt).replace(/[^a-zA-Z0-9_-]/g, "")}`;
+          const checked = selected.has(opt) ? " checked" : "";
+          return `<label class="registration__check-label" for="${e(oid)}"><input type="checkbox" id="${e(
+            oid
+          )}" value="${e(opt)}"${checked} /> ${e(opt)}</label>`;
+        })
+        .join("");
+      return `<div class="field field--full">
+        <span class="field__static-label" id="${e(labelId)}">${e(label)}</span>
+        <div class="registration__checkbox-stack" role="group" aria-labelledby="${e(
+          labelId
+        )}" data-detail-multi-select="${e(key)}">
+          ${boxes}
+        </div>
+      </div>`;
+    }
+    const display = valsRaw.trim() || "—";
+    return `<div class="detail-field detail-field--full"><span class="detail-field__label">${e(
+      label
+    )}</span><span class="detail-field__value">${e(display)}</span></div>`;
+  }
+
+  function fieldTextarea(e, label, key, tabKey, merged, editing, opts) {
+    opts = opts || {};
+    const val = merged[key] != null ? String(merged[key]) : "";
+    const fid = `df-${tabKey}-${key}`;
+    const placeholder =
+      opts.placeholder != null ? ` placeholder="${e(String(opts.placeholder))}"` : "";
+    const rows = opts.rows != null ? Number(opts.rows) : 4;
+    if (editing) {
+      return `<div class="field field--full">
+        <label for="${e(fid)}">${e(label)}</label>
+        <textarea id="${e(fid)}" rows="${rows}" data-detail-field="${e(key)}"${placeholder}>${e(val)}</textarea>
       </div>`;
     }
     return `<div class="detail-field detail-field--full"><span class="detail-field__label">${e(label)}</span><div class="detail-field__value detail-field__value--pre">${e(val)}</div></div>`;
+  }
+
+  /** Single checkbox — stores "Yes" / "No" (saved in app.js for `input[type=checkbox]`). */
+  function fieldCheckbox(e, label, key, tabKey, merged, editing, opts) {
+    opts = opts || {};
+    const fullWidth = opts.fullWidth !== false;
+    const val = merged[key] != null ? String(merged[key]) : "";
+    let checked = val === "Yes" || val === "yes" || val === "true" || val === "1";
+    if (!checked && key === "pdpaConsent") checked = val === "Consented";
+    if (!checked && key === "edmSubscription") checked = val === "Subscribed";
+    if (!checked && key === "consentContact")
+      checked = val.length > 0 && val !== "No" && val.toLowerCase() !== "no";
+    const fid = `df-${tabKey}-${key}`;
+    const fieldGrid = fullWidth ? " field--full" : "";
+    const detailGrid = fullWidth ? " detail-field--full" : "";
+    if (editing) {
+      return `<div class="field${fieldGrid}">
+        <label class="registration__check-label" for="${e(fid)}">
+          <input type="checkbox" id="${e(fid)}" data-detail-field="${e(key)}" value="Yes"${checked ? " checked" : ""} />
+          ${e(label)}
+        </label>
+      </div>`;
+    }
+    return `<div class="detail-field${detailGrid}">
+      <span class="detail-field__label">${e(label)}</span>
+      <span class="detail-field__value">${e(checked ? "Yes" : "No")}</span>
+    </div>`;
   }
 
   function detailFormToolbar(e, panelAttr, editing) {
@@ -181,21 +413,31 @@
     return `<button type="button" class="btn btn--outline" data-detail-form-action="edit" data-detail-form-panel="${e(panelAttr)}">Edit</button>`;
   }
 
-  function splitName(name) {
-    const parts = String(name || "").trim().split(/\s+/);
-    return { first: parts[0] || "—", last: parts.slice(1).join(" ") || "—" };
-  }
-
   function df(e, label, value) {
     return `<div class="detail-field"><span class="detail-field__label">${e(label)}</span><span class="detail-field__value">${e(value)}</span></div>`;
+  }
+
+  /** Read-only next review date — matches screening tab mock (computed field, not editable). */
+  function fieldReadonlyReviewDate(e, label, key, tabKey, merged) {
+    const val = merged[key] != null ? String(merged[key]) : "";
+    const fid = `df-${tabKey}-${key}-readonly`;
+    return `<div class="field">
+      <label for="${e(fid)}">${e(label)}</label>
+      <input id="${e(fid)}" type="text" class="detail-review-next-date-input" value="${e(val)}" readonly tabindex="0" aria-readonly="true" />
+    </div>`;
   }
 
   function dtextarea(e, label, value) {
     return `<div class="detail-field detail-field--full"><span class="detail-field__label">${e(label)}</span><div class="detail-field__value detail-field__value--pre">${e(value)}</div></div>`;
   }
 
-  function section(e, title, inner) {
-    return `<section class="detail-card"><h2 class="detail-card__title">${e(title)}</h2>${inner}</section>`;
+  /** `anchorId` = ToC / scroll target; placed on the card so the visible title stays in view. */
+  function section(e, title, inner, anchorId) {
+    const idAttr =
+      anchorId != null && String(anchorId) !== ""
+        ? ` id="${e(String(anchorId))}" tabindex="-1"`
+        : "";
+    return `<section class="detail-card"${idAttr}><h2 class="detail-card__title">${e(title)}</h2>${inner}</section>`;
   }
 
   function tocItem(e, href, label) {
@@ -222,21 +464,6 @@
       </article>`;
   }
 
-  function prospectDocsTableRow(e, name, source, uploadedOn, uploadedBy) {
-    return `<tr>
-      <td><button type="button" class="prospect-docs__name" data-detail-toast="View document (prototype).">${e(name)}</button></td>
-      <td>${e(source)}</td>
-      <td>${e(uploadedOn)}</td>
-      <td>${e(uploadedBy)}</td>
-      <td>
-        <div class="prospect-docs__actions">
-          <button type="button" class="btn btn--icon" data-detail-toast="Download (prototype)." aria-label="Download">${icons.download}</button>
-          <button type="button" class="btn btn--icon" data-detail-toast="Delete (prototype)." aria-label="Delete">${icons.trash}</button>
-        </div>
-      </td>
-    </tr>`;
-  }
-
   function screeningDataRow(e, cells, statusHtml) {
     return `<tr>${cells.map((c) => `<td>${e(c)}</td>`).join("")}<td>${statusHtml}</td></tr>`;
   }
@@ -256,6 +483,30 @@
     const flags = padBoolArray(d.stageChecklistDone?.[pipeline], labels.length);
     const done = flags.filter(Boolean).length;
     return { done, total: labels.length };
+  }
+
+  function fmtFileSize(bytes) {
+    const n = Number(bytes);
+    if (!Number.isFinite(n) || n < 0) return "—";
+    if (n < 1024) return `${n} B`;
+    if (n < 1048576) return `${(n / 1024).toFixed(n < 10240 ? 1 : 0)} KB`;
+    return `${(n / 1048576).toFixed(1)} MB`;
+  }
+
+  function formatDocUploaded(iso) {
+    try {
+      const dt = new Date(iso);
+      if (Number.isNaN(dt.getTime())) return "—";
+      return dt.toLocaleString("en-SG", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch (_) {
+      return "—";
+    }
   }
 
   window.WD_renderDetailPanel = function (tab, ctx) {
@@ -296,30 +547,34 @@
           .join("");
       }
 
-      const timelineSrc = Array.isArray(d.timeline) ? d.timeline : [];
-      const timelineFiltered = timelineSrc.filter((ev) => !ev.stage || ev.stage === pipe);
-      const timelineStamp = (ev) => e(String(ev.dateTime != null ? ev.dateTime : ev.time || "—"));
+      const activity = Array.isArray(ctx.detailActivityFeed) ? ctx.detailActivityFeed : [];
+      const timelineMetaLine = (ev) => {
+        const when = ev.dateDisplay != null ? String(ev.dateDisplay) : "—";
+        const st = ev.stage != null && String(ev.stage).trim() !== "" ? String(ev.stage) : "";
+        const stagePretty = st ? st.charAt(0).toUpperCase() + st.slice(1) : "";
+        return stagePretty ? `${when} · ${stagePretty}` : when;
+      };
 
       const timelineHtml =
-        timelineFiltered.length > 0
-          ? timelineFiltered
+        activity.length > 0
+          ? activity
               .map(
                 (ev) => `
                   <li class="timeline__item">
                     <div>
-                      <div class="timeline__icon">${icons.phone}</div>
+                      <div class="timeline__icon" aria-hidden="true"><span class="timeline__dot"></span></div>
                       <div class="timeline__line"></div>
                     </div>
                     <div class="timeline__body timeline__body--clear">
-                      <span class="timeline__meta">${timelineStamp(ev)}</span>
+                      <span class="timeline__meta">${e(timelineMetaLine(ev))}</span>
                       <h4>${e(ev.title)}</h4>
-                      <p>${e(ev.body)}</p>
+                      <p class="timeline__body-text">${e(ev.body)}</p>
                       <p>By: ${e(ev.by)}</p>
                     </div>
                   </li>`
               )
               .join("")
-          : `<li class="timeline__item timeline__item--empty"><p class="timeline__empty-msg">No activity logged for this stage yet.</p></li>`;
+          : `<li class="timeline__item timeline__item--empty"><p class="timeline__empty-msg">No activity recorded for this prospect yet.</p></li>`;
 
       return `
         <div class="detail-panel detail-panel--overview" id="panel-overview">
@@ -348,7 +603,7 @@
     if (tab === "details") {
       const editing = ctx.detailFormEdit === "details";
       const merged = mergeDetailTab("details", ctx.formValues?.details);
-      const nav = regNavHtml(e, DETAILS_NAV, ctx.detailNavSection || "detail-basic");
+      const nav = regNavHtml(e, DETAILS_NAV, ctx.detailNavSection || "detail-personal");
       return `
         <div class="detail-panel detail-panel--form" id="panel-details" data-detail-form-root="details">
           <div class="registration__split detail-reg-split">
@@ -361,59 +616,267 @@
               <div class="detail-form-sections">
                 ${section(
                   e,
-                  "BASIC INFORMATION",
-                  `<div class="detail-fields detail-fields--2" id="detail-basic">
-                    ${fieldInput(e, "First Name", "firstName", "details", merged, editing)}
-                    ${fieldInput(e, "Last Name", "lastName", "details", merged, editing)}
-                    ${fieldInput(e, "Gender", "gender", "details", merged, editing)}
-                    ${fieldInput(e, "Date of Birth (Age: 37 years)", "dob", "details", merged, editing)}
-                    ${fieldInput(e, "Email", "email", "details", merged, editing)}
-                    ${fieldInput(e, "Contact No.", "contact", "details", merged, editing)}
-                    ${fieldTextarea(e, "Address", "address", "details", merged, editing)}
-                    ${fieldInput(e, "NRIC", "nric", "details", merged, editing)}
-                    ${fieldInput(e, "Race", "race", "details", merged, editing)}
-                    ${fieldInput(e, "Religion", "religion", "details", merged, editing)}
-                    ${fieldInput(e, "Preferred Language", "preferredLang", "details", merged, editing)}
-                  </div>`
+                  "PERSONAL INFORMATION",
+                  `<div class="detail-fields detail-fields--2">
+                    ${fieldInput(e, "Name (as per NRIC)", "fullName", "details", merged, editing, {
+                      required: true,
+                      placeholder: "Enter full name as in NRIC",
+                    })}
+                    ${fieldSelect(
+                      e,
+                      "Residential Status",
+                      "residentialStatus",
+                      "details",
+                      merged,
+                      editing,
+                      ["Singapore Citizen", "Permanent Resident", "Foreigner"],
+                      { required: false, placeholderLabel: "Select Residential Status" }
+                    )}
+                    ${fieldNric(e, "NRIC / FIN Number", "nric", "details", merged, editing, { required: true })}
+                    ${fieldDateInput(e, "Date of Birth", "dob", "details", merged, editing, {
+                      required: true,
+                    })}
+                    ${fieldSelect(
+                      e,
+                      "Gender",
+                      "gender",
+                      "details",
+                      merged,
+                      editing,
+                      ["Female", "Male", "Other"],
+                      { required: true, placeholderLabel: "Select Gender" }
+                    )}
+                    ${fieldSelect(
+                      e,
+                      "Race",
+                      "race",
+                      "details",
+                      merged,
+                      editing,
+                      ["Chinese", "Malay", "Indian", "Eurasian", "Others"],
+                      { required: false, placeholderLabel: "Select Race" }
+                    )}
+                    ${fieldSelect(
+                      e,
+                      "Religion",
+                      "religion",
+                      "details",
+                      merged,
+                      editing,
+                      [
+                        "Buddhism",
+                        "Catholicism",
+                        "Christianity",
+                        "Free Thinker",
+                        "Hinduism",
+                        "Islam",
+                        "Sikhism",
+                        "Taoism",
+                        "Others",
+                      ],
+                      { required: false, placeholderLabel: "Select Religion" }
+                    )}
+                    ${fieldPhone(e, "Contact Number", "contact", "details", merged, editing, {
+                      required: true,
+                    })}
+                    ${fieldInput(e, "Email", "email", "details", merged, editing, {
+                      inputType: "email",
+                      placeholder: "Enter your email",
+                    })}
+                    ${fieldCheckboxMulti(
+                      e,
+                      "Preferred Language",
+                      "preferredLanguages",
+                      "details",
+                      merged,
+                      editing,
+                      [
+                        "English",
+                        "Mandarin",
+                        "Malay",
+                        "Tamil",
+                        "Hokkien",
+                        "Cantonese",
+                        "Teochew",
+                        "Others",
+                      ]
+                    )}
+                  </div>`,
+                  "detail-personal"
                 )}
                 ${section(
                   e,
-                  "SCREENING & SUBSIDY ELIGIBILITY",
-                  `<div class="detail-fields detail-fields--2" id="detail-screening">
-                    ${fieldInput(e, "Residential Status", "residentialStatus", "details", merged, editing)}
-                    ${fieldInput(e, "CHAS Card Type", "chasType", "details", merged, editing)}
-                    ${fieldInput(e, "HealthierSG Enrolment Status", "healthierSg", "details", merged, editing)}
-                    ${fieldInput(e, "Cancer Screening History", "cancerScreeningHistory", "details", merged, editing)}
-                  </div>`
+                  "Residential Address",
+                  `<div class="detail-fields detail-fields--2 detail-fields--address">
+                    ${fieldInput(e, "Block", "block", "details", merged, editing, {
+                      placeholder: "E.g. 202",
+                    })}
+                    ${fieldInput(e, "Street Name", "street", "details", merged, editing, {
+                      placeholder: "E.g. Pasir Drive",
+                    })}
+                    ${fieldInput(e, "Floor", "floor", "details", merged, editing, {
+                      placeholder: "E.g. 50",
+                    })}
+                    ${fieldInput(e, "Unit No", "unit", "details", merged, editing, {
+                      placeholder: "E.g. 101 or 345",
+                    })}
+                    ${fieldInput(e, "Postal Code", "postal", "details", merged, editing, {
+                      inputType: "text",
+                      placeholder: "E.g. 123456",
+                    })}
+                    ${fieldSelect(
+                      e,
+                      "Country",
+                      "country",
+                      "details",
+                      merged,
+                      editing,
+                      ["Singapore", "Malaysia", "Indonesia", "Other"],
+                      { required: false, placeholderLabel: "Select Country" }
+                    )}
+                  </div>`,
+                  "detail-address"
+                )}
+                ${section(
+                  e,
+                  "Healthier SG & Subsidies",
+                  `<div class="detail-fields detail-fields--2">
+                    ${fieldSelect(
+                      e,
+                      "CHAS Card Type",
+                      "chasCardType",
+                      "details",
+                      merged,
+                      editing,
+                      ["Blue", "Orange", "Green", "Not Applicable"],
+                      { required: false, placeholderLabel: "Select CHAS Card Type" }
+                    )}
+                    ${fieldSelectValueLabel(
+                      e,
+                      "Are you enrolled under Healthier SG?",
+                      "healthierSg",
+                      "details",
+                      merged,
+                      editing,
+                      [
+                        ["yes", "Yes"],
+                        ["no", "No"],
+                        ["unsure", "Unsure / Prefer not to say"],
+                      ],
+                      { required: false, placeholderLabel: "Select Enrolment Status" }
+                    )}
+                    ${fieldRadioYesNo(
+                      e,
+                      "Is this your first mammogram screening?",
+                      "firstMammogramScreening",
+                      "details",
+                      merged,
+                      editing,
+                      { required: false }
+                    )}
+                    ${fieldInput(e, "Year of Last Screening", "lastScreeningYear", "details", merged, editing, {
+                      inputType: "text",
+                      placeholder: "Enter Year of Last Screening",
+                    })}
+                  </div>`,
+                  "detail-screening"
+                )}
+                ${section(
+                  e,
+                  "Appointment Preferences",
+                  `<div class="detail-fields detail-fields--2">
+                    ${fieldDateInput(e, "Preferred Screening Date", "preferredScreeningDate", "details", merged, editing, {
+                      required: false,
+                    })}
+                    ${fieldSelectValueLabel(
+                      e,
+                      "Preferred Time Slot",
+                      "preferredTimeSlot",
+                      "details",
+                      merged,
+                      editing,
+                      [
+                        ["morning", "Morning"],
+                        ["afternoon", "Afternoon"],
+                        ["evening", "Evening"],
+                      ],
+                      { required: false, placeholderLabel: "Select Preferred Time Slot" }
+                    )}
+                    ${fieldInput(e, "Screening Location / Event", "screeningLocationEvent", "details", merged, editing, {
+                      fullWidth: true,
+                      placeholder: "Enter Screening Location / Event",
+                    })}
+                  </div>`,
+                  "detail-appointment"
                 )}
                 ${section(
                   e,
                   "RISK ASSESSMENT",
-                  `<div class="detail-fields detail-fields--2" id="detail-risk">
-                    ${fieldInput(e, "Risk Level", "riskLevel", "details", merged, editing)}
-                    ${fieldInput(e, "Personal History of Cancer", "personalCancerHistory", "details", merged, editing)}
-                    ${fieldTextarea(e, "Cancer Screening Eligibility Check", "cancerEligibilityCheck", "details", merged, editing)}
-                    ${fieldInput(e, "Pre-existing Health Conditions", "preExistingConditions", "details", merged, editing)}
-                    ${fieldInput(e, "Family History of Cancer", "familyHistory", "details", merged, editing)}
-                  </div>`
+                  `<div class="detail-fields">
+                    ${fieldSelect(
+                      e,
+                      "Risk Level",
+                      "riskLevel",
+                      "details",
+                      merged,
+                      editing,
+                      ["Low", "Medium", "High"],
+                      { required: false, placeholderLabel: "Select Risk Level" }
+                    )}
+                    ${fieldTextarea(e, "Personal History of Cancer", "personalCancerHistory", "details", merged, editing, {
+                      placeholder: "Enter Personal History of Cancer",
+                      rows: 4,
+                    })}
+                    ${fieldTextarea(e, "Pre-existing Health Conditions", "preExistingConditions", "details", merged, editing, {
+                      placeholder: "Enter Pre-existing Health Conditions",
+                      rows: 4,
+                    })}
+                    ${fieldTextarea(e, "Family History of Cancer", "familyHistory", "details", merged, editing, {
+                      placeholder: "Enter Family History of Cancer",
+                      rows: 4,
+                    })}
+                    ${fieldCheckbox(e, "Cancer Screening Eligibility Check", "cancerScreeningEligibilityCheck", "details", merged, editing)}
+                  </div>`,
+                  "detail-risk"
                 )}
                 ${section(
                   e,
                   "SCREENING STATUS",
-                  `<div class="detail-fields" id="detail-status">
+                  `<div class="detail-fields">
                     ${fieldTextarea(e, "Screening Eligible For & Signed Up", "screeningEligible", "details", merged, editing)}
                     ${fieldTextarea(e, "Follow-up Notes for CN", "followUpNotes", "details", merged, editing)}
-                  </div>`
+                  </div>`,
+                  "detail-status"
                 )}
                 ${section(
                   e,
                   "ENGAGEMENT",
-                  `<div class="detail-fields detail-fields--2" id="detail-engagement">
-                    ${fieldTextarea(e, "How They Heard About the Programme", "heardAbout", "details", merged, editing)}
-                    ${fieldInput(e, "PDPA Consent", "pdpaConsent", "details", merged, editing)}
-                    ${fieldInput(e, "eDM Subscription", "edmSubscription", "details", merged, editing)}
-                    ${fieldTextarea(e, "Consent for SCS to Contact", "consentContact", "details", merged, editing)}
-                  </div>`
+                  `<div class="detail-fields detail-fields--2">
+                    ${fieldSelect(
+                      e,
+                      "How did you hear about us?",
+                      "sourceType",
+                      "details",
+                      merged,
+                      editing,
+                      ["Event", "Campaign", "Referral", "Social Media", "Website", "Walk-in", "Other"],
+                      { required: false, placeholderLabel: "Select Source Type" }
+                    )}
+                    ${fieldInput(e, "Campaign / Event Name", "sourceName", "details", merged, editing, {
+                      placeholder: "e.g. Pink for Life 2025",
+                    })}
+                  </div>`,
+                  "detail-engagement"
+                )}
+                ${section(
+                  e,
+                  "CONSENT",
+                  `<div class="detail-fields detail-fields--2">
+                    ${fieldCheckbox(e, "PDPA Consent", "pdpaConsent", "details", merged, editing, { fullWidth: false })}
+                    ${fieldCheckbox(e, "eDM Subscription", "edmSubscription", "details", merged, editing, { fullWidth: false })}
+                    ${fieldCheckbox(e, "Consent for SCS to Contact", "consentContact", "details", merged, editing, { fullWidth: true })}
+                  </div>`,
+                  "detail-consent"
                 )}
               </div>
             </div>
@@ -438,31 +901,34 @@
                 ${section(
                   e,
                   "FAMILY CANCER BACKGROUND",
-                  `<div class="detail-fields detail-fields--2" id="mh-family">
+                  `<div class="detail-fields detail-fields--2">
                     ${fieldInput(e, "Breast Cancer", "breastCancer", "medicalHistory", merged, editing)}
                     ${fieldInput(e, "Colorectal Cancer", "colorectalCancer", "medicalHistory", merged, editing)}
                     ${fieldInput(e, "Ovarian Cancer", "ovarianCancer", "medicalHistory", merged, editing)}
                     ${fieldInput(e, "Other Cancer", "otherCancer", "medicalHistory", merged, editing)}
-                  </div>`
+                  </div>`,
+                  "mh-family"
                 )}
                 ${section(
                   e,
                   "HISTORY OF CANCER",
-                  `<div class="detail-fields detail-fields--2" id="mh-history">
+                  `<div class="detail-fields detail-fields--2">
                     ${fieldInput(e, "History of Cancer", "historyOfCancer", "medicalHistory", merged, editing)}
                     ${fieldInput(e, "Diagnosed Year", "diagnosedYear", "medicalHistory", merged, editing)}
                     ${fieldTextarea(e, "Cancer Detail", "cancerDetail", "medicalHistory", merged, editing)}
-                    ${fieldInput(e, "Follow Up At", "followUpAt", "medicalHistory", merged, editing)}
-                  </div>`
+                    ${fieldDateInput(e, "Follow Up At", "followUpAt", "medicalHistory", merged, editing)}
+                  </div>`,
+                  "mh-history"
                 )}
                 ${section(
                   e,
                   "TREATMENT DONE",
-                  `<div class="detail-fields detail-fields--2" id="mh-treatment">
+                  `<div class="detail-fields detail-fields--2">
                     ${fieldInput(e, "Surgery", "surgery", "medicalHistory", merged, editing)}
                     ${fieldInput(e, "Radiation Therapy", "radiation", "medicalHistory", merged, editing)}
                     ${fieldInput(e, "Chemotherapy", "chemo", "medicalHistory", merged, editing)}
-                  </div>`
+                  </div>`,
+                  "mh-treatment"
                 )}
               </div>
             </div>
@@ -487,19 +953,20 @@
                 ${section(
                   e,
                   "OTHER MEDICAL DETAILS",
-                  `<div id="od-medical">
+                  `<div>
                     ${fieldTextarea(e, "Other Medical/Surgical Illness", "otherMedicalIllness", "otherDetails", merged, editing)}
                     <div class="detail-fields detail-fields--2">
                       ${fieldInput(e, "Current Medication", "currentMedication", "otherDetails", merged, editing)}
                       ${fieldInput(e, "Any Drug Allergy", "drugAllergy", "otherDetails", merged, editing)}
                     </div>
                     ${fieldInput(e, "High Risk Immunosuppressive clinical condition", "highRiskImmuno", "otherDetails", merged, editing)}
-                  </div>`
+                  </div>`,
+                  "od-medical"
                 )}
                 ${section(
                   e,
                   "CERVICAL CANCER RISK FACTORS",
-                  `<div class="detail-fields detail-fields--2" id="od-cervical">
+                  `<div class="detail-fields detail-fields--2">
                     ${fieldInput(e, "Age at First Sexual Intercourse", "ageFirstSexual", "otherDetails", merged, editing)}
                     ${fieldInput(e, "Multiple Sexual Partners", "multiplePartners", "otherDetails", merged, editing)}
                     ${fieldInput(e, "Smoking", "smoking", "otherDetails", merged, editing)}
@@ -508,30 +975,32 @@
                     ${fieldInput(e, "Use of OCP (in Yrs)", "ocpYrs", "otherDetails", merged, editing)}
                     ${fieldInput(e, "HPV Vaccination", "hpvVaccination", "otherDetails", merged, editing)}
                     ${fieldTextarea(e, "Other Details", "cervicalOtherDetails", "otherDetails", merged, editing)}
-                  </div>`
+                  </div>`,
+                  "od-cervical"
                 )}
                 ${section(
                   e,
                   "OTHER DETAILS",
-                  `<div class="detail-fields detail-fields--2" id="od-info">
+                  `<div class="detail-fields detail-fields--2">
                     ${fieldInput(e, "Para (No. Of Children Delivered)", "para", "otherDetails", merged, editing)}
-                    ${fieldInput(e, "Last Pap / HPV Test Done On", "lastPapTest", "otherDetails", merged, editing)}
+                    ${fieldDateInput(e, "Last Pap / HPV Test Done On", "lastPapTest", "otherDetails", merged, editing)}
                     ${fieldInput(e, "Last Pap / HPV Test Result", "lastPapResult", "otherDetails", merged, editing)}
-                    ${fieldInput(e, "Last Mammogram Date", "lastMammo", "otherDetails", merged, editing)}
-                    ${fieldInput(e, "CHAS Card Holder", "chasHolder", "otherDetails", merged, editing)}
-                  </div>`
+                    ${fieldDateInput(e, "Last Mammogram Date", "lastMammo", "otherDetails", merged, editing)}
+                  </div>`,
+                  "od-info"
                 )}
                 ${section(
                   e,
                   "BREAST CANCER RISK FACTORS",
-                  `<div class="detail-fields detail-fields--2" id="od-breast">
+                  `<div class="detail-fields detail-fields--2">
                     ${fieldInput(e, "Age at Menarche (FMP)", "menarche", "otherDetails", merged, editing)}
                     ${fieldInput(e, "Age at Menopause", "menopause", "otherDetails", merged, editing)}
                     ${fieldInput(e, "Age at First Childbirth", "firstChildbirth", "otherDetails", merged, editing)}
                     ${fieldInput(e, "Duration of Use of HRT (in Yrs)", "hrtYrs", "otherDetails", merged, editing)}
                     ${fieldInput(e, "Pre-Malignant Breast Conditions", "preMalignantBreast", "otherDetails", merged, editing)}
                     ${fieldTextarea(e, "Breast Conditions (Details)", "breastConditionsDetail", "otherDetails", merged, editing)}
-                  </div>`
+                  </div>`,
+                  "od-breast"
                 )}
               </div>
             </div>
@@ -540,12 +1009,36 @@
     }
 
     if (tab === "screening") {
+      const merged = mergeDetailTab("details", ctx.formValues?.details);
+      const reviewSection = section(
+        e,
+        "REVIEW",
+        `<div class="detail-fields detail-fields--2">
+          ${fieldSelectValueLabel(
+            e,
+            "Review period",
+            "reviewPeriod",
+            "details",
+            merged,
+            true,
+            [
+              ["6months", "6 months"],
+              ["1year", "1 year"],
+              ["3years", "3 years"],
+              ["5years", "5 years"],
+            ],
+            { required: false, placeholderLabel: "-- Select --" }
+          )}
+          ${fieldReadonlyReviewDate(e, "Next review date", "nextReviewDate", "details", merged)}
+        </div>`
+      );
       const statusOk =
         '<span class="detail-screening-pill detail-screening-pill--ok">Completed</span>';
       const statusFu =
         '<span class="detail-screening-pill detail-screening-pill--warn">Follow-up Required</span>';
       return `
-        <div class="detail-panel" id="panel-screening">
+        <div class="detail-panel detail-panel--stack" id="panel-screening">
+          ${reviewSection}
           <div class="detail-card detail-card--flush">
             <h2 class="detail-card__title">SCREENING HISTORY</h2>
             <div class="table-card detail-screening-table-wrap">
@@ -644,40 +1137,84 @@
         </div>`;
     }
 
+    if (tab === "documents") {
+      const docs = Array.isArray(ctx.detailDocuments) ? ctx.detailDocuments : [];
+      const rows =
+        docs.length === 0
+          ? `<tr><td colspan="4" class="detail-documents__empty">No documents uploaded yet.</td></tr>`
+          : docs
+              .map((doc) => {
+                const uploaded = e(formatDocUploaded(doc.uploadedAt));
+                return `<tr>
+                <td class="detail-documents__name">${e(doc.name)}</td>
+                <td>${e(fmtFileSize(doc.size))}</td>
+                <td>${uploaded}</td>
+                <td>
+                  <div class="detail-documents__actions">
+                    <button type="button" class="btn btn--icon" data-detail-doc-download="${e(doc.id)}" aria-label="Download file">${icons.download}</button>
+                    <button type="button" class="btn btn--icon" data-detail-doc-remove="${e(doc.id)}" aria-label="Remove file">${icons.trash}</button>
+                  </div>
+                </td>
+              </tr>`;
+              })
+              .join("");
+      return `
+        <div class="detail-panel detail-panel--stack detail-documents" id="panel-documents">
+          <div class="detail-documents__toolbar">
+            <button type="button" class="btn btn--primary" data-detail-doc-upload>${icons.upload} Upload</button>
+            <input type="file" id="detail-documents-input" class="detail-documents-file-input" multiple aria-label="Choose files to upload" />
+          </div>
+          <div class="table-card">
+            <table class="data-table detail-documents-table">
+              <thead>
+                <tr>
+                  <th scope="col">File name</th>
+                  <th scope="col">Size</th>
+                  <th scope="col">Uploaded</th>
+                  <th scope="col" class="data-table__th--actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rows}
+              </tbody>
+            </table>
+          </div>
+          <p class="detail-documents__hint">Files are kept in this browser session only (prototype).</p>
+        </div>`;
+    }
+
     if (tab === "notes") {
+      const notes = Array.isArray(ctx.detailNotes) ? ctx.detailNotes : [];
+      const lastUpdatedLine =
+        notes.length > 0
+          ? `Last updated on ${formatDocUploaded(notes[0].submittedAt)} by ${e(notes[0].authorName)}`
+          : "No notes yet.";
+      const noteCardsHtml = notes
+        .map(
+          (note) => `
+            <article class="note-card">
+              <div class="note-card__head">
+                <div>
+                  <div class="note-card__author"><strong>${e(note.authorName)}</strong> <span class="note-card__role">• ${e(note.authorRole)}</span></div>
+                  <div class="note-card__time">${e(formatDocUploaded(note.submittedAt))}</div>
+                </div>
+                <div class="note-card__actions">
+                  <button type="button" class="btn btn--icon" aria-label="Edit note" data-detail-toast="Edit note (prototype).">${icons.edit}</button>
+                  <button type="button" class="btn btn--icon" aria-label="Delete note" data-detail-toast="Delete note (prototype).">${icons.trash}</button>
+                </div>
+              </div>
+              <p class="note-card__body note-card__body--multiline">${e(note.body)}</p>
+            </article>`
+        )
+        .join("");
       return `
         <div class="detail-panel detail-panel--stack" id="panel-notes">
           <div class="detail-notes-toolbar">
-            <span class="detail-notes-updated"><span class="detail-notes-updated__icon" aria-hidden="true">${icons.refresh}</span><span>Last updated on 17 July 2025 by John Smith</span></span>
-            <button type="button" class="btn btn--outline detail-notes-add" data-detail-toast="Add note (prototype).">${icons.plus} Add Notes</button>
+            <span class="detail-notes-updated"><span class="detail-notes-updated__icon" aria-hidden="true">${icons.refresh}</span><span>${lastUpdatedLine}</span></span>
+            <button type="button" class="btn btn--outline detail-notes-add" data-detail-add-note-open>${icons.plus} Add Notes</button>
           </div>
           <div class="detail-note-cards">
-            <article class="note-card">
-              <div class="note-card__head">
-                <div>
-                  <div class="note-card__author"><strong>Jasmine Lim</strong> <span class="note-card__role">• Care Coordinator</span></div>
-                  <div class="note-card__time">Nov 15, 2025 at 3:45 PM</div>
-                </div>
-                <div class="note-card__actions">
-                  <button type="button" class="btn btn--icon" aria-label="Edit note" data-detail-toast="Edit note (prototype).">${icons.edit}</button>
-                  <button type="button" class="btn btn--icon" aria-label="Delete note" data-detail-toast="Delete note (prototype).">${icons.trash}</button>
-                </div>
-              </div>
-              <p class="note-card__body">Client expressed strong interest in attending screening workshops. Recommend enrolling in upcoming December session at Bedok Community Center.</p>
-            </article>
-            <article class="note-card">
-              <div class="note-card__head">
-                <div>
-                  <div class="note-card__author"><strong>Sarah Tan</strong> <span class="note-card__role">• Outreach Specialist</span></div>
-                  <div class="note-card__time">Nov 10, 2025 at 10:30 AM</div>
-                </div>
-                <div class="note-card__actions">
-                  <button type="button" class="btn btn--icon" aria-label="Edit note" data-detail-toast="Edit note (prototype).">${icons.edit}</button>
-                  <button type="button" class="btn btn--icon" aria-label="Delete note" data-detail-toast="Delete note (prototype).">${icons.trash}</button>
-                </div>
-              </div>
-              <p class="note-card__body">Follow-up needed regarding insurance coverage questions. Client mentioned family history of breast cancer - flagging for priority screening.</p>
-            </article>
+            ${noteCardsHtml}
           </div>
           <div class="detail-pagination">
             <button type="button" class="detail-page-btn" aria-label="Previous page">${icons.chevronLeftSm}</button>
@@ -686,69 +1223,6 @@
             <span class="detail-page-ellipsis">…</span>
             <button type="button" class="detail-page-btn" aria-label="Next page">${icons.chevronRightSm}</button>
           </div>
-        </div>`;
-    }
-
-    if (tab === "documents") {
-      const rows = [
-        ["Medical_History_Report.pdf", "Prospects", "15 Nov 2025", "System"],
-        ["Screening_Results_2025.pdf", "Clinical Records", "12 Nov 2025", "Zara Khan"],
-        ["Consent_Form_Signed.pdf", "Prospects", "10 Nov 2025", "Siti Nurul"],
-        ["Lab_Test_Results.pdf", "Clinical Records", "08 Nov 2025", "Gary Johnson"],
-        ["Insurance_Documents.pdf", "Prospects", "05 Nov 2025", "System"],
-        ["Referral_Letter.pdf", "Referrals", "03 Nov 2025", "Zara Khan"],
-        ["Treatment_Plan.pdf", "Clinical Records", "01 Nov 2025", "Siti Nurul"],
-        ["Follow_Up_Notes.pdf", "Clinical Records", "28 Oct 2025", "Gary Johnson"],
-        ["Patient_Registration.pdf", "Prospects", "25 Oct 2025", "System"],
-        ["Appointment_Confirmation.pdf", "Prospects", "20 Oct 2025", "Zara Khan"],
-      ];
-      return `
-        <div class="detail-panel detail-panel--stack" id="panel-documents">
-          <input type="file" id="prospect-docs-file" class="prospect-docs-file-input" multiple tabindex="-1" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,application/pdf,image/*" title="Choose files to upload" />
-          <section class="detail-card prospect-docs__toolbar-card" aria-label="Document tools">
-            <div class="prospect-docs__search-row">
-              <div class="prospect-docs__search-wrap">
-                <span class="prospect-docs__search-icon" aria-hidden="true">${icons.search}</span>
-                <input type="search" id="prospect-docs-search" class="prospect-docs__search-input" placeholder="Search documents..." autocomplete="off" aria-label="Search documents" />
-              </div>
-              <button type="button" class="btn btn--outline btn--prospect-docs-upload" data-prospect-docs-upload aria-label="Upload documents">${icons.upload} Upload Document</button>
-            </div>
-            <div class="prospect-docs__filter-row">
-              <div class="prospect-docs__filter-left">
-                <button type="button" class="btn btn--outline btn--sm" data-detail-toast="Filter (prototype).">${icons.filter} Filter</button>
-                <button type="button" class="btn btn--outline btn--sm" data-detail-toast="Columns (prototype).">${icons.columns} Columns</button>
-              </div>
-              <div class="prospect-docs__filter-right">
-                <span class="cell-muted">Show</span>
-                <select class="prospect-docs__page-size" aria-label="Rows per page"><option>10</option><option>25</option><option>50</option></select>
-                <span class="cell-muted">entries</span>
-              </div>
-            </div>
-          </section>
-          <section class="detail-card detail-card--flush prospect-docs__table-card">
-            <div class="prospect-docs__table-scroll">
-              <table class="data-table prospect-docs-table">
-                <thead>
-                  <tr>
-                    <th>Document Name</th>
-                    <th>Document Source</th>
-                    <th class="prospect-docs-th-sort"><span class="prospect-docs-th-sort__inner">Uploaded on ${icons.sort}</span></th>
-                    <th>Uploaded by</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody id="prospect-docs-tbody">${rows.map((r) => prospectDocsTableRow(e, r[0], r[1], r[2], r[3])).join("")}</tbody>
-              </table>
-            </div>
-          </section>
-          <footer class="prospect-docs__footer">
-            <span class="cell-muted" id="prospect-docs-count">Showing 1 to 10 out of 10 records</span>
-            <div class="detail-pagination">
-              <button type="button" class="detail-page-btn" aria-label="Previous">${icons.chevronLeftSm}</button>
-              <button type="button" class="detail-page-btn detail-page-btn--active">1</button>
-              <button type="button" class="detail-page-btn" aria-label="Next">${icons.chevronRightSm}</button>
-            </div>
-          </footer>
         </div>`;
     }
 

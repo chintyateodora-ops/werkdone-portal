@@ -14,11 +14,33 @@
     { id: "fit", label: "FIT Prospects", figma: "1:1468" },
   ];
 
+  /** Country dropdown options for residential address (screening registration forms). */
+  const REG_ADDRESS_COUNTRY_OPTIONS = `
+                      <option value="Singapore" selected>Singapore</option>
+                      <option value="Malaysia">Malaysia</option>
+                      <option value="Indonesia">Indonesia</option>
+                      <option value="Other">Other</option>`;
+
+  /** CHAS + Healthier SG selects — shared options for all screening registration forms. */
+  const REG_SUBSIDIES_CHAS_OPTIONS = `
+                      <option value="">Select CHAS Card Type</option>
+                      <option value="Blue">Blue</option>
+                      <option value="Orange">Orange</option>
+                      <option value="Green">Green</option>
+                      <option value="Not Applicable">Not Applicable</option>`;
+
+  const REG_SUBSIDIES_HEALTHIER_SG_OPTIONS = `
+                      <option value="">Select Enrolment Status</option>
+                      <option value="yes">Yes</option>
+                      <option value="no">No</option>
+                      <option value="unsure">Unsure / Prefer not to say</option>`;
+
   const PROSPECTS = [
     {
       rowKey: "PROS-001234-Mammobus",
       id: "PROS-001234",
       name: "Nurul Huda",
+      maskedNric: "S****782A",
       program: "Mammobus",
       ageGender: "Female, 37 years",
       phone: "9421 0785",
@@ -26,8 +48,11 @@
       status: "booked",
       sourceType: "Event",
       sourceDetail: "Community Health Roadshow - Bedok",
-      lastContact: "1 Nov 2025",
       risk: "medium",
+      /** Date screening registration form was submitted (ISO YYYY-MM-DD). */
+      dateRegistered: "2025-10-28",
+      /** Next review date — ISO YYYY-MM-DD; list column + Screening tab + hero subtitle. */
+      nextReview: "2026-05-14",
       activityTimeline: [
         {
           stage: "qualified",
@@ -70,6 +95,7 @@
       rowKey: "PROS-001234-HPV",
       id: "PROS-001234",
       name: "Nurul Huda",
+      maskedNric: "S****782A",
       program: "HPV",
       ageGender: "Female, 37 years",
       phone: "9421 0785",
@@ -77,13 +103,15 @@
       status: "booked",
       sourceType: "Event",
       sourceDetail: "Community Health Roadshow - Bedok",
-      lastContact: "1 Nov 2025",
       risk: "medium",
+      dateRegistered: "2025-10-22",
+      nextReview: "2026-08-20",
     },
     {
       rowKey: "PROS-001235",
       id: "PROS-001235",
       name: "Mohammed Ali",
+      maskedNric: "S****345F",
       program: "FIT",
       ageGender: "Male, 56 years",
       phone: "9647 3012",
@@ -91,13 +119,15 @@
       status: "qualified",
       sourceType: "Campaign",
       sourceDetail: "Cancer Awareness 2025",
-      lastContact: "28 Oct 2025",
       risk: "low",
+      dateRegistered: "2025-10-18",
+      nextReview: "2026-04-01",
     },
     {
       rowKey: "PROS-001236",
       id: "PROS-001236",
       name: "Chen Wei Ning",
+      maskedNric: "S****901C",
       program: "Mammobus",
       ageGender: "Female, 45 years",
       phone: "9781 2345",
@@ -105,13 +135,15 @@
       status: "qualified",
       sourceType: "Manual",
       sourceDetail: "Walk-in Registration",
-      lastContact: "25 Oct 2025",
       risk: "medium",
+      dateRegistered: "2025-10-12",
+      nextReview: "2026-06-15",
     },
     {
       rowKey: "PROS-001237",
       id: "PROS-001237",
       name: "Olivia Wilson",
+      maskedNric: "S****112B",
       program: "HPV",
       ageGender: "Female, 28 years",
       phone: "9285 7401",
@@ -119,13 +151,15 @@
       status: "qualified",
       sourceType: "Event",
       sourceDetail: "Community Health Roadshow - Bedok",
-      lastContact: "19 Oct 2025",
       risk: "high",
+      dateRegistered: "2025-10-05",
+      nextReview: "2026-03-10",
     },
     {
       rowKey: "PROS-001238",
       id: "PROS-001238",
       name: "John Tan",
+      maskedNric: "S****556D",
       program: "FIT",
       ageGender: "Male, 54 years",
       phone: "8756 3421",
@@ -133,13 +167,15 @@
       status: "booked",
       sourceType: "Event",
       sourceDetail: "Community Health Roadshow - Bedok",
-      lastContact: "10 Oct 2025",
       risk: "medium",
+      dateRegistered: "2025-09-28",
+      nextReview: "2026-07-01",
     },
     {
       rowKey: "PROS-001239-Mammobus",
       id: "PROS-001239",
       name: "Adam Sim Wei Wen",
+      maskedNric: "S****223E",
       program: "Mammobus",
       ageGender: "Male, 62 years",
       phone: "8246 3791",
@@ -147,13 +183,15 @@
       status: "screened",
       sourceType: "Campaign",
       sourceDetail: "Pink for Life 2025",
-      lastContact: "22 Aug 2025",
       risk: "medium",
+      dateRegistered: "2025-08-12",
+      nextReview: "2026-11-09",
     },
     {
       rowKey: "PROS-001239-FIT",
       id: "PROS-001239",
       name: "Adam Sim Wei Wen",
+      maskedNric: "S****223E",
       program: "FIT",
       ageGender: "Male, 62 years",
       phone: "8246 3791",
@@ -161,13 +199,15 @@
       status: "screened",
       sourceType: "Campaign",
       sourceDetail: "Pink for Life 2025",
-      lastContact: "22 Aug 2025",
       risk: "medium",
+      dateRegistered: "2025-08-18",
+      nextReview: "2026-12-01",
     },
     {
       rowKey: "PROS-001240",
       id: "PROS-001240",
       name: "Eva Rodriguez",
+      maskedNric: "S****667G",
       program: "HPV",
       ageGender: "Female, 33 years",
       phone: "8573 5294",
@@ -175,8 +215,9 @@
       status: "qualified",
       sourceType: "Event",
       sourceDetail: "Race for Life",
-      lastContact: "",
       risk: "low",
+      dateRegistered: "2026-03-01",
+      nextReview: "2026-09-15",
     },
   ];
 
@@ -184,7 +225,8 @@
     rowKey: "PROS-00123",
     id: "PROS-00123",
     name: "Lee Wei Xiong",
-    subtitle: "Female • 69 years • Last Contacted: 6 November 2025",
+    subtitle: "Male • 69 years • Next Review: 6 November 2025",
+    programTags: ["Mammobus", "FIT", "HPV / PAP"],
     risk: "high",
     pipeline: "qualified",
     timeline: [
@@ -273,13 +315,23 @@
     /** details | medical-history | other-details when editing */
     detailFormEdit: null,
     detailFormDraft: null,
+    /** After Edit/Save/Cancel on detail form tabs, restore #detail-flow-scroll-root scroll (full re-render resets it). */
+    detailScrollPreservePending: false,
     detailFormValues: {
       details: {},
       medicalHistory: {},
       otherDetails: {},
     },
-    /** Active section in registration-style nav (Details / Medical / Other tabs) */
-    detailNavSection: "detail-basic",
+    /** Active section in registration-style nav (Personal Details / Medical / Other tabs) */
+    detailNavSection: "detail-personal",
+    /** Prospect detail Documents tab: rowKey → { id, name, size, mime, uploadedAt, objectUrl }[] (in-memory prototype) */
+    detailDocumentsByProspect: {},
+    /** Prospect detail Notes tab: rowKey → user-added { id, body, submittedAt, authorName, authorRole }[] (session prototype) */
+    detailNotesByProspect: {},
+    /** Add-note dialog on prospect Notes tab */
+    detailAddNoteModalOpen: false,
+    /** Prospect overview Activity Timeline: rowKey → { id, atIso, title, body, by, stage }[] (session log) */
+    detailActivityFeedByProspect: {},
     /** True when registration opened with ?sr_token=… (patient self-service link) */
     registerSelfService: false,
     /** Mobile token URL: “Skip to section” drawer open */
@@ -293,6 +345,30 @@
   /** Query param on self-registration URLs (patient-facing token link). */
   const SELF_REG_TOKEN_PARAM = "sr_token";
 
+  /** Logged-in portal user (aligned with header chip; prototype). */
+  const PORTAL_CURRENT_USER = Object.freeze({
+    name: "Thong Han",
+    role: "Super Admin",
+  });
+
+  /** Demo notes merged with user-added notes on the Notes tab (sorted newest first in UI). */
+  const DETAIL_NOTES_SEED = Object.freeze([
+    {
+      id: "seed-note-jasmine",
+      authorName: "Jasmine Lim",
+      authorRole: "Care Coordinator",
+      submittedAt: "2025-11-15T15:45:00+08:00",
+      body: "Client expressed strong interest in attending screening workshops. Recommend enrolling in upcoming December session at Bedok Community Center.",
+    },
+    {
+      id: "seed-note-sarah",
+      authorName: "Sarah Tan",
+      authorRole: "Outreach Specialist",
+      submittedAt: "2025-11-10T10:30:00+08:00",
+      body: "Follow-up needed regarding insurance coverage questions. Client mentioned family history of breast cancer - flagging for priority screening.",
+    },
+  ]);
+
   /** Prototype Myinfo values (demo only). */
   const SINGPASS_DEMO = Object.freeze({
     fullName: "Tan Wei Ming",
@@ -300,16 +376,17 @@
     nricFitRest: "1234567D",
     dob: "15-03-1990",
     gender: "Male",
+    race: "Chinese",
     residential: "Citizen",
     email: "weiming.tan@example.sg",
     phone: "9123 4567",
     postal: "560123",
     block: "123",
     street: "Ang Mo Kio Avenue 6",
-    unit: "#12-345",
-    building: "",
-    chasCardType: "CHAS Blue",
-    fitAddress: "Blk 123 Ang Mo Kio Avenue 6",
+    floor: "12",
+    unit: "12-345",
+    country: "Singapore",
+    chasCardType: "Blue",
   });
 
   let lastDetailTabForForm = "overview";
@@ -322,11 +399,27 @@
     "other-details",
     "screening",
     "appointments",
-    "notes",
     "documents",
+    "notes",
   ];
 
   const DETAIL_FORM_TAB_IDS = ["details", "medical-history", "other-details"];
+
+  /** Section ids for detail ToC scroll-spy (mirror detail-panels.js DETAILS_NAV / MEDICAL_NAV / OTHER_NAV). */
+  const DETAIL_TAB_SECTION_IDS = {
+    details: [
+      "detail-personal",
+      "detail-address",
+      "detail-screening",
+      "detail-appointment",
+      "detail-risk",
+      "detail-status",
+      "detail-engagement",
+      "detail-consent",
+    ],
+    "medical-history": ["mh-family", "mh-history", "mh-treatment"],
+    "other-details": ["od-medical", "od-cervical", "od-info", "od-breast"],
+  };
 
   const PIPELINE_KEYS = ["qualified", "booked", "screened"];
 
@@ -338,6 +431,27 @@
     if (status === "qualified") return "qualified";
     if (status === "booked") return "booked";
     return "qualified";
+  }
+
+  /** Personal Details → Risk Assessment `riskLevel` select ↔ `PROSPECTS[].risk` + `state.detail.risk`. */
+  function normalizeRiskSlugFromAssessment(formVal) {
+    const s = String(formVal || "")
+      .trim()
+      .toLowerCase();
+    if (s === "high") return "high";
+    if (s === "medium") return "medium";
+    if (s === "low") return "low";
+    return "";
+  }
+
+  function riskLevelFormLabelFromSlug(slug) {
+    const s = String(slug || "")
+      .trim()
+      .toLowerCase();
+    if (s === "high") return "High";
+    if (s === "medium") return "Medium";
+    if (s === "low") return "Low";
+    return "";
   }
 
   function padBoolArray(arr, len) {
@@ -371,11 +485,11 @@
     ensureProspectChecklists(p);
     const L = window.WD_STAGE_CHECKLISTS;
     const base = structuredClone(DETAIL_DEFAULT);
-    const lc = p.lastContact ? p.lastContact : "—";
     base.rowKey = p.rowKey;
     base.id = p.id;
     base.name = p.name;
-    base.subtitle = `${p.ageGender} • Last Contacted: ${lc}`;
+    base.subtitle = buildProspectSubtitle(p);
+    base.programTags = collectProgramTags(p);
     base.risk = p.risk;
     const pipe = pipelineFromStatus(p.status);
     base.pipeline = pipe;
@@ -422,6 +536,23 @@
       if (switched) {
         state.detail = mergeDetailFromProspect(p);
         state.pipeline = state.detail.pipeline;
+        const defNr =
+          (typeof window.WD_DETAIL_FORM_DEFAULTS === "object" &&
+            window.WD_DETAIL_FORM_DEFAULTS.details &&
+            window.WD_DETAIL_FORM_DEFAULTS.details.nextReviewDate) ||
+          "09/10/2026";
+        const ddmm = isoToDdMmYyyy(p.nextReview);
+        const defRisk =
+          (typeof window.WD_DETAIL_FORM_DEFAULTS === "object" &&
+            window.WD_DETAIL_FORM_DEFAULTS.details &&
+            window.WD_DETAIL_FORM_DEFAULTS.details.riskLevel) ||
+          "Medium";
+        const riskLabel = riskLevelFormLabelFromSlug(p.risk) || defRisk;
+        state.detailFormValues.details = {
+          ...(state.detailFormValues.details || {}),
+          nextReviewDate: ddmm || defNr,
+          riskLevel: riskLabel,
+        };
       }
       /* Same prospect: keep pipeline + checklist state (do not reset from p.status each render — that broke task counts / stepper). */
       lastDetailId = id;
@@ -508,6 +639,39 @@
     );
   }
 
+  function programDisplayLabel(program) {
+    const map = { Mammobus: "Mammobus", FIT: "FIT", HPV: "HPV / PAP" };
+    return map[program] || program || "";
+  }
+
+  /** Unique programme tags for a prospect id (multiple enrolments / rowKeys). */
+  function collectProgramTags(p) {
+    if (Array.isArray(p.programTags) && p.programTags.length) return p.programTags.slice();
+    const same = PROSPECTS.filter((x) => x.id === p.id);
+    const set = new Set();
+    for (const row of same) {
+      const lab = programDisplayLabel(row.program);
+      if (lab) set.add(lab);
+    }
+    if (set.size) return [...set];
+    const one = programDisplayLabel(p.program);
+    return one ? [one] : [];
+  }
+
+  /** Hero subtitle line — long month (e.g. 6 November 2025). */
+  function formatNextReviewSubtitle(iso) {
+    if (iso == null || String(iso).trim() === "") return "—";
+    const d = new Date(String(iso).trim() + "T12:00:00");
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+  }
+
+  /** One line under the name: gender • age • Next Review: date */
+  function buildProspectSubtitle(p) {
+    const ag = String(p.ageGender || "").replace(", ", " • ");
+    return `${ag} • Next Review: ${formatNextReviewSubtitle(p.nextReview)}`;
+  }
+
   function parseProspectAgeGender(ageGender) {
     const s = String(ageGender || "");
     const ageMatch = s.match(/(\d+)\s*years?/i);
@@ -517,6 +681,54 @@
     if (lower.includes("female")) gender = "female";
     else if (lower.includes("male")) gender = "male";
     return { age: Number.isFinite(age) ? age : null, gender };
+  }
+
+  /** Screening registration form submitted date — `PROSPECTS[].dateRegistered` as ISO YYYY-MM-DD. */
+  function formatDateRegisteredDisplay(iso) {
+    if (iso == null || String(iso).trim() === "") return "—";
+    const t = new Date(String(iso).trim() + "T12:00:00").getTime();
+    if (Number.isNaN(t)) return "—";
+    return new Date(t).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  }
+
+  function dateRegisteredSortValue(iso) {
+    if (iso == null || String(iso).trim() === "") return 0;
+    const t = new Date(String(iso).trim() + "T12:00:00").getTime();
+    return Number.isNaN(t) ? 0 : t;
+  }
+
+  /** DD/MM/YYYY for detail Screening `nextReviewDate` (matches `detail-panels` field). */
+  function isoToDdMmYyyy(iso) {
+    if (iso == null || String(iso).trim() === "") return "";
+    const d = new Date(String(iso).trim() + "T12:00:00");
+    if (Number.isNaN(d.getTime())) return "";
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  }
+
+  /** Listing Name column second line, e.g. `S****345F , Female, 56 years`. */
+  function formatProspectListSubline(r) {
+    const masked =
+      r.maskedNric != null && String(r.maskedNric).trim() !== ""
+        ? String(r.maskedNric).trim()
+        : "—";
+    const { age, gender } = parseProspectAgeGender(r.ageGender);
+    const genderLabel =
+      gender === "female" ? "Female" : gender === "male" ? "Male" : "—";
+    const ageLabel = age != null ? `${age} years` : "—";
+    return `${masked} , ${genderLabel}, ${ageLabel}`;
+  }
+
+  function renderProspectNameCell(r) {
+    const href = `#/prospect/${encodeURIComponent(r.rowKey)}`;
+    return `<td class="data-table__cell--prospect-name">
+      <div class="prospect-name-cell">
+        <a class="prospect-name-cell__link" href="${escapeAttr(href)}">${escapeAttr(r.name)}</a>
+        <div class="prospect-name-cell__meta">${escapeAttr(formatProspectListSubline(r))}</div>
+      </div>
+    </td>`;
   }
 
   function listFilterCategoryCount() {
@@ -556,14 +768,14 @@
     return [...rows].sort((a, b) => {
       let cmp = 0;
       switch (key) {
-        case "id":
-          cmp = a.id.localeCompare(b.id);
-          break;
         case "name":
           cmp = a.name.localeCompare(b.name);
           break;
         case "program":
           cmp = a.program.localeCompare(b.program);
+          break;
+        case "dateRegistered":
+          cmp = dateRegisteredSortValue(a.dateRegistered) - dateRegisteredSortValue(b.dateRegistered);
           break;
         case "ageGender": {
           const pa = parseProspectAgeGender(a.ageGender).age;
@@ -580,8 +792,8 @@
         case "source":
           cmp = a.sourceDetail.localeCompare(b.sourceDetail);
           break;
-        case "lastContact":
-          cmp = (a.lastContact || "").localeCompare(b.lastContact || "");
+        case "nextReview":
+          cmp = dateRegisteredSortValue(a.nextReview) - dateRegisteredSortValue(b.nextReview);
           break;
         case "risk":
           cmp = (RISK_SORT_ORDER[a.risk] ?? 0) - (RISK_SORT_ORDER[b.risk] ?? 0);
@@ -622,16 +834,49 @@
     return `<span class="${map[s] || "pill pill--qualified"}">${label}</span>`;
   }
 
-  function riskPill(risk) {
-    const cls =
-      risk === "high" ? "pill pill--high" : risk === "medium" ? "pill pill--medium" : "pill pill--low";
+  /** Risk badge: same pill as list table + severity dot (table, Kanban, prospect detail). */
+  function riskLevelIndicator(risk) {
+    const mod = risk === "high" ? "pill--high" : risk === "medium" ? "pill--medium" : "pill--low";
     const label = risk === "high" ? "High Risk" : risk === "medium" ? "Medium Risk" : "Low Risk";
-    return `<span class="${cls}">${label}</span>`;
+    return `<span class="risk-level pill ${mod}" role="status"><span class="risk-level__dot" aria-hidden="true"></span><span class="risk-level__label">${escapeAttr(
+      label
+    )}</span></span>`;
+  }
+
+  function riskPill(risk) {
+    return riskLevelIndicator(risk);
+  }
+
+  function detailProgramTagsHtml(tags) {
+    const list = Array.isArray(tags) ? tags.filter(Boolean) : [];
+    if (!list.length) return "";
+    return `
+      <ul class="detail-hero__tags" aria-label="Screening programmes">
+        ${list.map((t) => `<li><span class="detail-hero__tag">${escapeAttr(t)}</span></li>`).join("")}
+      </ul>`;
   }
 
   /** Singapore Cancer Society branding — top bar logo (see assets/branding/scs-logo.png). */
   function renderScsLogo() {
     return `<img class="app-header__logo" src="assets/branding/scs-logo.png" alt="Singapore Cancer Society Logo" width="200" height="64" />`;
+  }
+
+  /** Legal entity line — keep in sync with `_figma_export/src/components/Footer.tsx` (`FOOTER_LEGAL_NAME`). */
+  const APP_FOOTER_LEGAL_NAME = "WERKDONE PTE LTD.";
+
+  /**
+   * Global shell footer (list, detail, registration, landing).
+   * @param {Object} [options]
+   * @param {"default"|"registration-end"|"landing"} [options.variant] registration-end = scrolls with form; landing = self-reg chooser
+   */
+  function renderAppFooter(options) {
+    options = options || {};
+    const year = new Date().getFullYear();
+    const v = options.variant || "default";
+    let cls = "app-footer";
+    if (v === "registration-end") cls += " app-footer--registration-end";
+    else if (v === "landing") cls += " reg-landing__footer";
+    return `<footer class="${cls}" role="contentinfo">Copyright © ${year} ${APP_FOOTER_LEGAL_NAME}</footer>`;
   }
 
   function renderHeader(options = {}) {
@@ -727,6 +972,30 @@
       .replace(/</g, "&lt;");
   }
 
+  /**
+   * Shared breadcrumb: prospect detail + screening registration (consistent markup + styles).
+   * @param {{ label: string, href?: string }[]} items Last segment is current page (omit href on last item).
+   * @param {"page"|"registration"} variant page = default spacing; registration = 14px strip (screening + prospect detail).
+   */
+  function renderAppBreadcrumb(items, variant) {
+    const mod = variant === "registration" ? "registration" : "page";
+    const chunks = [];
+    (items || []).forEach((it, i) => {
+      const last = i === (items || []).length - 1;
+      const label = escapeAttr(it.label);
+      const hasHref = it.href != null && String(it.href) !== "";
+      if (hasHref && !last) {
+        chunks.push(`<a class="app-breadcrumb__link" href="${escapeAttr(it.href)}">${label}</a>`);
+      } else {
+        chunks.push(`<span class="app-breadcrumb__current">${label}</span>`);
+      }
+      if (!last) {
+        chunks.push(`<span class="app-breadcrumb__sep" aria-hidden="true">›</span>`);
+      }
+    });
+    return `<nav class="app-breadcrumb app-breadcrumb--${mod}" aria-label="Breadcrumb">${chunks.join("")}</nav>`;
+  }
+
   function renderTable(rows) {
     if (rows.length === 0) {
       return `<div class="table-card"><p class="placeholder-block" style="margin:0">No prospects match the current program, search, or filters.</p></div>`;
@@ -736,14 +1005,13 @@
         <table class="data-table">
           <thead>
             <tr>
-              ${renderSortableTh("Prospect ID", "id")}
               ${renderSortableTh("Name", "name")}
               ${renderSortableTh("Program", "program")}
-              ${renderSortableTh("Age / Gender", "ageGender")}
+              ${renderSortableTh("Date registered", "dateRegistered")}
               ${renderSortableTh("Contact", "contact")}
               ${renderSortableTh("Status", "status")}
               ${renderSortableTh("Source", "source")}
-              ${renderSortableTh("Last Contacted", "lastContact")}
+              ${renderSortableTh("Next review", "nextReview")}
               ${renderSortableTh("Risk", "risk")}
               <th scope="col" class="data-table__th--actions">Actions</th>
             </tr>
@@ -753,10 +1021,9 @@
               .map(
                 (r) => `
               <tr tabindex="0" data-nav-prospect="${escapeAttr(r.rowKey)}">
-                <td>${escapeAttr(r.id)}</td>
-                <td>${escapeAttr(r.name)}</td>
+                ${renderProspectNameCell(r)}
                 <td>${escapeAttr(r.program)}</td>
-                <td>${escapeAttr(r.ageGender)}</td>
+                <td>${escapeAttr(formatDateRegisteredDisplay(r.dateRegistered))}</td>
                 <td>
                   <div class="cell-stack">
                     <span>${escapeAttr(r.phone)}</span>
@@ -770,7 +1037,7 @@
                     <span class="cell-muted">${escapeAttr(r.sourceDetail)}</span>
                   </div>
                 </td>
-                <td>${r.lastContact ? escapeAttr(r.lastContact) : "—"}</td>
+                <td>${escapeAttr(formatDateRegisteredDisplay(r.nextReview))}</td>
                 <td>${riskPill(r.risk)}</td>
                 <td><button type="button" class="btn btn--icon" aria-label="Actions for ${escapeAttr(r.name)}">${icons.more}</button></td>
               </tr>
@@ -788,10 +1055,9 @@
     return i === -1 ? 0 : i;
   }
 
-  function kanbanCardMeta(p) {
-    const riskLabel = p.risk === "high" ? "High Risk" : p.risk === "medium" ? "Medium Risk" : "Low Risk";
-    const age = p.ageGender.includes("·") ? p.ageGender.split("·")[0].trim() : p.ageGender;
-    return `${age} · ${riskLabel}`;
+  function kanbanCardDemographics(p) {
+    const g = (p.ageGender || "").trim();
+    return g || "—";
   }
 
   function kanbanCardProgress(p) {
@@ -822,9 +1088,10 @@
             const { tasks, pct } = kanbanCardProgress(r);
             return `
         <article class="kanban-card" tabindex="0" data-kanban-card data-kanban-prospect="${escapeAttr(r.rowKey)}">
-          <div><span class="pill">${escapeAttr(r.program)}</span></div>
+          <div class="kanban-card__program"><span class="pill">${escapeAttr(r.program)}</span></div>
           <h2 class="kanban-card__name">${escapeAttr(r.name)}</h2>
-          <p class="kanban-card__meta">${escapeAttr(kanbanCardMeta(r))}</p>
+          <div class="kanban-card__risk">${riskLevelIndicator(r.risk)}</div>
+          <p class="kanban-card__meta">${escapeAttr(kanbanCardDemographics(r))}</p>
           <div class="kanban-card__tasks">
             <span>Tasks</span>
             <span>${escapeAttr(tasks)}</span>
@@ -858,7 +1125,7 @@
   }
 
   function normalizeDetailTab() {
-    const legacy = { medical: "medical-history", other: "other-details", document: "documents" };
+    const legacy = { medical: "medical-history", other: "other-details" };
     if (typeof state.detailTab === "string") state.detailTab = state.detailTab.trim();
     if (legacy[state.detailTab]) state.detailTab = legacy[state.detailTab];
     if (!DETAIL_TAB_IDS.includes(state.detailTab)) state.detailTab = "overview";
@@ -887,31 +1154,35 @@
   function renderDetailPage() {
     normalizeDetailTab();
     const d = state.detail;
+    const programTagsHtml = detailProgramTagsHtml(d.programTags);
     const tabs = [
       ["overview", "Overview"],
-      ["details", "Details"],
+      ["details", "Personal Details"],
       ["medical-history", "Medical History"],
       ["other-details", "Other Details"],
       ["screening", "Screening"],
       ["appointments", "Appointments"],
+      ["documents", "Documents"],
       ["notes", "Notes"],
-      ["documents", "Document"],
     ];
     return `
-      <nav class="breadcrumb" aria-label="Breadcrumb">
-        <a href="#/list">Prospect Management</a>
-        <span aria-hidden="true">›</span>
-        <span>${escapeAttr(d.id)}</span>
-      </nav>
+      ${renderAppBreadcrumb(
+        [
+          { label: "Prospect Management", href: "#/list" },
+          { label: (d.name && String(d.name).trim()) || d.id },
+        ],
+        "registration"
+      )}
       <div class="detail-hero">
-        <div class="detail-hero__row">
+        <div class="registration__toolbar-row detail-hero__toolbar-row">
           <a href="#/list" class="detail-hero__back" aria-label="Back to list">${icons.back}</a>
-          <h1>${escapeAttr(d.name)}</h1>
+          <div class="registration__toolbar-titles">
+            <h1 class="registration__title">${escapeAttr(d.name)}</h1>
+            <p class="registration__subtitle">${escapeAttr(d.subtitle)}</p>
+          </div>
+          <div class="registration__toolbar-actions">${riskLevelIndicator(d.risk)}</div>
         </div>
-        <div class="detail-hero__sub">
-          <span>${escapeAttr(d.subtitle)}</span>
-          ${riskPill(d.risk)}
-        </div>
+        ${programTagsHtml.trim() ? `<div class="detail-hero__meta detail-hero__meta--tags">${programTagsHtml}</div>` : ""}
       </div>
       <div class="pipeline pipeline--stepper">
         <div class="pipeline__stages pipeline__stages--chevron" role="group" aria-label="Pipeline stage">
@@ -950,6 +1221,234 @@
     `;
   }
 
+  function detailDocumentsForRender(rowKey) {
+    const list = state.detailDocumentsByProspect[rowKey];
+    if (!Array.isArray(list)) return [];
+    return list.map(({ id, name, size, mime, uploadedAt }) => ({ id, name, size, mime, uploadedAt }));
+  }
+
+  function ensureDetailDocumentsList(rowKey) {
+    if (!state.detailDocumentsByProspect[rowKey]) {
+      state.detailDocumentsByProspect[rowKey] = [];
+    }
+    return state.detailDocumentsByProspect[rowKey];
+  }
+
+  function addDetailDocumentsFromFiles(rowKey, files) {
+    const list = ensureDetailDocumentsList(rowKey);
+    const base = Date.now();
+    files.forEach((file, i) => {
+      const id = `doc-${base}-${i}-${Math.random().toString(36).slice(2, 9)}`;
+      list.push({
+        id,
+        name: file.name,
+        size: file.size,
+        mime: file.type || "application/octet-stream",
+        uploadedAt: new Date().toISOString(),
+        objectUrl: URL.createObjectURL(file),
+      });
+    });
+  }
+
+  function removeDetailDocument(rowKey, docId) {
+    const list = state.detailDocumentsByProspect[rowKey];
+    if (!Array.isArray(list)) return;
+    const idx = list.findIndex((d) => d.id === docId);
+    if (idx === -1) return;
+    const url = list[idx].objectUrl;
+    if (url) URL.revokeObjectURL(url);
+    list.splice(idx, 1);
+  }
+
+  function triggerDetailDocumentDownload(rowKey, docId) {
+    const list = state.detailDocumentsByProspect[rowKey];
+    if (!Array.isArray(list)) return;
+    const doc = list.find((d) => d.id === docId);
+    if (!doc?.objectUrl) return;
+    const a = document.createElement("a");
+    a.href = doc.objectUrl;
+    a.download = doc.name || "download";
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    window.setTimeout(() => a.remove(), 250);
+  }
+
+  function ensureDetailNotesList(rowKey) {
+    if (!state.detailNotesByProspect[rowKey]) {
+      state.detailNotesByProspect[rowKey] = [];
+    }
+    return state.detailNotesByProspect[rowKey];
+  }
+
+  function addDetailNote(rowKey, body) {
+    const text = String(body || "").trim();
+    if (!text) return false;
+    const list = ensureDetailNotesList(rowKey);
+    list.push({
+      id: `note-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      body: text,
+      submittedAt: new Date().toISOString(),
+      authorName: PORTAL_CURRENT_USER.name,
+      authorRole: PORTAL_CURRENT_USER.role,
+    });
+    return true;
+  }
+
+  function detailNotesForRender(rowKey) {
+    const added = Array.isArray(state.detailNotesByProspect[rowKey]) ? state.detailNotesByProspect[rowKey] : [];
+    const merged = [...DETAIL_NOTES_SEED, ...added];
+    merged.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+    return merged;
+  }
+
+  function formatActivityDisplayTime(d) {
+    if (!(d instanceof Date) || Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleString("en-SG", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  function activityFileSizeLabel(bytes) {
+    const n = Number(bytes);
+    if (!Number.isFinite(n) || n < 0) return "—";
+    if (n < 1024) return `${n} B`;
+    if (n < 1048576) return `${(n / 1024).toFixed(n < 10240 ? 1 : 0)} KB`;
+    return `${(n / 1048576).toFixed(1)} MB`;
+  }
+
+  function parseDisplayDateTimeToMs(s) {
+    if (s == null || s === "") return 0;
+    const t = Date.parse(String(s).trim());
+    return Number.isNaN(t) ? 0 : t;
+  }
+
+  function pipelineStagePretty(s) {
+    if (!s) return "";
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
+  function ensureDetailActivityList(rowKey) {
+    if (!state.detailActivityFeedByProspect[rowKey]) {
+      state.detailActivityFeedByProspect[rowKey] = [];
+    }
+    return state.detailActivityFeedByProspect[rowKey];
+  }
+
+  function appendDetailActivity(rowKey, { title, body, by, stage }) {
+    ensureDetailActivityList(rowKey).push({
+      id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+      atIso: new Date().toISOString(),
+      title,
+      body,
+      by: by != null ? by : PORTAL_CURRENT_USER.name,
+      stage: stage != null ? stage : state.pipeline,
+    });
+  }
+
+  /**
+   * Full activity feed for overview: registration, seeded/historical timeline rows, uploads, notes, and session log
+   * (profile saves, pipeline moves, completed tasks). Newest first.
+   */
+  function buildDetailActivityFeed(rowKey, d) {
+    const items = [];
+    const p = PROSPECTS.find((x) => x.rowKey === rowKey);
+
+    if (p?.dateRegistered) {
+      const raw = Date.parse(`${p.dateRegistered}T12:00:00`);
+      const ms = Number.isNaN(raw) ? 0 : raw;
+      if (ms) {
+        items.push({
+          sortKey: ms,
+          id: `feed-reg-${rowKey}`,
+          dateDisplay: formatActivityDisplayTime(new Date(ms)),
+          title: "Prospect registered",
+          body: `Profile created — ${p.program} programme. Source: ${p.sourceType} (${p.sourceDetail}).`,
+          by: "System",
+          stage: "qualified",
+        });
+      }
+    }
+
+    const timelineSrc = Array.isArray(d?.timeline) ? d.timeline : [];
+    const legacyFallback = Date.UTC(2019, 0, 1);
+    timelineSrc.forEach((ev, idx) => {
+      let sortKey = parseDisplayDateTimeToMs(ev.dateTime);
+      if (!sortKey) sortKey = legacyFallback + idx * 60000;
+      items.push({
+        sortKey,
+        id: `feed-tl-${rowKey}-${idx}`,
+        dateDisplay: String(ev.dateTime != null ? ev.dateTime : ev.time || "—"),
+        title: ev.title,
+        body: ev.body,
+        by: ev.by,
+        stage: ev.stage,
+      });
+    });
+
+    const docs = state.detailDocumentsByProspect[rowKey];
+    if (Array.isArray(docs)) {
+      docs.forEach((doc) => {
+        const uploaded = doc.uploadedAt ? new Date(doc.uploadedAt) : new Date();
+        const ms = uploaded.getTime();
+        items.push({
+          sortKey: ms,
+          id: `feed-doc-${doc.id}`,
+          dateDisplay: formatActivityDisplayTime(uploaded),
+          title: "Document uploaded",
+          body: `${doc.name} (${activityFileSizeLabel(doc.size)})`,
+          by: PORTAL_CURRENT_USER.name,
+          stage: null,
+        });
+      });
+    }
+
+    const userNotes = state.detailNotesByProspect[rowKey];
+    if (Array.isArray(userNotes)) {
+      userNotes.forEach((note) => {
+        const at = new Date(note.submittedAt);
+        const ms = at.getTime();
+        const preview = note.body.length > 140 ? `${note.body.slice(0, 137)}…` : note.body;
+        items.push({
+          sortKey: ms,
+          id: `feed-note-${note.id}`,
+          dateDisplay: formatActivityDisplayTime(at),
+          title: "Note added",
+          body: preview,
+          by: note.authorName,
+          stage: null,
+        });
+      });
+    }
+
+    const feed = state.detailActivityFeedByProspect[rowKey];
+    if (Array.isArray(feed)) {
+      feed.forEach((ev) => {
+        const at = new Date(ev.atIso);
+        const ms = at.getTime();
+        items.push({
+          sortKey: Number.isNaN(ms) ? 0 : ms,
+          id: ev.id,
+          dateDisplay: formatActivityDisplayTime(at),
+          title: ev.title,
+          body: ev.body,
+          by: ev.by,
+          stage: ev.stage,
+        });
+      });
+    }
+
+    items.sort((a, b) => b.sortKey - a.sortKey || String(b.id).localeCompare(String(a.id)));
+    return items.map((item) => {
+      const { sortKey, ...rest } = item;
+      return rest;
+    });
+  }
+
   function renderDetailPanel() {
     normalizeDetailTab();
     const render = typeof window.WD_renderDetailPanel === "function" ? window.WD_renderDetailPanel : null;
@@ -965,31 +1464,42 @@
       detailFormEdit: state.detailFormEdit,
       detailNavSection: state.detailNavSection,
       formValues: state.detailFormValues,
+      detailDocuments: detailDocumentsForRender(state.detail.rowKey),
+      detailNotes: detailNotesForRender(state.detail.rowKey),
+      detailActivityFeed: buildDetailActivityFeed(state.detail.rowKey, state.detail),
     });
   }
 
   const REG_NAV_ITEMS = [
+    ["reg-eligibility", "Screening Eligibility"],
     ["reg-personal", "Personal Information"],
-    ["reg-programme", "Programme Selection"],
-    ["reg-screening", "Screening Questions"],
     ["reg-emergency", "Emergency Contact"],
-    ["reg-medical", "Medical History"],
-    ["reg-source", "Source Information"],
-    ["reg-pdpa", "PDPA Consent"],
+    ["reg-address", "Residential Address"],
+    ["reg-subsidies", "Healthier SG & Subsidies"],
+    ["reg-appointment", "Appointment Preferences"],
+    ["reg-screening", "Screening Questions"],
+    ["reg-engagement", "Engagement"],
+    ["reg-consent", "Consent"],
   ];
 
   const REG_NAV_ITEMS_HPV = [
-    ["reg-hpv-client", "Client's Information"],
-    ["reg-hpv-address", "Client's Address"],
-    ["reg-hpv-venue", "Venue of Screening"],
-    ["reg-hpv-source", "Source Information"],
-    ["reg-hpv-pdpa", "PDPA Consent"],
+    ["reg-hpv-eligibility", "Screening Eligibility"],
+    ["reg-hpv-personal", "Personal Information"],
+    ["reg-hpv-address", "Residential Address"],
+    ["reg-hpv-subsidies", "Healthier SG & Subsidies"],
+    ["reg-hpv-appointment", "Appointment Preferences"],
+    ["reg-hpv-engagement", "Engagement"],
+    ["reg-hpv-consent", "Consent"],
   ];
 
   const REG_NAV_ITEMS_FIT = [
-    ["reg-fit-personal", "Personal Particulars"],
-    ["reg-fit-clinical", "Clinical History & Consent"],
-    ["reg-fit-source", "Source Information"],
+    ["reg-fit-eligibility", "Screening Eligibility"],
+    ["reg-fit-personal", "Personal Information"],
+    ["reg-fit-address", "Residential Address"],
+    ["reg-fit-subsidies", "Healthier SG & Subsidies"],
+    ["reg-fit-appointment", "Appointment Preferences"],
+    ["reg-fit-engagement", "Engagement"],
+    ["reg-fit-consent", "Consent"],
   ];
 
   function regNavItemsForProgram() {
@@ -1056,7 +1566,7 @@
             <p class="reg-landing__browser-hint"><em>For the best experience, complete this form using the latest Chrome or Safari browser version.</em></p>
           </div>
         </main>
-        <footer class="app-footer reg-landing__footer">Copyright © 2026 WERKDONE PTE LTD.</footer>
+        ${renderAppFooter({ variant: "landing" })}
       </div>`;
   }
 
@@ -1095,11 +1605,10 @@
     `;
     }
     return `
-      <nav class="breadcrumb registration__breadcrumb--chrome" aria-label="Breadcrumb">
-        <a href="#/list">Prospect Management</a>
-        <span aria-hidden="true">›</span>
-        <span>HPV Test / PAP Test Screening</span>
-      </nav>
+      ${renderAppBreadcrumb(
+        [{ label: "Prospect Management", href: "#/list" }, { label: "HPV Test / PAP Test Screening" }],
+        "registration"
+      )}
       <div class="registration__toolbar">
         <div class="registration__toolbar-row">
           <a href="#/list" class="detail-hero__back" aria-label="Back to list">${icons.back}</a>
@@ -1124,7 +1633,7 @@
         <div class="registration__toolbar-row registration__toolbar-row--self-service-main">
           <div class="registration__toolbar-titles">
             <h1 class="registration__title">FIT Screening Programme</h1>
-            <p class="registration__subtitle">Faecal Immunochemical Test — Registration Form</p>
+            <p class="registration__subtitle">Faecal Immunochemical Test — Issuing Record Form (IRF)</p>
           </div>
           <button type="button" class="registration__nav-hamburger" id="registration-nav-toggle" aria-label="Skip to section menu" aria-expanded="${state.registrationMobileNavOpen}" aria-controls="registration-nav-drawer">${icons.menuHamburger}</button>
           <div class="registration__toolbar-actions">
@@ -1135,17 +1644,16 @@
     `;
     }
     return `
-      <nav class="breadcrumb registration__breadcrumb--chrome" aria-label="Breadcrumb">
-        <a href="#/list">Prospect Management</a>
-        <span aria-hidden="true">›</span>
-        <span>FIT Screening Programme</span>
-      </nav>
+      ${renderAppBreadcrumb(
+        [{ label: "Prospect Management", href: "#/list" }, { label: "FIT Screening Programme" }],
+        "registration"
+      )}
       <div class="registration__toolbar">
         <div class="registration__toolbar-row">
           <a href="#/list" class="detail-hero__back" aria-label="Back to list">${icons.back}</a>
           <div class="registration__toolbar-titles">
             <h1 class="registration__title">FIT Screening Programme</h1>
-            <p class="registration__subtitle">Faecal Immunochemical Test — Registration Form</p>
+            <p class="registration__subtitle">Faecal Immunochemical Test — Issuing Record Form (IRF)</p>
           </div>
           <div class="registration__toolbar-actions">
             <button type="button" class="btn btn--outline" id="copy-link">Copy Registration Link</button>
@@ -1175,11 +1683,10 @@
     `;
     }
     return `
-      <nav class="breadcrumb registration__breadcrumb--chrome" aria-label="Breadcrumb">
-        <a href="#/list">Prospect Management</a>
-        <span aria-hidden="true">›</span>
-        <span>Community Mammobus Programme</span>
-      </nav>
+      ${renderAppBreadcrumb(
+        [{ label: "Prospect Management", href: "#/list" }, { label: "Community Mammobus Programme" }],
+        "registration"
+      )}
       <div class="registration__toolbar">
         <div class="registration__toolbar-row">
           <a href="#/list" class="detail-hero__back" aria-label="Back to list">${icons.back}</a>
@@ -1197,6 +1704,55 @@
     `;
   }
 
+  /** DD-MM-YYYY + calendar (wired by js/date-input.js) */
+  function registrationDateInput(id, name, required) {
+    const req = required ? " required" : "";
+    return (
+      '<div class="field__date">' +
+      '<input class="field__date-text" id="' +
+      id +
+      '" name="' +
+      name +
+      '" type="text"' +
+      req +
+      ' placeholder="DD-MM-YYYY" inputmode="numeric" autocomplete="off" maxlength="10" />' +
+      '<button type="button" class="field__date-btn" aria-label="Choose date" title="Choose date"></button>' +
+      '<input type="date" class="field__date-native" tabindex="-1" aria-hidden="true" />' +
+      "</div>"
+    );
+  }
+
+  /** NRIC: hidden store + optional bullet mask; `js/nric-toggle.js` defaults to visible value */
+  function registrationNricField(id, name, required) {
+    const reqStore = required ? " required" : "";
+    const reqEdit = required ? " required" : "";
+    const toggleIcons =
+      '<span class="field__nric-toggle-icons" aria-hidden="true">' +
+      '<i class="fi fi-rr-eye-crossed field__nric-toggle-ico field__nric-toggle-ico--when-masked"></i>' +
+      '<i class="fi fi-rr-eye field__nric-toggle-ico field__nric-toggle-ico--when-revealed"></i>' +
+      "</span>";
+    return (
+      '<div class="field__nric field__nric--revealed">' +
+      '<input type="hidden" id="' +
+      id +
+      '" name="' +
+      name +
+      '" class="field__nric-store" autocomplete="off" value=""' +
+      reqStore +
+      " />" +
+      '<div class="field__nric-face">' +
+      '<span class="field__nric-asterisks" aria-hidden="true"></span>' +
+      '<input type="text" class="field__nric-edit" autocomplete="off" maxlength="20" placeholder="Enter NRIC No."' +
+      reqEdit +
+      ' />' +
+      "</div>" +
+      '<button type="button" class="field__nric-toggle" aria-label="Hide NRIC" aria-pressed="true" title="Hide NRIC" data-nric-toggle>' +
+      toggleIcons +
+      "</button>" +
+      "</div>"
+    );
+  }
+
   function renderRegisterMammobus() {
     const navHtml = renderRegistrationNavButtonsHtml();
 
@@ -1210,42 +1766,55 @@
           </div>
           <div class="registration__form-col">
             <form id="registration-form" class="registration__form" novalidate>
+              <section id="reg-eligibility" class="registration-card" tabindex="-1">
+                <h2 class="registration__section-label">Screening Eligibility</h2>
+                <div class="registration__eligibility" role="note">
+                  <ol class="registration__eligibility-ol" type="a">
+                    <li>Are a female Singapore Citizen or Permanent Resident aged 40 and above;</li>
+                    <li>Have not gone for mammogram screening for the past 1 year (aged 40 to 49) or 2 years (aged 50 and above);</li>
+                    <li>Do not have breast symptoms such as breast lumps or nipple discharge; and</li>
+                    <li>Have not been breastfeeding for the past 6 months.</li>
+                    <li>Not pregnant</li>
+                  </ol>
+                </div>
+              </section>
+
               <section id="reg-personal" class="registration-card" tabindex="-1">
                 <h2 class="registration__section-label">Personal Information</h2>
                 <div class="form-grid form-grid--reg">
-                  <div class="field field--full">
-                    <label for="fullName">Full Name (as per NRIC)<span class="field__req" aria-hidden="true">*</span></label>
+                  <div class="field">
+                    <label for="fullName">Name (as per NRIC)<span class="field__req" aria-hidden="true">*</span></label>
                     <input id="fullName" name="fullName" type="text" required autocomplete="name" placeholder="Enter full name as in NRIC" />
                   </div>
                   <div class="field">
-                    <label for="nric">NRIC / FIN Number<span class="field__req" aria-hidden="true">*</span></label>
-                    <input id="nric" name="nric" required placeholder="Enter NRIC No." />
-                  </div>
-                  <div class="field">
-                    <label for="dob">Date of Birth<span class="field__req" aria-hidden="true">*</span></label>
-                    <input id="dob" name="dob" type="text" required placeholder="DD-MM-YYYY" />
-                  </div>
-                  <div class="field">
-                    <label for="gender">Gender<span class="field__req" aria-hidden="true">*</span></label>
-                    <select id="gender" name="gender" required>
-                      <option value="">Select</option>
-                      <option value="Female">Female</option>
-                      <option value="Male">Male</option>
-                    </select>
-                  </div>
-                  <div class="field">
-                    <label for="residential">Residential Status<span class="field__req" aria-hidden="true">*</span></label>
-                    <select id="residential" name="residential" required>
-                      <option value="">Select</option>
+                    <label for="residential">Residential Status</label>
+                    <select id="residential" name="residential">
+                      <option value="">Select Residential Status</option>
                       <option value="Citizen">Singapore Citizen</option>
                       <option value="PR">Permanent Resident</option>
                       <option value="Foreigner">Foreigner</option>
                     </select>
                   </div>
                   <div class="field">
-                    <label for="race">Race<span class="field__req" aria-hidden="true">*</span></label>
-                    <select id="race" name="race" required>
-                      <option value="">Select</option>
+                    <label for="nric">NRIC / FIN Number<span class="field__req" aria-hidden="true">*</span></label>
+                    ${registrationNricField("nric", "nric", true)}
+                  </div>
+                  <div class="field">
+                    <label for="dob">Date of Birth<span class="field__req" aria-hidden="true">*</span></label>
+                    ${registrationDateInput("dob", "dob", true)}
+                  </div>
+                  <div class="field">
+                    <label for="gender">Gender<span class="field__req" aria-hidden="true">*</span></label>
+                    <select id="gender" name="gender" required>
+                      <option value="">Select Gender</option>
+                      <option value="Female">Female</option>
+                      <option value="Male">Male</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="race">Race</label>
+                    <select id="race" name="race">
+                      <option value="">Select Race</option>
                       <option value="Chinese">Chinese</option>
                       <option value="Malay">Malay</option>
                       <option value="Indian">Indian</option>
@@ -1253,118 +1822,17 @@
                       <option value="Others">Others</option>
                     </select>
                   </div>
-                  <div class="field field--full">
-                    <label for="chasCardType">CHAS card type</label>
-                    <select id="chasCardType" name="chasCardType">
-                      <option value="">Select</option>
-                      <option value="CHAS Orange">CHAS Orange</option>
-                      <option value="CHAS Blue">CHAS Blue</option>
-                      <option value="CHAS Green">CHAS Green</option>
-                      <option value="Merdeka Generation">Merdeka Generation</option>
-                      <option value="Pioneer Generation">Pioneer Generation</option>
-                      <option value="None">None / Not applicable</option>
-                    </select>
-                  </div>
                   <div class="field">
-                    <label for="phone">Mobile Number<span class="field__req" aria-hidden="true">*</span></label>
+                    <label for="phone">Contact Number<span class="field__req" aria-hidden="true">*</span></label>
                     <div class="field__inline">
                       <input type="text" class="field__prefix" value="+65" disabled aria-label="Country code" />
                       <input id="phone" name="phone" type="tel" required placeholder="E.g. 8123 4567" />
                     </div>
                   </div>
                   <div class="field">
-                    <label for="email">Email Address</label>
+                    <label for="email">Email</label>
                     <input id="email" name="email" type="email" placeholder="Enter your email" />
                   </div>
-                  <div class="field field--full">
-                    <h3 class="registration__address-title">Residential Address</h3>
-                  </div>
-                  <div class="field">
-                    <label for="postal">Postal Code<span class="field__req" aria-hidden="true">*</span></label>
-                    <input id="postal" name="postal" required placeholder="e.g. 123456" />
-                  </div>
-                  <div class="field">
-                    <label for="block">Block Number<span class="field__req" aria-hidden="true">*</span></label>
-                    <input id="block" name="block" required placeholder="e.g. 123" />
-                  </div>
-                  <div class="field field--full">
-                    <label for="street">Street Name<span class="field__req" aria-hidden="true">*</span></label>
-                    <input id="street" name="street" required placeholder="e.g. Orchard Road" />
-                  </div>
-                  <div class="field">
-                    <label for="unit">Unit Number</label>
-                    <input id="unit" name="unit" placeholder="e.g. #12-34" />
-                  </div>
-                  <div class="field">
-                    <label for="building">Building Name</label>
-                    <input id="building" name="building" placeholder="e.g. Plaza Singapura" />
-                  </div>
-                </div>
-              </section>
-
-              <section id="reg-programme" class="registration-card" tabindex="-1">
-                <h2 class="registration__section-label">Programme Selection</h2>
-                <div class="field field--full">
-                  <label for="programme">Which screening programme would you like to sign up for?<span class="field__req" aria-hidden="true">*</span></label>
-                  <select id="programme" name="programme" required>
-                    <option value="">Select Programme</option>
-                    <option value="mammobus">Mammobus (Mammography Screening)</option>
-                    <option value="hpv">HPV Screening</option>
-                    <option value="fit">FIT (Faecal Immunochemical Test)</option>
-                  </select>
-                </div>
-              </section>
-
-              <section id="reg-screening" class="registration-card" tabindex="-1">
-                <h2 class="registration__section-label">Screening Questions</h2>
-                <div class="registration__stack">
-                  <div class="field field--full">
-                    <label for="lastMammogram">When was your last mammogram?<span class="field__req" aria-hidden="true">*</span></label>
-                    <select id="lastMammogram" name="lastMammogram" required>
-                      <option value="">Select</option>
-                      <option value="never">Never had a mammogram</option>
-                      <option value="&lt;1year">Less than 1 year ago</option>
-                      <option value="1-2years">1–2 years ago</option>
-                      <option value="&gt;2years">More than 2 years ago</option>
-                    </select>
-                  </div>
-                  <fieldset class="registration__fieldset field field--full">
-                    <legend class="registration__fieldset-legend">Do you have any of the following breast symptoms?<span class="field__req" aria-hidden="true">*</span></legend>
-                    <p class="registration__hint registration__hint--tight">Lump, nipple discharge, skin changes, or pain</p>
-                    <div class="registration__radio-group" role="radiogroup">
-                      <label class="registration__radio-label"><input type="radio" name="breastSymptoms" value="yes" required /> Yes</label>
-                      <label class="registration__radio-label"><input type="radio" name="breastSymptoms" value="no" /> No</label>
-                    </div>
-                  </fieldset>
-                  <fieldset class="registration__fieldset field field--full">
-                    <legend class="registration__fieldset-legend">Have you had any breast surgery?<span class="field__req" aria-hidden="true">*</span></legend>
-                    <div class="registration__radio-group">
-                      <label class="registration__radio-label"><input type="radio" name="breastSurgery" value="yes" required /> Yes</label>
-                      <label class="registration__radio-label"><input type="radio" name="breastSurgery" value="no" /> No</label>
-                    </div>
-                  </fieldset>
-                  <fieldset class="registration__fieldset field field--full">
-                    <legend class="registration__fieldset-legend">Are you currently pregnant?<span class="field__req" aria-hidden="true">*</span></legend>
-                    <div class="registration__radio-group">
-                      <label class="registration__radio-label"><input type="radio" name="pregnant" value="yes" required /> Yes</label>
-                      <label class="registration__radio-label"><input type="radio" name="pregnant" value="no" /> No</label>
-                      <label class="registration__radio-label"><input type="radio" name="pregnant" value="unsure" /> Unsure</label>
-                    </div>
-                  </fieldset>
-                  <fieldset class="registration__fieldset field field--full">
-                    <legend class="registration__fieldset-legend">Are you currently breastfeeding?<span class="field__req" aria-hidden="true">*</span></legend>
-                    <div class="registration__radio-group">
-                      <label class="registration__radio-label"><input type="radio" name="breastfeeding" value="yes" required /> Yes</label>
-                      <label class="registration__radio-label"><input type="radio" name="breastfeeding" value="no" /> No</label>
-                    </div>
-                  </fieldset>
-                  <fieldset class="registration__fieldset field field--full">
-                    <legend class="registration__fieldset-legend">Do you have breast implants?<span class="field__req" aria-hidden="true">*</span></legend>
-                    <div class="registration__radio-group">
-                      <label class="registration__radio-label"><input type="radio" name="breastImplants" value="yes" required /> Yes</label>
-                      <label class="registration__radio-label"><input type="radio" name="breastImplants" value="no" /> No</label>
-                    </div>
-                  </fieldset>
                 </div>
               </section>
 
@@ -1397,56 +1865,137 @@
                 </div>
               </section>
 
-              <section id="reg-medical" class="registration-card" tabindex="-1">
-                <h2 class="registration__section-label">Medical History</h2>
-                <div class="registration__stack">
-                  <fieldset class="registration__fieldset field field--full">
-                    <legend class="registration__fieldset-legend">Do you have any family history of cancer?<span class="field__req" aria-hidden="true">*</span></legend>
-                    <div class="registration__radio-group">
-                      <label class="registration__radio-label"><input type="radio" name="familyCancerHistory" value="yes" required /> Yes</label>
-                      <label class="registration__radio-label"><input type="radio" name="familyCancerHistory" value="no" /> No</label>
-                    </div>
-                  </fieldset>
-                  <div class="field field--full">
-                    <span class="field__static-label" id="family-cancer-types-label">If family history of cancer, which type(s)? (Select all that apply)</span>
-                    <div class="registration__checkbox-stack" role="group" aria-labelledby="family-cancer-types-label">
-                      <label class="registration__check-label"><input type="checkbox" name="cancerTypes" value="Breast Cancer" /> Breast Cancer</label>
-                      <label class="registration__check-label"><input type="checkbox" name="cancerTypes" value="Colorectal Cancer" /> Colorectal Cancer</label>
-                      <label class="registration__check-label"><input type="checkbox" name="cancerTypes" value="Lung Cancer" /> Lung Cancer</label>
-                      <label class="registration__check-label"><input type="checkbox" name="cancerTypes" value="Ovarian Cancer" /> Ovarian Cancer</label>
-                      <label class="registration__check-label"><input type="checkbox" name="cancerTypes" value="Other" /> Other</label>
-                    </div>
+              <section id="reg-address" class="registration-card" tabindex="-1">
+                <h2 class="registration__section-label">Residential Address</h2>
+                <div class="form-grid form-grid--reg form-grid--address">
+                  <div class="field">
+                    <label for="block">Block<span class="field__req" aria-hidden="true">*</span></label>
+                    <input id="block" name="block" required placeholder="E.g. 202" />
                   </div>
-                  <fieldset class="registration__fieldset field field--full">
-                    <legend class="registration__fieldset-legend">Have you been diagnosed with cancer?<span class="field__req" aria-hidden="true">*</span></legend>
-                    <div class="registration__radio-group">
-                      <label class="registration__radio-label"><input type="radio" name="personalCancerHistory" value="yes" required /> Yes</label>
-                      <label class="registration__radio-label"><input type="radio" name="personalCancerHistory" value="no" /> No</label>
-                    </div>
-                  </fieldset>
-                  <div class="field field--full">
-                    <label for="personalCancerType">If you answered Yes above, type of cancer</label>
-                    <input id="personalCancerType" name="personalCancerType" type="text" placeholder="Specify cancer type" />
+                  <div class="field">
+                    <label for="street">Street Name<span class="field__req" aria-hidden="true">*</span></label>
+                    <input id="street" name="street" required placeholder="E.g. Pasir Drive" />
                   </div>
-                  <div class="field field--full">
-                    <span class="field__static-label" id="medical-conditions-label">Do you have any of the following medical conditions? (Select all that apply)</span>
-                    <div class="registration__checkbox-stack" role="group" aria-labelledby="medical-conditions-label">
-                      <label class="registration__check-label"><input type="checkbox" name="medicalConditions" value="Diabetes" /> Diabetes</label>
-                      <label class="registration__check-label"><input type="checkbox" name="medicalConditions" value="Hypertension" /> Hypertension</label>
-                      <label class="registration__check-label"><input type="checkbox" name="medicalConditions" value="Heart Disease" /> Heart Disease</label>
-                      <label class="registration__check-label"><input type="checkbox" name="medicalConditions" value="Asthma" /> Asthma</label>
-                      <label class="registration__check-label"><input type="checkbox" name="medicalConditions" value="Other" /> Other</label>
-                    </div>
+                  <div class="field">
+                    <label for="floor">Floor</label>
+                    <input id="floor" name="floor" placeholder="E.g. 50" />
                   </div>
-                  <div class="field field--full">
-                    <label for="otherCondition">Please specify other medical condition</label>
-                    <input id="otherCondition" name="otherCondition" type="text" placeholder="Specify other condition" />
+                  <div class="field">
+                    <label for="unit">Unit No</label>
+                    <input id="unit" name="unit" placeholder="E.g. 101 or 345" />
+                  </div>
+                  <div class="field">
+                    <label for="postal">Postal Code<span class="field__req" aria-hidden="true">*</span></label>
+                    <input id="postal" name="postal" required placeholder="E.g. 123456" inputmode="numeric" maxlength="6" autocomplete="postal-code" />
+                  </div>
+                  <div class="field">
+                    <label for="country">Country</label>
+                    <select id="country" name="country" aria-label="Country">${REG_ADDRESS_COUNTRY_OPTIONS}
+                    </select>
                   </div>
                 </div>
               </section>
 
-              <section id="reg-source" class="registration-card" tabindex="-1">
-                <h2 class="registration__section-label">Source Information</h2>
+              <section id="reg-subsidies" class="registration-card" tabindex="-1">
+                <h2 class="registration__section-label">Healthier SG &amp; Subsidies</h2>
+                <div class="form-grid form-grid--reg form-grid--subsidies">
+                  <div class="field">
+                    <label for="chasCardType">CHAS Card Type</label>
+                    <select id="chasCardType" name="chasCardType">${REG_SUBSIDIES_CHAS_OPTIONS}
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="healthierSg">Are you enrolled under Healthier SG?</label>
+                    <select id="healthierSg" name="healthierSg">${REG_SUBSIDIES_HEALTHIER_SG_OPTIONS}
+                    </select>
+                  </div>
+                  <fieldset class="registration__fieldset field">
+                    <legend class="registration__fieldset-legend registration__fieldset-legend--field">Is this your first mammogram screening?<span class="field__req" aria-hidden="true">*</span></legend>
+                    <div class="registration__radio-group" role="radiogroup" aria-required="true">
+                      <label class="registration__radio-label"><input type="radio" name="firstMammogramScreening" value="yes" required /> Yes</label>
+                      <label class="registration__radio-label"><input type="radio" name="firstMammogramScreening" value="no" /> No</label>
+                    </div>
+                  </fieldset>
+                  <div class="field">
+                    <label for="lastScreeningYear">Year of Last Screening</label>
+                    <input id="lastScreeningYear" name="lastScreeningYear" type="text" inputmode="numeric" maxlength="4" placeholder="Enter Year of Last Screening" autocomplete="off" />
+                  </div>
+                </div>
+              </section>
+
+              <section id="reg-appointment" class="registration-card" tabindex="-1">
+                <h2 class="registration__section-label">Appointment Preferences</h2>
+                <div class="form-grid form-grid--reg">
+                  <div class="field">
+                    <label for="preferredScreeningDate">Preferred Screening Date<span class="field__req" aria-hidden="true">*</span></label>
+                    ${registrationDateInput("preferredScreeningDate", "preferredScreeningDate", true)}
+                  </div>
+                  <div class="field">
+                    <label for="preferredTimeSlot">Preferred Time Slot</label>
+                    <select id="preferredTimeSlot" name="preferredTimeSlot">
+                      <option value="">Select Preferred Time Slot</option>
+                      <option value="morning">Morning</option>
+                      <option value="afternoon">Afternoon</option>
+                      <option value="evening">Evening</option>
+                    </select>
+                  </div>
+                  <div class="field field--full">
+                    <label for="screeningLocationEvent">Screening Location / Event</label>
+                    <input id="screeningLocationEvent" name="screeningLocationEvent" type="text" placeholder="Enter Screening Location / Event" />
+                  </div>
+                </div>
+              </section>
+
+              <section id="reg-screening" class="registration-card" tabindex="-1">
+                <h2 class="registration__section-label">Screening Questions</h2>
+                <div class="registration__stack">
+                  <fieldset class="registration__fieldset field field--full">
+                    <legend class="registration__fieldset-legend">Are you currently taking or will be taking COVID-19 vaccine soon? (If you are taking COVID-19 vaccine, it is advisable to go for your mammogram screening either before the vaccination, OR 6 weeks after the vaccination)<span class="field__req" aria-hidden="true">*</span></legend>
+                    <div class="registration__radio-group registration__radio-group--stack" role="radiogroup" aria-required="true">
+                      <label class="registration__radio-label"><input type="radio" name="covid19VaccineSoon" value="no" required /> No</label>
+                      <label class="registration__radio-label"><input type="radio" name="covid19VaccineSoon" value="yes" /> Yes</label>
+                    </div>
+                  </fieldset>
+                  <fieldset class="registration__fieldset field field--full">
+                    <legend class="registration__fieldset-legend">Have you done a mammogram in the past 12months (Only for those 40 to 49 years old) or 24months (Only for those 50 years &amp; above)?<span class="field__req" aria-hidden="true">*</span></legend>
+                    <div class="registration__radio-group registration__radio-group--stack" role="radiogroup" aria-required="true">
+                      <label class="registration__radio-label"><input type="radio" name="mammogramPast12or24Months" value="no" required /> No</label>
+                      <label class="registration__radio-label registration__radio-label--block"><input type="radio" name="mammogramPast12or24Months" value="yes" /><span>Yes (If you have done a mammogram test in the past 12 months (Only for those 40 to 49 years old) or 24months (Only for those 50 years &amp; above), please arrange your appointment after 12 or 24 months have passed from your last test.)</span></label>
+                    </div>
+                  </fieldset>
+                  <fieldset class="registration__fieldset field field--full">
+                    <legend class="registration__fieldset-legend">Have you been breastfeeding in the past 6 months?<span class="field__req" aria-hidden="true">*</span></legend>
+                    <div class="registration__radio-group registration__radio-group--stack" role="radiogroup" aria-required="true">
+                      <label class="registration__radio-label"><input type="radio" name="breastfeedingPast6Months" value="no" required /> No</label>
+                      <label class="registration__radio-label registration__radio-label--block"><input type="radio" name="breastfeedingPast6Months" value="yes" /><span>Yes (A screening mammogram is not recommended for you if you have been breastfeeding in the past 6 months. Please make an appointment 6 months after you have stopped breastfeeding.)</span></label>
+                    </div>
+                  </fieldset>
+                  <fieldset class="registration__fieldset field field--full">
+                    <legend class="registration__fieldset-legend">Do you have any symptoms (e.g. lumps or pain) in your breast?<span class="field__req" aria-hidden="true">*</span></legend>
+                    <div class="registration__radio-group registration__radio-group--stack" role="radiogroup" aria-required="true">
+                      <label class="registration__radio-label"><input type="radio" name="breastSymptoms" value="no" required /> No</label>
+                      <label class="registration__radio-label registration__radio-label--block"><input type="radio" name="breastSymptoms" value="yes" /><span>Yes (A screening mammogram is not recommended for you if you display symptoms in your breast(s). Please consult your doctor for further advice.)</span></label>
+                    </div>
+                  </fieldset>
+                  <fieldset class="registration__fieldset field field--full">
+                    <legend class="registration__fieldset-legend">Do you have any breast implants?<span class="field__req" aria-hidden="true">*</span></legend>
+                    <div class="registration__radio-group registration__radio-group--stack" role="radiogroup" aria-required="true">
+                      <label class="registration__radio-label"><input type="radio" name="breastImplants" value="no" required /> No</label>
+                      <label class="registration__radio-label registration__radio-label--block"><input type="radio" name="breastImplants" value="yes" /><span>Yes (Special screening techniques are required for women with implants. This service is not available at NHG Diagnostics mammogram screening centres. Pls call any of the following Breast Assessment Centres to make an appointment at National University Hospital (6772 2263) or Tan Tock Seng Hospital (6357 8177).)</span></label>
+                    </div>
+                  </fieldset>
+                  <fieldset class="registration__fieldset field field--full">
+                    <legend class="registration__fieldset-legend">Have you ever had breast cancer?<span class="field__req" aria-hidden="true">*</span></legend>
+                    <div class="registration__radio-group registration__radio-group--stack" role="radiogroup" aria-required="true">
+                      <label class="registration__radio-label"><input type="radio" name="everHadBreastCancer" value="no" required /> No</label>
+                      <label class="registration__radio-label registration__radio-label--block"><input type="radio" name="everHadBreastCancer" value="yes" /><span>Yes (A screening mammogram is not recommended for you if you have a history of breast cancer and have not been discharged. You are advised to consult your doctor for follow up sessions on your condition.)</span></label>
+                    </div>
+                  </fieldset>
+                </div>
+              </section>
+
+              <section id="reg-engagement" class="registration-card" tabindex="-1">
+                <h2 class="registration__section-label">Engagement</h2>
                 <div class="form-grid form-grid--reg">
                   <div class="field">
                     <label for="sourceType">How did you hear about us?<span class="field__req" aria-hidden="true">*</span></label>
@@ -1468,47 +2017,14 @@
                 </div>
               </section>
 
-              <section id="reg-pdpa" class="registration-card" tabindex="-1">
-                <h2 class="registration__section-label">PDPA Consent</h2>
-                <div class="registration__consent-panel">
+              <section id="reg-consent" class="registration-card registration-card--fit-consent" tabindex="-1">
+                <h2 class="registration__section-label">Consent</h2>
+                <div class="registration__fit-consent-body">
                   <div class="registration__consent">
                     <label class="registration__consent-row">
                       <input type="checkbox" name="consent" id="consent" required />
-                      <span>By registering, I consent to <a href="#" class="registration__consent-link">Singapore Cancer Society&apos;s Privacy Policy</a> and them contacting me for screening appointments, health-related communications, and programme updates.<span class="field__req" aria-hidden="true">*</span></span>
+                      <span>I confirm that my personal data is accurate and complete and I fully understand and accept the terms and conditions under the NHG Personal Data Protection Policy <a href="https://www.nhgd.com.sg/Pages/Personal-Data-Protection-Notification.aspx" class="registration__consent-link" target="_blank" rel="noopener noreferrer">https://www.nhgd.com.sg/Pages/Personal-Data-Protection-Notification.aspx</a>. I may withdraw my consent anytime through <a href="mailto:askNHGD@diagnostics.nhg.com.sg" class="registration__consent-link">askNHGD@diagnostics.nhg.com.sg</a>.<span class="field__req" aria-hidden="true">*</span></span>
                     </label>
-                  </div>
-                  <p class="registration__consent-intro">
-                    I wish to receive communications on SCS&apos; activities, programs and services via the following channels, please <strong>tick</strong> the relevant box(es):
-                  </p>
-                  <div class="registration__channel-rows" role="group" aria-label="Communication preferences">
-                    <div class="registration__channel-row">
-                      <span>SMS</span>
-                      <div class="registration__channel-opts">
-                        <label class="registration__radio-label"><input type="radio" name="smsConsent" value="yes" /> Yes</label>
-                        <label class="registration__radio-label"><input type="radio" name="smsConsent" value="no" /> No</label>
-                      </div>
-                    </div>
-                    <div class="registration__channel-row">
-                      <span>Phone Call</span>
-                      <div class="registration__channel-opts">
-                        <label class="registration__radio-label"><input type="radio" name="phoneConsent" value="yes" /> Yes</label>
-                        <label class="registration__radio-label"><input type="radio" name="phoneConsent" value="no" /> No</label>
-                      </div>
-                    </div>
-                    <div class="registration__channel-row">
-                      <span>WhatsApp</span>
-                      <div class="registration__channel-opts">
-                        <label class="registration__radio-label"><input type="radio" name="whatsappConsent" value="yes" /> Yes</label>
-                        <label class="registration__radio-label"><input type="radio" name="whatsappConsent" value="no" /> No</label>
-                      </div>
-                    </div>
-                    <div class="registration__channel-row">
-                      <span>Email</span>
-                      <div class="registration__channel-opts">
-                        <label class="registration__radio-label"><input type="radio" name="emailConsent" value="yes" /> Yes</label>
-                        <label class="registration__radio-label"><input type="radio" name="emailConsent" value="no" /> No</label>
-                      </div>
-                    </div>
                   </div>
                 </div>
               </section>
@@ -1533,42 +2049,64 @@
           </div>
           <div class="registration__form-col">
             <form id="registration-form" class="registration__form" novalidate>
-              <section id="reg-hpv-client" class="registration-card" tabindex="-1">
-                <h2 class="registration__section-label">Client&apos;s Information</h2>
+              <section id="reg-hpv-eligibility" class="registration-card" tabindex="-1">
+                <h2 class="registration__section-label">Screening Eligibility</h2>
+                <div class="registration__eligibility" role="note">
+                  <div class="registration__eligibility-block">
+                    <p class="registration__eligibility-subtitle">Pap Test</p>
+                    <ul>
+                      <li>Screening for cervical cancer</li>
+                      <li>For females who have not done Pap test in the last 3 years</li>
+                      <li>Recommended frequency: Once every 3 years</li>
+                    </ul>
+                  </div>
+                  <div class="registration__eligibility-block">
+                    <p class="registration__eligibility-subtitle">HPV Test</p>
+                    <ul>
+                      <li>Screening for cervical cancer</li>
+                      <li>For females who have not done HPV test in the last 5 years</li>
+                      <li>Recommended frequency: Once every 5 years</li>
+                    </ul>
+                  </div>
+                </div>
+              </section>
+
+              <section id="reg-hpv-personal" class="registration-card" tabindex="-1">
+                <h2 class="registration__section-label">Personal Information</h2>
                 <div class="form-grid form-grid--reg">
-                  <div class="field field--full">
-                    <label for="hpvFullName">Full Name (as per NRIC)<span class="field__req" aria-hidden="true">*</span></label>
+                  <div class="field">
+                    <label for="hpvFullName">Name (as per NRIC)<span class="field__req" aria-hidden="true">*</span></label>
                     <input id="hpvFullName" name="hpvFullName" type="text" required autocomplete="name" placeholder="Enter full name as in NRIC" />
-                  </div>
-                  <div class="field">
-                    <label for="hpvNric">NRIC / FIN Number<span class="field__req" aria-hidden="true">*</span></label>
-                    <input id="hpvNric" name="hpvNric" required placeholder="Enter NRIC / FIN" />
-                  </div>
-                  <div class="field">
-                    <label for="hpvDob">Date of Birth<span class="field__req" aria-hidden="true">*</span></label>
-                    <input id="hpvDob" name="hpvDob" type="text" required placeholder="DD-MM-YYYY" />
-                  </div>
-                  <div class="field">
-                    <label for="hpvGender">Gender<span class="field__req" aria-hidden="true">*</span></label>
-                    <select id="hpvGender" name="hpvGender" required>
-                      <option value="">Select</option>
-                      <option value="Female">Female</option>
-                      <option value="Male">Male</option>
-                    </select>
                   </div>
                   <div class="field">
                     <label for="hpvResidential">Residential Status</label>
                     <select id="hpvResidential" name="hpvResidential">
-                      <option value="">Select</option>
+                      <option value="">Select Residential Status</option>
                       <option value="Citizen">Singapore Citizen</option>
                       <option value="PR">Permanent Resident</option>
                       <option value="Foreigner">Foreigner</option>
                     </select>
                   </div>
                   <div class="field">
+                    <label for="hpvNric">NRIC / FIN Number<span class="field__req" aria-hidden="true">*</span></label>
+                    ${registrationNricField("hpvNric", "hpvNric", true)}
+                  </div>
+                  <div class="field">
+                    <label for="hpvDob">Date of Birth<span class="field__req" aria-hidden="true">*</span></label>
+                    ${registrationDateInput("hpvDob", "hpvDob", true)}
+                  </div>
+                  <div class="field">
+                    <label for="hpvGender">Gender<span class="field__req" aria-hidden="true">*</span></label>
+                    <select id="hpvGender" name="hpvGender" required>
+                      <option value="">Select Gender</option>
+                      <option value="Female">Female</option>
+                      <option value="Male">Male</option>
+                    </select>
+                  </div>
+                  <div class="field">
                     <label for="hpvRace">Race</label>
                     <select id="hpvRace" name="hpvRace">
-                      <option value="">Select</option>
+                      <option value="">Select Race</option>
                       <option value="Chinese">Chinese</option>
                       <option value="Malay">Malay</option>
                       <option value="Indian">Indian</option>
@@ -1576,103 +2114,103 @@
                       <option value="Others">Others</option>
                     </select>
                   </div>
-                  <div class="field field--full">
-                    <label for="hpvChasCardType">CHAS card type</label>
-                    <select id="hpvChasCardType" name="hpvChasCardType">
-                      <option value="">Select</option>
-                      <option value="CHAS Orange">CHAS Orange</option>
-                      <option value="CHAS Blue">CHAS Blue</option>
-                      <option value="CHAS Green">CHAS Green</option>
-                      <option value="Merdeka Generation">Merdeka Generation</option>
-                      <option value="Pioneer Generation">Pioneer Generation</option>
-                      <option value="None">None / Not applicable</option>
-                    </select>
-                  </div>
-                  <div class="field field--full">
-                    <label for="hpvEmail">Email Address</label>
-                    <input id="hpvEmail" name="hpvEmail" type="email" placeholder="Enter your email" />
-                  </div>
                   <div class="field">
-                    <label for="hpvHomePhone">Home Phone Number</label>
-                    <div class="field__inline">
-                      <input type="text" class="field__prefix" value="+65" disabled aria-label="Country code" />
-                      <input id="hpvHomePhone" name="hpvHomePhone" type="tel" placeholder="E.g. 6123 4567" />
-                    </div>
-                  </div>
-                  <div class="field">
-                    <label for="hpvOfficePhone">Office Phone Number</label>
-                    <div class="field__inline">
-                      <input type="text" class="field__prefix" value="+65" disabled aria-label="Country code" />
-                      <input id="hpvOfficePhone" name="hpvOfficePhone" type="tel" placeholder="E.g. 6123 4567" />
-                    </div>
-                  </div>
-                  <div class="field field--full">
-                    <label for="hpvMobile">Mobile Number<span class="field__req" aria-hidden="true">*</span></label>
+                    <label for="hpvMobile">Contact Number<span class="field__req" aria-hidden="true">*</span></label>
                     <div class="field__inline">
                       <input type="text" class="field__prefix" value="+65" disabled aria-label="Country code" />
                       <input id="hpvMobile" name="hpvMobile" type="tel" required placeholder="E.g. 8123 4567" />
                     </div>
                   </div>
+                  <div class="field">
+                    <label for="hpvEmail">Email</label>
+                    <input id="hpvEmail" name="hpvEmail" type="email" placeholder="Enter your email" />
+                  </div>
                 </div>
               </section>
 
               <section id="reg-hpv-address" class="registration-card" tabindex="-1">
-                <h2 class="registration__section-label">Client&apos;s Address</h2>
-                <div class="form-grid form-grid--reg">
+                <h2 class="registration__section-label">Residential Address</h2>
+                <div class="form-grid form-grid--reg form-grid--address">
+                  <div class="field">
+                    <label for="hpvBlock">Block</label>
+                    <input id="hpvBlock" name="hpvBlock" placeholder="E.g. 202" />
+                  </div>
+                  <div class="field">
+                    <label for="hpvStreet">Street Name</label>
+                    <input id="hpvStreet" name="hpvStreet" placeholder="E.g. Pasir Drive" />
+                  </div>
+                  <div class="field">
+                    <label for="hpvFloor">Floor</label>
+                    <input id="hpvFloor" name="hpvFloor" placeholder="E.g. 50" />
+                  </div>
+                  <div class="field">
+                    <label for="hpvUnit">Unit No</label>
+                    <input id="hpvUnit" name="hpvUnit" placeholder="E.g. 101 or 345" />
+                  </div>
                   <div class="field">
                     <label for="hpvPostal">Postal Code<span class="field__req" aria-hidden="true">*</span></label>
-                    <input id="hpvPostal" name="hpvPostal" required placeholder="6-digit postal code" />
+                    <input id="hpvPostal" name="hpvPostal" required placeholder="E.g. 123456" inputmode="numeric" maxlength="6" autocomplete="postal-code" />
                   </div>
                   <div class="field">
-                    <label for="hpvBlock">Block Number</label>
-                    <input id="hpvBlock" name="hpvBlock" placeholder="e.g. 123" />
-                  </div>
-                  <div class="field field--full">
-                    <label for="hpvStreet">Street Name</label>
-                    <input id="hpvStreet" name="hpvStreet" placeholder="e.g. Orchard Road" />
-                  </div>
-                  <div class="field">
-                    <label for="hpvUnit">Unit Number</label>
-                    <input id="hpvUnit" name="hpvUnit" placeholder="e.g. #12-34" />
-                  </div>
-                  <div class="field">
-                    <label for="hpvBuilding">Building Name</label>
-                    <input id="hpvBuilding" name="hpvBuilding" placeholder="e.g. Plaza Singapura" />
+                    <label for="hpvCountry">Country</label>
+                    <select id="hpvCountry" name="hpvCountry" aria-label="Country">${REG_ADDRESS_COUNTRY_OPTIONS}
+                    </select>
                   </div>
                 </div>
               </section>
 
-              <section id="reg-hpv-venue" class="registration-card" tabindex="-1">
-                <h2 class="registration__section-label">Venue of Screening</h2>
-                <div class="form-grid form-grid--reg">
-                  <div class="field field--full">
-                    <label for="hpvVenue">Venue of Screening<span class="field__req" aria-hidden="true">*</span></label>
-                    <select id="hpvVenue" name="hpvVenue" required>
-                      <option value="">Select venue</option>
-                      <option value="Community Centre">Community Centre</option>
-                      <option value="Mobile Screening Unit">Mobile Screening Unit</option>
-                      <option value="Clinic Partner">Clinic Partner</option>
-                      <option value="Other">Other</option>
+              <section id="reg-hpv-subsidies" class="registration-card" tabindex="-1">
+                <h2 class="registration__section-label">Healthier SG &amp; Subsidies</h2>
+                <div class="form-grid form-grid--reg form-grid--subsidies">
+                  <div class="field">
+                    <label for="hpvChasCardType">CHAS Card Type</label>
+                    <select id="hpvChasCardType" name="hpvChasCardType">${REG_SUBSIDIES_CHAS_OPTIONS}
                     </select>
                   </div>
                   <div class="field">
-                    <label for="hpvPreferredDate">Preferred Date<span class="field__req" aria-hidden="true">*</span></label>
-                    <input id="hpvPreferredDate" name="hpvPreferredDate" type="text" required placeholder="DD-MM-YYYY" />
+                    <label for="hpvHealthierSg">Are you enrolled under Healthier SG?</label>
+                    <select id="hpvHealthierSg" name="hpvHealthierSg">${REG_SUBSIDIES_HEALTHIER_SG_OPTIONS}
+                    </select>
+                  </div>
+                  <fieldset class="registration__fieldset field">
+                    <legend class="registration__fieldset-legend registration__fieldset-legend--field">Is this your first HPV screening?</legend>
+                    <div class="registration__radio-group" role="radiogroup">
+                      <label class="registration__radio-label"><input type="radio" name="firstHpvScreening" value="yes" /> Yes</label>
+                      <label class="registration__radio-label"><input type="radio" name="firstHpvScreening" value="no" /> No</label>
+                    </div>
+                  </fieldset>
+                  <div class="field">
+                    <label for="hpvLastScreeningYear">Year of Last Screening</label>
+                    <input id="hpvLastScreeningYear" name="hpvLastScreeningYear" type="text" inputmode="numeric" maxlength="4" placeholder="Enter Year of Last Screening" autocomplete="off" />
+                  </div>
+                </div>
+              </section>
+
+              <section id="reg-hpv-appointment" class="registration-card" tabindex="-1">
+                <h2 class="registration__section-label">Appointment Preferences</h2>
+                <div class="form-grid form-grid--reg">
+                  <div class="field">
+                    <label for="hpvPreferredDate">Preferred Screening Date<span class="field__req" aria-hidden="true">*</span></label>
+                    ${registrationDateInput("hpvPreferredDate", "hpvPreferredDate", true)}
                   </div>
                   <div class="field">
                     <label for="hpvPreferredTime">Preferred Time Slot</label>
                     <select id="hpvPreferredTime" name="hpvPreferredTime">
-                      <option value="">Select time slot</option>
+                      <option value="">Select Preferred Time Slot</option>
                       <option value="morning">Morning</option>
                       <option value="afternoon">Afternoon</option>
                       <option value="evening">Evening</option>
                     </select>
                   </div>
+                  <div class="field field--full">
+                    <label for="hpvScreeningLocation">Screening Location / Event</label>
+                    <input id="hpvScreeningLocation" name="hpvScreeningLocation" type="text" placeholder="Enter Screening Location / Event" />
+                  </div>
                 </div>
               </section>
 
-              <section id="reg-hpv-source" class="registration-card" tabindex="-1">
-                <h2 class="registration__section-label">Source Information</h2>
+              <section id="reg-hpv-engagement" class="registration-card" tabindex="-1">
+                <h2 class="registration__section-label">Engagement</h2>
                 <div class="form-grid form-grid--reg">
                   <div class="field">
                     <label for="hpvSourceType">How did you hear about us?</label>
@@ -1693,8 +2231,8 @@
                 </div>
               </section>
 
-              <section id="reg-hpv-pdpa" class="registration-card" tabindex="-1">
-                <h2 class="registration__section-label">PDPA Consent</h2>
+              <section id="reg-hpv-consent" class="registration-card" tabindex="-1">
+                <h2 class="registration__section-label">Consent</h2>
                 <div class="registration__consent-panel">
                   <div class="registration__consent">
                     <label class="registration__consent-row">
@@ -1778,8 +2316,8 @@
           </div>
           <div class="registration__form-col">
             <form id="registration-form" class="registration__form" novalidate>
-              <section id="reg-fit-personal" class="registration-card" tabindex="-1">
-                <h2 class="registration__section-label">Distribution Details &amp; Personal Particulars</h2>
+              <section id="reg-fit-eligibility" class="registration-card" tabindex="-1">
+                <h2 class="registration__section-label">Screening Eligibility</h2>
                 <div class="registration__eligibility" role="note">
                   <p class="registration__eligibility-title">Collection Eligibility</p>
                   <ul>
@@ -1788,140 +2326,148 @@
                     <li>Produces IC</li>
                   </ul>
                 </div>
+              </section>
+
+              <section id="reg-fit-personal" class="registration-card" tabindex="-1">
+                <h2 class="registration__section-label">Personal Information</h2>
                 <div class="form-grid form-grid--reg">
-                  <div class="field field--full">
-                    <label for="fitVenue">Venue</label>
-                    <input id="fitVenue" name="fitVenue" type="text" placeholder="Enter venue name" />
-                  </div>
-                  <div class="field field--full">
-                    <label for="fitDistributionDate">Date</label>
-                    <input id="fitDistributionDate" name="fitDistributionDate" type="text" placeholder="DD-MM-YYYY" />
-                  </div>
-                  <div class="field field--full">
-                    <label for="fitFullName">Full Name (as per NRIC)<span class="field__req" aria-hidden="true">*</span></label>
+                  <div class="field">
+                    <label for="fitFullName">Name (as per NRIC)<span class="field__req" aria-hidden="true">*</span></label>
                     <input id="fitFullName" name="fitFullName" type="text" required autocomplete="name" placeholder="Enter full name as in NRIC" />
-                  </div>
-                  <div class="field">
-                    <label for="fitNricRest">NRIC No.<span class="field__req" aria-hidden="true">*</span></label>
-                    <div class="field__inline">
-                      <input type="text" class="field__prefix field__prefix--nric" value="S" disabled aria-label="NRIC prefix" />
-                      <input id="fitNricRest" name="fitNricRest" required placeholder="1234567D" autocomplete="off" />
-                    </div>
-                  </div>
-                  <fieldset class="registration__fieldset field field--full">
-                    <legend class="registration__fieldset-legend">Gender<span class="field__req" aria-hidden="true">*</span></legend>
-                    <div class="registration__radio-group" role="radiogroup">
-                      <label class="registration__radio-label"><input type="radio" name="fitGender" value="Male" required /> Male</label>
-                      <label class="registration__radio-label"><input type="radio" name="fitGender" value="Female" /> Female</label>
-                    </div>
-                  </fieldset>
-                  <div class="field">
-                    <label for="fitDob">Date of Birth<span class="field__req" aria-hidden="true">*</span></label>
-                    <input id="fitDob" name="fitDob" type="text" required placeholder="DD-MM-YYYY" />
                   </div>
                   <div class="field">
                     <label for="fitResidential">Residential Status</label>
                     <select id="fitResidential" name="fitResidential">
-                      <option value="">Select</option>
+                      <option value="">Select Residential Status</option>
                       <option value="Citizen">Singapore Citizen</option>
                       <option value="PR">Permanent Resident</option>
                       <option value="Foreigner">Foreigner</option>
                     </select>
                   </div>
-                  <div class="field field--full">
-                    <label for="fitChasCardType">CHAS card type</label>
-                    <select id="fitChasCardType" name="fitChasCardType">
-                      <option value="">Select</option>
-                      <option value="CHAS Orange">CHAS Orange</option>
-                      <option value="CHAS Blue">CHAS Blue</option>
-                      <option value="CHAS Green">CHAS Green</option>
-                      <option value="Merdeka Generation">Merdeka Generation</option>
-                      <option value="Pioneer Generation">Pioneer Generation</option>
-                      <option value="None">None / Not applicable</option>
+                  <div class="field">
+                    <label for="fitNric">NRIC / FIN Number<span class="field__req" aria-hidden="true">*</span></label>
+                    ${registrationNricField("fitNric", "fitNric", true)}
+                  </div>
+                  <div class="field">
+                    <label for="fitDob">Date of Birth<span class="field__req" aria-hidden="true">*</span></label>
+                    ${registrationDateInput("fitDob", "fitDob", true)}
+                  </div>
+                  <div class="field">
+                    <label for="fitGender">Gender<span class="field__req" aria-hidden="true">*</span></label>
+                    <select id="fitGender" name="fitGender" required>
+                      <option value="">Select Gender</option>
+                      <option value="Female">Female</option>
+                      <option value="Male">Male</option>
                     </select>
                   </div>
-                  <fieldset class="registration__fieldset field field--full">
-                    <legend class="registration__fieldset-legend">Race</legend>
-                    <div class="registration__radio-group" role="radiogroup">
-                      <label class="registration__radio-label"><input type="radio" name="fitRace" value="Chinese" /> Chinese</label>
-                      <label class="registration__radio-label"><input type="radio" name="fitRace" value="Malay" /> Malay</label>
-                      <label class="registration__radio-label"><input type="radio" name="fitRace" value="Indian" /> Indian</label>
-                      <label class="registration__radio-label"><input type="radio" name="fitRace" value="Others" /> Others</label>
-                    </div>
-                  </fieldset>
-                  <div class="field field--full">
-                    <label for="fitAddress">Address</label>
-                    <input id="fitAddress" name="fitAddress" type="text" placeholder="Block / Street name" />
+                  <div class="field">
+                    <label for="fitRace">Race</label>
+                    <select id="fitRace" name="fitRace">
+                      <option value="">Select Race</option>
+                      <option value="Chinese">Chinese</option>
+                      <option value="Malay">Malay</option>
+                      <option value="Indian">Indian</option>
+                      <option value="Eurasian">Eurasian</option>
+                      <option value="Others">Others</option>
+                    </select>
                   </div>
                   <div class="field">
-                    <label for="fitUnit">Unit No.</label>
-                    <div class="field__inline">
-                      <input type="text" class="field__prefix field__prefix--hash" value="#" disabled aria-hidden="true" />
-                      <input id="fitUnit" name="fitUnit" placeholder="12-34" />
-                    </div>
-                  </div>
-                  <div class="field">
-                    <label for="fitPostal">Postal Code<span class="field__req" aria-hidden="true">*</span></label>
-                    <input id="fitPostal" name="fitPostal" required placeholder="6-digit postal code" />
-                  </div>
-                  <div class="field field--full">
-                    <label for="fitEmail">Email Address</label>
-                    <input id="fitEmail" name="fitEmail" type="email" placeholder="Enter your email" />
-                  </div>
-                  <div class="field field--full">
-                    <label for="fitContact">Contact No.<span class="field__req" aria-hidden="true">*</span></label>
+                    <label for="fitContact">Contact Number<span class="field__req" aria-hidden="true">*</span></label>
                     <div class="field__inline">
                       <input type="text" class="field__prefix" value="+65" disabled aria-label="Country code" />
                       <input id="fitContact" name="fitContact" type="tel" required placeholder="E.g. 8123 4567" />
                     </div>
                   </div>
-                </div>
-              </section>
-
-              <section id="reg-fit-clinical" class="registration-card" tabindex="-1">
-                <h2 class="registration__section-label">Clinical History, Declaration and Consent</h2>
-                <p class="registration__hint">
-                  Singapore Cancer Society (SCS) may contact you regarding your screening, test kit collection, results, and follow-up in line with applicable data protection requirements.
-                </p>
-                <div class="field field--full">
-                  <span class="field__static-label" id="fit-comms-pref-label">Communication preferences</span>
-                  <div class="registration__checkbox-stack" role="group" aria-labelledby="fit-comms-pref-label">
-                    <label class="registration__check-label"><input type="checkbox" name="fitCommSms" value="1" /> Text Message</label>
-                    <label class="registration__check-label"><input type="checkbox" name="fitCommPhone" value="1" /> Phone Call</label>
-                  </div>
-                </div>
-                <div class="registration__legal-block">
-                  <p>
-                    Your personal data will be processed for programme administration, screening coordination, and related communications. By submitting this form you agree to the terms of participation and data use described in Singapore Cancer Society&apos;s policies.
-                  </p>
-                </div>
-                <div class="registration__consent">
-                  <label class="registration__consent-row">
-                    <input type="checkbox" name="fitConsentTerms" id="fitConsentTerms" required />
-                    <span>I have read and agree to the Terms &amp; Conditions. 本人已阅读并同意条款与条件。<span class="field__req" aria-hidden="true">*</span></span>
-                  </label>
-                </div>
-                <div class="registration__subsection">
-                  <h3 class="registration__subsection-label">FIT kit details (staff to complete)</h3>
-                  <div class="form-grid form-grid--reg">
-                    <div class="field">
-                      <label for="fitTube1">FIT Tube Code 1</label>
-                      <input id="fitTube1" name="fitTube1" placeholder="Scan or enter code" />
-                    </div>
-                    <div class="field">
-                      <label for="fitTube2">FIT Tube Code 2</label>
-                      <input id="fitTube2" name="fitTube2" placeholder="Scan or enter code" />
-                    </div>
-                    <div class="field field--full">
-                      <label for="fitSerial">Form Serial Number</label>
-                      <input id="fitSerial" name="fitSerial" placeholder="Enter serial number" />
-                    </div>
+                  <div class="field">
+                    <label for="fitEmail">Email</label>
+                    <input id="fitEmail" name="fitEmail" type="email" placeholder="Enter your email" />
                   </div>
                 </div>
               </section>
 
-              <section id="reg-fit-source" class="registration-card" tabindex="-1">
-                <h2 class="registration__section-label">Source Information</h2>
+              <section id="reg-fit-address" class="registration-card" tabindex="-1">
+                <h2 class="registration__section-label">Residential Address</h2>
+                <div class="form-grid form-grid--reg form-grid--address">
+                  <div class="field">
+                    <label for="fitBlock">Block</label>
+                    <input id="fitBlock" name="fitBlock" placeholder="E.g. 202" />
+                  </div>
+                  <div class="field">
+                    <label for="fitStreet">Street Name</label>
+                    <input id="fitStreet" name="fitStreet" placeholder="E.g. Pasir Drive" />
+                  </div>
+                  <div class="field">
+                    <label for="fitFloor">Floor</label>
+                    <input id="fitFloor" name="fitFloor" placeholder="E.g. 50" />
+                  </div>
+                  <div class="field">
+                    <label for="fitUnit">Unit No</label>
+                    <input id="fitUnit" name="fitUnit" placeholder="E.g. 101 or 345" />
+                  </div>
+                  <div class="field">
+                    <label for="fitPostal">Postal Code<span class="field__req" aria-hidden="true">*</span></label>
+                    <input id="fitPostal" name="fitPostal" required placeholder="E.g. 123456" inputmode="numeric" maxlength="6" autocomplete="postal-code" />
+                  </div>
+                  <div class="field">
+                    <label for="fitCountry">Country</label>
+                    <select id="fitCountry" name="fitCountry" aria-label="Country">${REG_ADDRESS_COUNTRY_OPTIONS}
+                    </select>
+                  </div>
+                </div>
+              </section>
+
+              <section id="reg-fit-subsidies" class="registration-card" tabindex="-1">
+                <h2 class="registration__section-label">Healthier SG &amp; Subsidies</h2>
+                <div class="form-grid form-grid--reg form-grid--subsidies">
+                  <div class="field">
+                    <label for="fitChasCardType">CHAS Card Type</label>
+                    <select id="fitChasCardType" name="fitChasCardType">${REG_SUBSIDIES_CHAS_OPTIONS}
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="fitHealthierSg">Are you enrolled under Healthier SG?</label>
+                    <select id="fitHealthierSg" name="fitHealthierSg">${REG_SUBSIDIES_HEALTHIER_SG_OPTIONS}
+                    </select>
+                  </div>
+                  <fieldset class="registration__fieldset field">
+                    <legend class="registration__fieldset-legend registration__fieldset-legend--field">Is this your first FIT screening?</legend>
+                    <div class="registration__radio-group" role="radiogroup">
+                      <label class="registration__radio-label"><input type="radio" name="firstFitScreening" value="yes" /> Yes</label>
+                      <label class="registration__radio-label"><input type="radio" name="firstFitScreening" value="no" /> No</label>
+                    </div>
+                  </fieldset>
+                  <div class="field">
+                    <label for="fitLastScreeningYear">Year of Last Screening</label>
+                    <input id="fitLastScreeningYear" name="fitLastScreeningYear" type="text" inputmode="numeric" maxlength="4" placeholder="Enter Year of Last Screening" autocomplete="off" />
+                  </div>
+                </div>
+              </section>
+
+              <section id="reg-fit-appointment" class="registration-card" tabindex="-1">
+                <h2 class="registration__section-label">Appointment Preferences</h2>
+                <div class="form-grid form-grid--reg">
+                  <div class="field">
+                    <label for="fitPreferredScreeningDate">Preferred Screening Date<span class="field__req" aria-hidden="true">*</span></label>
+                    ${registrationDateInput("fitPreferredScreeningDate", "fitPreferredScreeningDate", true)}
+                  </div>
+                  <div class="field">
+                    <label for="fitPreferredTimeSlot">Preferred Time Slot</label>
+                    <select id="fitPreferredTimeSlot" name="fitPreferredTimeSlot">
+                      <option value="">Select Preferred Time Slot</option>
+                      <option value="morning">Morning</option>
+                      <option value="afternoon">Afternoon</option>
+                      <option value="evening">Evening</option>
+                    </select>
+                  </div>
+                  <div class="field field--full">
+                    <label for="fitScreeningLocation">Screening Location / Event</label>
+                    <input id="fitScreeningLocation" name="fitScreeningLocation" type="text" placeholder="Enter Screening Location / Event" />
+                  </div>
+                </div>
+              </section>
+
+              <section id="reg-fit-engagement" class="registration-card" tabindex="-1">
+                <h2 class="registration__section-label">Engagement</h2>
                 <div class="form-grid form-grid--reg">
                   <div class="field">
                     <label for="fitSourceType">How did you hear about us?</label>
@@ -1941,6 +2487,30 @@
                   </div>
                 </div>
               </section>
+
+              <section id="reg-fit-consent" class="registration-card registration-card--fit-consent" tabindex="-1">
+                <h2 class="registration__section-label">Consent</h2>
+                <div class="registration__fit-consent-body">
+                  <p class="registration__fit-consent-lead" id="fit-comms-pref-intro">
+                    If you wish to receive communications on Singapore Cancer Society (SCS) activities, programmes and services via phone call and/or text message to a phone number or numbers that you have provided to SCS, please tick the relevant box(es):
+                  </p>
+                  <div class="registration__checkbox-stack registration__fit-consent-checks" role="group" aria-labelledby="fit-comms-pref-intro">
+                    <label class="registration__check-label"><input type="checkbox" name="fitCommSms" value="1" /> Text Message</label>
+                    <label class="registration__check-label"><input type="checkbox" name="fitCommPhone" value="1" /> Phone Call</label>
+                  </div>
+                  <div class="registration__fit-consent-legal">
+                    <p>
+                      In any event, you agree that SCS may contact you via email and/or post on the follow-up to the screening completed on this form, its activities, programmes and services; including (but not limiting to) reminders for rescreen appointment, invitation to cancer awareness public forums, follow-up general cancer management communication to you, etc.
+                    </p>
+                    <p>
+                      If you do not wish to receive such communications as aforesaid, or if you wish to make changes to consent previously given, you may email to <a href="mailto:dataprotection@singaporecancersociety.org.sg" class="registration__consent-link">dataprotection@singaporecancersociety.org.sg</a>.
+                    </p>
+                    <p>
+                      If you opt out of communications or make changes to consent previously given, please understand that it may affect SCS&apos; ability to provide relevant services to you.
+                    </p>
+                  </div>
+                </div>
+              </section>
               ${renderRegistrationMobileSubmitFooter()}
             </form>
           </div>
@@ -1949,7 +2519,7 @@
     `;
   }
 
-  function renderModal() {
+  function renderFilterModal() {
     if (!state.filterModal) return "";
     const f = state.listFilters;
     const chip = (group, value, label) => {
@@ -2036,6 +2606,38 @@
     `;
   }
 
+  function renderDetailAddNoteModal() {
+    if (!state.detailAddNoteModalOpen || state.route !== "detail") return "";
+    return `
+      <div class="ui-dialog-overlay" id="detail-add-note-modal" role="presentation">
+        <div class="ui-dialog ui-dialog--add-note" role="dialog" aria-modal="true" aria-labelledby="detail-add-note-title">
+          <div class="ui-dialog__close">
+            <button type="button" class="ui-btn ui-btn--ghost ui-btn--icon" data-detail-add-note-dismiss aria-label="Close">${icons.x}</button>
+          </div>
+          <div class="ui-dialog__header">
+            <h2 class="ui-dialog__title" id="detail-add-note-title">Add note</h2>
+          </div>
+          <div class="ui-dialog__body">
+            <div class="field field--full">
+              <label for="detail-add-note-text">Note</label>
+              <textarea id="detail-add-note-text" class="detail-add-note-textarea" rows="7" placeholder="Enter your note…" autocomplete="off"></textarea>
+            </div>
+          </div>
+          <div class="ui-dialog__footer">
+            <div class="ui-dialog__footer-actions">
+              <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-detail-add-note-dismiss>Cancel</button>
+              <button type="button" class="ui-btn ui-btn--default ui-btn--sm" data-detail-add-note-submit>Add</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderModal() {
+    return renderFilterModal() + renderDetailAddNoteModal();
+  }
+
   /** file:// and some browsers can leave location.hash empty on first paint while href still has #/route */
   function getRouteHash() {
     const h = location.hash;
@@ -2068,8 +2670,7 @@
       state.route = "detail";
       state.routeId = parts[1] ? decodeURIComponent(parts[1]) : DETAIL_DEFAULT.rowKey;
       if (parts[2]) {
-        let tab = decodeURIComponent(parts[2]).trim().toLowerCase();
-        if (tab === "document") tab = "documents";
+        const tab = decodeURIComponent(parts[2]).trim().toLowerCase();
         state.detailTab = DETAIL_TAB_IDS.includes(tab) ? tab : "overview";
       } else {
         state.detailTab = "overview";
@@ -2110,21 +2711,114 @@
       if (lastDetailTabForForm !== state.detailTab) {
         state.detailFormEdit = null;
         state.detailFormDraft = null;
-        if (state.detailTab === "details") state.detailNavSection = "detail-basic";
+        if (state.detailTab === "details") state.detailNavSection = "detail-personal";
         else if (state.detailTab === "medical-history") state.detailNavSection = "mh-family";
         else if (state.detailTab === "other-details") state.detailNavSection = "od-medical";
       }
       lastDetailTabForForm = state.detailTab;
     }
+
+    if (state.route !== "detail" || state.detailTab !== "notes") {
+      state.detailAddNoteModalOpen = false;
+    }
   }
 
   let registrationScrollCleanup = null;
+  let detailSectionScrollCleanup = null;
 
   function teardownRegistrationScrollSpy() {
     if (typeof registrationScrollCleanup === "function") {
       registrationScrollCleanup();
       registrationScrollCleanup = null;
     }
+  }
+
+  function teardownDetailSectionScrollSpy() {
+    if (typeof detailSectionScrollCleanup === "function") {
+      detailSectionScrollCleanup();
+      detailSectionScrollCleanup = null;
+    }
+  }
+
+  function setDetailNavActive(sectionId) {
+    state.detailNavSection = sectionId;
+    document.querySelectorAll("[data-detail-section-nav]").forEach((btn) => {
+      const bid = btn.getAttribute("data-detail-section-nav");
+      btn.classList.toggle("is-active", bid === sectionId);
+    });
+  }
+
+  /** Pixels to leave clear below sticky header + tab row inside #detail-flow-scroll-root. */
+  function getDetailStickyScrollInset() {
+    const root = document.getElementById("detail-flow-scroll-root");
+    if (!root) return 0;
+    const header = root.querySelector(":scope > .app-header");
+    const bundle = root.querySelector(".detail-sticky-chrome--primary-bundle");
+    let h = 0;
+    if (header instanceof HTMLElement) h += header.offsetHeight;
+    if (bundle instanceof HTMLElement) h += bundle.offsetHeight;
+    return Math.round(h + 12);
+  }
+
+  /** Prefer the visible section title for scroll / spy alignment. */
+  function detailSectionScrollMarker(sectionEl) {
+    if (!(sectionEl instanceof HTMLElement)) return sectionEl;
+    const title = sectionEl.querySelector(":scope > .detail-card__title");
+    return title instanceof HTMLElement ? title : sectionEl;
+  }
+
+  /** Scroll the detail scroll root so the section title sits just below sticky chrome. */
+  function scrollDetailSectionIntoView(sectionId) {
+    const root = document.getElementById("detail-flow-scroll-root");
+    const target = document.getElementById(sectionId);
+    if (!root || !target) return;
+    const marker = detailSectionScrollMarker(target);
+    const inset = getDetailStickyScrollInset();
+    const rootRect = root.getBoundingClientRect();
+    const tRect = marker.getBoundingClientRect();
+    const y = tRect.top - rootRect.top + root.scrollTop;
+    const nextTop = Math.max(0, y - inset);
+    root.scrollTo({ top: nextTop, behavior: "smooth" });
+  }
+
+  function detailSectionIdsForActiveTab() {
+    return DETAIL_TAB_SECTION_IDS[state.detailTab] || [];
+  }
+
+  function setupDetailSectionScrollSpy() {
+    teardownDetailSectionScrollSpy();
+    if (state.route !== "detail") return;
+    const ids = detailSectionIdsForActiveTab();
+    if (!ids.length) return;
+    const root = document.getElementById("detail-flow-scroll-root");
+    if (!root) return;
+
+    const pickActive = () => {
+      if (window.__detailNavProgrammaticScroll) return;
+      const inset = getDetailStickyScrollInset();
+      const anchorY = root.getBoundingClientRect().top + inset + 16;
+      let current = ids[0];
+      for (const id of ids) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        const marker = detailSectionScrollMarker(el);
+        const r = marker.getBoundingClientRect();
+        if (r.top <= anchorY) current = id;
+      }
+      if (current !== state.detailNavSection) setDetailNavActive(current);
+    };
+
+    const onScroll = () => {
+      pickActive();
+    };
+
+    root.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll, { passive: true });
+    onScroll();
+    detailSectionScrollCleanup = () => {
+      root.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
   }
 
   function setRegNavActive(sectionId) {
@@ -2199,6 +2893,9 @@
     el.value = value == null ? "" : String(value);
     el.disabled = true;
     markSingpassFieldGroup(el);
+    const shell = el.closest(".field__nric");
+    const edit = shell?.querySelector?.(".field__nric-edit");
+    if (edit instanceof HTMLInputElement) edit.disabled = true;
   }
 
   function lockSingpassSelect(id, value) {
@@ -2228,39 +2925,47 @@
       lockSingpassInput("nric", d.nricFull);
       lockSingpassInput("dob", d.dob);
       lockSingpassSelect("gender", d.gender);
+      lockSingpassSelect("race", d.race);
       lockSingpassSelect("residential", d.residential);
       lockSingpassInput("email", d.email);
       lockSingpassInput("phone", d.phone);
       lockSingpassInput("postal", d.postal);
       lockSingpassInput("block", d.block);
       lockSingpassInput("street", d.street);
+      lockSingpassInput("floor", d.floor);
       lockSingpassInput("unit", d.unit);
-      lockSingpassInput("building", d.building);
+      lockSingpassSelect("country", d.country);
       lockSingpassSelect("chasCardType", d.chasCardType);
     } else if (p === "hpv") {
       lockSingpassInput("hpvFullName", d.fullName);
       lockSingpassInput("hpvNric", d.nricFull);
       lockSingpassInput("hpvDob", d.dob);
       lockSingpassSelect("hpvGender", d.gender);
+      lockSingpassSelect("hpvRace", d.race);
       lockSingpassSelect("hpvResidential", d.residential);
       lockSingpassInput("hpvEmail", d.email);
       lockSingpassInput("hpvMobile", d.phone);
       lockSingpassInput("hpvPostal", d.postal);
       lockSingpassInput("hpvBlock", d.block);
       lockSingpassInput("hpvStreet", d.street);
+      lockSingpassInput("hpvFloor", d.floor);
       lockSingpassInput("hpvUnit", d.unit);
-      lockSingpassInput("hpvBuilding", d.building);
+      lockSingpassSelect("hpvCountry", d.country);
       lockSingpassSelect("hpvChasCardType", d.chasCardType);
     } else if (p === "fit") {
       lockSingpassInput("fitFullName", d.fullName);
-      lockSingpassInput("fitNricRest", d.nricFitRest);
+      lockSingpassInput("fitNric", d.nricFull);
       lockSingpassInput("fitDob", d.dob);
-      lockSingpassRadioGroup("fitGender", d.gender);
+      lockSingpassSelect("fitGender", d.gender);
+      lockSingpassSelect("fitRace", d.race);
       lockSingpassSelect("fitResidential", d.residential);
       lockSingpassSelect("fitChasCardType", d.chasCardType);
-      lockSingpassInput("fitAddress", d.fitAddress);
-      lockSingpassInput("fitUnit", "12-345");
+      lockSingpassInput("fitBlock", d.block);
+      lockSingpassInput("fitStreet", d.street);
+      lockSingpassInput("fitFloor", d.floor);
+      lockSingpassInput("fitUnit", d.unit);
       lockSingpassInput("fitPostal", d.postal);
+      lockSingpassSelect("fitCountry", d.country);
       lockSingpassInput("fitEmail", d.email);
       lockSingpassInput("fitContact", d.phone);
     }
@@ -2280,6 +2985,7 @@
 
     syncDetailFromRoute();
     teardownRegistrationScrollSpy();
+    teardownDetailSectionScrollSpy();
     if (state.route !== "list") state.programMenuOpen = false;
     if (state.route !== "list") state.addProspectMenuOpen = false;
     const app = document.getElementById("app");
@@ -2323,9 +3029,11 @@
         <div class="app-content app-content--registration-flow${state.registerSelfService ? " app-content--registration-self-service" : ""}">
           <main class="app-main app-main--registration">
             <div class="registration-scroll-top-gap" aria-hidden="true"></div>
-            <div id="registration-scroll-root" class="app-main--registration-scroll">${mainInner}</div>
+            <div id="registration-scroll-root" class="app-main--registration-scroll">
+              ${mainInner}
+              ${renderAppFooter({ variant: "registration-end" })}
+            </div>
           </main>
-          <footer class="app-footer">Copyright © 2026 WERKDONE PTE LTD.</footer>
         </div>
       </div>
       ${state.registerSelfService ? renderRegistrationNavDrawer() : ""}
@@ -2333,11 +3041,24 @@
     `;
       bindEvents();
       setupRegistrationScrollSpy();
-      requestAnimationFrame(() => applySingpassDemoAndLocks());
+      requestAnimationFrame(() => {
+        applySingpassDemoAndLocks();
+        if (typeof window.WD_syncNricMasks === "function") {
+          window.WD_syncNricMasks(document.getElementById("registration-scroll-root") || document.getElementById("app"));
+        }
+        if (typeof window.WD_syncDatePickersFromFields === "function") {
+          window.WD_syncDatePickersFromFields(document.getElementById("app"));
+        }
+      });
       return;
     }
 
     if (state.route === "detail") {
+      const preserveDetailScroll = state.detailScrollPreservePending;
+      state.detailScrollPreservePending = false;
+      const prevScrollRoot = preserveDetailScroll ? document.getElementById("detail-flow-scroll-root") : null;
+      const prevDetailScrollTop = prevScrollRoot ? prevScrollRoot.scrollTop : null;
+
       const detailMainClass =
         DETAIL_FORM_TAB_IDS.includes(state.detailTab) ? "app-main app-main--detail-page detail-page--form-toolbar" : "app-main app-main--detail-page";
       app.innerHTML = `
@@ -2346,13 +3067,28 @@
           ${renderHeader()}
           <div class="app-content app-content--detail-flow">
             <main class="${detailMainClass}">${main}</main>
-            <footer class="app-footer">Copyright © 2026 WERKDONE PTE LTD.</footer>
+            ${renderAppFooter()}
           </div>
         </div>
       </div>
       ${renderModal()}
     `;
       bindEvents();
+      if (prevDetailScrollTop != null) {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            const sr = document.getElementById("detail-flow-scroll-root");
+            if (!sr) return;
+            const maxTop = Math.max(0, sr.scrollHeight - sr.clientHeight);
+            sr.scrollTop = Math.min(prevDetailScrollTop, maxTop);
+            setupDetailSectionScrollSpy();
+          });
+        });
+      } else {
+        requestAnimationFrame(() => {
+          setupDetailSectionScrollSpy();
+        });
+      }
       return;
     }
 
@@ -2361,7 +3097,7 @@
         ${renderHeader()}
         <div class="app-content">
           <main class="app-main">${main}</main>
-          <footer class="app-footer">Copyright © 2026 WERKDONE PTE LTD.</footer>
+          ${renderAppFooter()}
         </div>
       </div>
       ${renderModal()}
@@ -2651,9 +3387,19 @@
       btn.addEventListener("click", () => {
         const pipe = btn.getAttribute("data-pipeline");
         if (!PIPELINE_KEYS.includes(pipe)) return;
+        if (pipe === state.pipeline) return;
+        const prev = state.pipeline;
         persistProspectChecklistsFromDetail();
         state.pipeline = pipe;
         state.detail.pipeline = pipe;
+        if (state.route === "detail") {
+          appendDetailActivity(state.detail.rowKey, {
+            title: "Pipeline stage changed",
+            body: `Stage moved from ${pipelineStagePretty(prev)} to ${pipelineStagePretty(pipe)}.`,
+            by: PORTAL_CURRENT_USER.name,
+            stage: pipe,
+          });
+        }
         const p = PROSPECTS.find((x) => x.rowKey === state.detail.rowKey);
         if (p) p.status = pipe;
         renderApp();
@@ -2730,6 +3476,13 @@
         syncRegistrationMobileNavDom();
       });
     });
+
+    if (typeof window.WD_initDateInputs === "function") {
+      window.WD_initDateInputs(document.getElementById("app"));
+    }
+    if (typeof window.WD_initNricFields === "function") {
+      window.WD_initNricFields(document.getElementById("app"));
+    }
   }
 
   document.getElementById("app").addEventListener("click", (e) => {
@@ -2738,6 +3491,7 @@
 
     const formAction = el?.closest("[data-detail-form-action]");
     if (formAction && state.route === "detail") {
+      e.preventDefault();
       const action = formAction.getAttribute("data-detail-form-action");
       const panelAttr = formAction.getAttribute("data-detail-form-panel");
       const defs = window.WD_DETAIL_FORM_DEFAULTS;
@@ -2755,6 +3509,7 @@
         state.detailFormDraft = JSON.stringify({ ...def, ...(state.detailFormValues[stateKey] || {}) });
         state.detailFormEdit =
           panelAttr === "details" ? "details" : panelAttr === "medical-history" ? "medical-history" : "other-details";
+        state.detailScrollPreservePending = true;
         renderApp();
         return;
       }
@@ -2768,6 +3523,7 @@
         }
         state.detailFormEdit = null;
         state.detailFormDraft = null;
+        state.detailScrollPreservePending = true;
         renderApp();
         return;
       }
@@ -2777,14 +3533,118 @@
           const out = {};
           root.querySelectorAll("[data-detail-field]").forEach((inp) => {
             const k = inp.getAttribute("data-detail-field");
-            if (k) out[k] = inp.value;
+            if (!k) return;
+            if (inp.type === "checkbox") {
+              out[k] = inp.checked ? inp.value || "Yes" : "No";
+            } else if (inp.type === "radio") {
+              if (inp.checked) out[k] = inp.value;
+            } else {
+              out[k] = inp.value;
+            }
+          });
+          root.querySelectorAll("[data-detail-multi-select]").forEach((group) => {
+            const k = group.getAttribute("data-detail-multi-select");
+            if (!k) return;
+            const parts = [];
+            group.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+              if (cb.checked) parts.push(cb.value);
+            });
+            out[k] = parts.join(", ");
           });
           state.detailFormValues[stateKey] = out;
+          if (stateKey === "details") {
+            const slug = normalizeRiskSlugFromAssessment(out.riskLevel);
+            if (slug) {
+              state.detail.risk = slug;
+              const pid = state.detail.id;
+              PROSPECTS.forEach((row) => {
+                if (row.id === pid) row.risk = slug;
+              });
+            }
+          }
+          const panelLabel =
+            panelAttr === "details"
+              ? "Personal Details"
+              : panelAttr === "medical-history"
+                ? "Medical History"
+                : "Other Details";
+          appendDetailActivity(state.detail.rowKey, {
+            title: "Profile updated",
+            body: `${panelLabel} information was saved.`,
+            by: PORTAL_CURRENT_USER.name,
+            stage: state.pipeline,
+          });
         }
         state.detailFormEdit = null;
         state.detailFormDraft = null;
-        showToast("Changes saved.");
+        state.detailScrollPreservePending = true;
+        showToast("Data Updated");
         renderApp();
+        return;
+      }
+    }
+
+    if (state.route === "detail") {
+      const dlBtn = el?.closest("[data-detail-doc-download]");
+      if (dlBtn) {
+        e.preventDefault();
+        const docId = dlBtn.getAttribute("data-detail-doc-download");
+        if (docId) triggerDetailDocumentDownload(state.detail.rowKey, docId);
+        return;
+      }
+      const rmBtn = el?.closest("[data-detail-doc-remove]");
+      if (rmBtn) {
+        e.preventDefault();
+        const docId = rmBtn.getAttribute("data-detail-doc-remove");
+        if (docId) {
+          removeDetailDocument(state.detail.rowKey, docId);
+          state.detailScrollPreservePending = true;
+          renderApp();
+          showToast("Document removed.");
+        }
+        return;
+      }
+      if (el?.closest("[data-detail-doc-upload]")) {
+        e.preventDefault();
+        document.getElementById("detail-documents-input")?.click();
+        return;
+      }
+      if (el?.closest("[data-detail-add-note-open]")) {
+        e.preventDefault();
+        state.detailAddNoteModalOpen = true;
+        renderApp();
+        requestAnimationFrame(() => {
+          document.getElementById("detail-add-note-text")?.focus();
+        });
+        return;
+      }
+    }
+
+    if (state.detailAddNoteModalOpen) {
+      if (el?.id === "detail-add-note-modal") {
+        state.detailAddNoteModalOpen = false;
+        renderApp();
+        return;
+      }
+      if (el?.closest("[data-detail-add-note-dismiss]")) {
+        e.preventDefault();
+        state.detailAddNoteModalOpen = false;
+        renderApp();
+        return;
+      }
+      if (el?.closest("[data-detail-add-note-submit]")) {
+        e.preventDefault();
+        const ta = document.getElementById("detail-add-note-text");
+        const text = (ta?.value || "").trim();
+        if (!text) {
+          showToast("Please enter a note.");
+          return;
+        }
+        addDetailNote(state.detail.rowKey, text);
+        state.detailAddNoteModalOpen = false;
+        state.detailScrollPreservePending = true;
+        renderApp();
+        showToast("Note added.");
         return;
       }
     }
@@ -2793,10 +3653,13 @@
     if (sectNav && state.route === "detail") {
       const sid = sectNav.getAttribute("data-detail-section-nav");
       if (!sid) return;
-      state.detailNavSection = sid;
-      renderApp();
+      window.__detailNavProgrammaticScroll = true;
+      setDetailNavActive(sid);
       requestAnimationFrame(() => {
-        document.getElementById(sid)?.scrollIntoView({ behavior: "smooth", block: "start" });
+        scrollDetailSectionIntoView(sid);
+        window.setTimeout(() => {
+          window.__detailNavProgrammaticScroll = false;
+        }, 900);
       });
       return;
     }
@@ -2817,20 +3680,20 @@
       }
       return;
     }
-    const toastBtn = el.closest("[data-detail-toast]");
+    const toastBtn = el?.closest("[data-detail-toast]");
     if (toastBtn) {
       const msg = toastBtn.getAttribute("data-detail-toast") || "Action (prototype).";
       showToast(msg);
       return;
     }
-    if (el.closest("[data-prospect-docs-upload]")) {
+    if (el?.closest("[data-prospect-docs-upload]")) {
       if (el.closest("tr[data-nav-prospect]")) return;
       e.preventDefault();
       document.getElementById("prospect-docs-file")?.click();
       return;
     }
-    const row = el.closest("tr[data-nav-prospect]");
-    if (row && !el.closest("button")) {
+    const row = el?.closest("tr[data-nav-prospect]");
+    if (row && !el.closest("button") && !el.closest("a")) {
       const id = row.getAttribute("data-nav-prospect");
       location.hash = `#/prospect/${encodeURIComponent(id)}`;
     }
@@ -2843,7 +3706,17 @@
     if (t.hasAttribute("data-task")) {
       if (state.route !== "detail") return;
       const task = state.detail.tasks.find((x) => x.id === t.id);
-      if (task) task.done = t.checked;
+      if (!task) return;
+      const wasDone = task.done;
+      task.done = t.checked;
+      if (t.checked && !wasDone) {
+        appendDetailActivity(state.detail.rowKey, {
+          title: "Task completed",
+          body: task.label,
+          by: PORTAL_CURRENT_USER.name,
+          stage: state.pipeline,
+        });
+      }
       const row = t.closest(".detail-task-row");
       if (row) row.classList.toggle("is-done", t.checked);
       persistProspectChecklistsFromDetail();
@@ -2858,11 +3731,38 @@
       if (!stage || !PIPELINE_KEYS.includes(stage) || !state.detail.stageChecklistDone?.[stage]) return;
       const arr = state.detail.stageChecklistDone[stage];
       if (!Array.isArray(arr) || idx < 0 || idx >= arr.length) return;
+      const wasDone = !!arr[idx];
       arr[idx] = t.checked;
+      if (t.checked && !wasDone) {
+        const L = window.WD_STAGE_CHECKLISTS;
+        const lbls = (L && L[stage]) || [];
+        const taskLabel = lbls[idx] || `Checklist item ${idx + 1}`;
+        appendDetailActivity(state.detail.rowKey, {
+          title: "Task completed",
+          body: `${pipelineStagePretty(stage)} — ${taskLabel}`,
+          by: PORTAL_CURRENT_USER.name,
+          stage,
+        });
+      }
       const row = t.closest(".detail-task-row");
       if (row) row.classList.toggle("is-done", t.checked);
       persistProspectChecklistsFromDetail();
       renderApp();
+      return;
+    }
+
+    if (t.classList.contains("detail-documents-file-input")) {
+      if (state.route !== "detail") return;
+      const files = t.files;
+      if (!files?.length) {
+        t.value = "";
+        return;
+      }
+      addDetailDocumentsFromFiles(state.detail.rowKey, Array.from(files));
+      t.value = "";
+      state.detailScrollPreservePending = true;
+      renderApp();
+      showToast(`${files.length} file(s) uploaded.`);
       return;
     }
 
@@ -2935,6 +3835,11 @@
 
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
+    if (state.detailAddNoteModalOpen) {
+      state.detailAddNoteModalOpen = false;
+      renderApp();
+      return;
+    }
     if (state.route !== "register" || !state.registerSelfService || !state.registrationMobileNavOpen) return;
     state.registrationMobileNavOpen = false;
     syncRegistrationMobileNavDom();

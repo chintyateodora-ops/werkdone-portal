@@ -296,13 +296,19 @@
 /* —— Checkbox row (Label + Checkbox shadcn-style) —— */
 .ui-checkbox-row {
   display: flex;
-  align-items: center;
+  flex-direction: row;
+  align-items: flex-start;
   gap: 0.5rem;
-  font-size: var(--text-body-m);
-  line-height: 1.25;
+  max-width: 100%;
+  font-size: var(--text-body);
+  line-height: var(--lh-body);
   color: var(--color-foreground);
   cursor: pointer;
   user-select: none;
+}
+
+.ui-checkbox-row .ui-checkbox {
+  margin-top: 0.15rem;
 }
 
 .ui-checkbox-row:hover .ui-checkbox-label {
@@ -356,6 +362,7 @@
 
 .ui-checkbox-label {
   flex: 1;
+  min-width: 0;
   color: var(--color-muted-foreground);
   transition: color 0.15s ease;
 }
