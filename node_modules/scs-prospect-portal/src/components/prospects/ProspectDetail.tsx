@@ -1,9 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { formatProspectIdentifier, resolveProspectByRef } from '../../lib/prospectRef';
+import {
+  buildProspectHeaderFromRow,
+  buildDetailsFormDataForRow,
+  buildMedicalHistoryFormDataForRow,
+  buildOtherDetailsFormDataForRow,
+  detailsFormToProfilePatch,
+} from '../../data/prospectDetailSeed';
+import { MOCK_PROSPECTS } from '../../data/mockProspectsList';
+import { useIndividualProfiles } from '../../context/IndividualProfileContext';
 import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
 import { Label } from '../ui/label';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
-import { ChevronLeft, Phone, Mail, Calendar, User, Check, Plus, MoreHorizontal, FileText, Clock, AlertCircle, Copy, RefreshCw, Edit2, Trash2, ChevronDown, ChevronUp, Search, Tag } from 'lucide-react';
+import { ChevronLeft, Phone, Mail, Calendar, User, Check, Plus, MoreHorizontal, FileText, Clock, Copy, RefreshCw, Edit2, Trash2, ChevronDown, ChevronUp, Search, Tag } from 'lucide-react';
 import { Page } from '../../App';
 import { CreateTaskDialog } from './CreateTaskDialog';
 import { AddContactLogDialog } from './AddContactLogDialog';
@@ -13,12 +23,15 @@ import { AddTagDialog } from './AddTagDialog';
 import { EditableField, EditableTextArea, EditableSelect, FormFieldLabel } from './EditableField';
 import { PhonePrefixInput } from '../ui/phone-prefix-input';
 import { NricRevealInput } from '../ui/nric-reveal-input';
-import { FORM_CARD_SECTION_TITLE_CLASS } from '../../lib/formCardSectionTitle';
+import { FORM_CARD_SECTION_TITLE_CLASS, FORM_CARD_SECTION_TITLE_TEXT_CLASS } from '../../lib/formCardSectionTitle';
+import { DETAIL_FIELD_VALUE_CLASS } from '../../lib/detailFieldDisplay';
+import { cn } from '../ui/utils';
 import { combineDdMmYyyyAndTime } from '../../lib/dateDdMmYyyy';
 
 interface ProspectDetailProps {
   onNavigate: (page: Page) => void;
-  prospectId: string;
+  /** URL-safe ref (`encodeProspectRecordRef` or legacy name+NRIC token) */
+  prospectRef: string;
 }
 
 const RELIGION_OPTIONS = [
@@ -188,30 +201,14 @@ function getStageChecklistLabels(stage: string) {
   return labels[stage] || [];
 }
 
-// Mock data - will be replaced with actual data fetching
-const mockProspectData: Record<string, any> = {
-  'PROS-001234': {
-    id: 'PROS-00123',
-    name: 'Lee Wei Xiong',
-    gender: 'Female',
-    age: 69,
-    mobile: '9876 5432',
-    email: 'email@email.com',
-    source: 'Roadshow',
-    assignTo: 'Jasmine Lim',
-    status: 'Screening',
-    tags: ['Screening', 'High Risk'],
-    currentStage: 'Enquiring',
-    stages: [
-      { name: 'Enquiring', completed: true, current: true },
-      { name: 'Qualified', completed: false },
-      { name: 'Booked', completed: false },
-      { name: 'Screened', completed: false }
-    ]
-  }
-};
+export function ProspectDetail({ onNavigate, prospectRef }: ProspectDetailProps) {
+  const { profilesByRecordId, updateProfile } = useIndividualProfiles();
+  const row = useMemo(
+    () => resolveProspectByRef(prospectRef, profilesByRecordId) ?? MOCK_PROSPECTS[0],
+    [prospectRef, profilesByRecordId]
+  );
+  const prospect = useMemo(() => buildProspectHeaderFromRow(row), [row]);
 
-export function ProspectDetail({ onNavigate, prospectId }: ProspectDetailProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'details' | 'appointments' | 'notes' | 'medical-history' | 'other-details' | 'screening'>('overview');
   const [activeSection, setActiveSection] = useState<string>('personal');
   const [activeRoutingSection, setActiveRoutingSection] = useState<string>('eligibility');
@@ -222,7 +219,7 @@ export function ProspectDetail({ onNavigate, prospectId }: ProspectDetailProps) 
   const [isAddNoteOpen, setIsAddNoteOpen] = useState(false);
   const [isManualRouteOpen, setIsManualRouteOpen] = useState(false);
   const [isAddTagOpen, setIsAddTagOpen] = useState(false);
-  const [selectedStage, setSelectedStage] = useState('Enquiring');
+  const [selectedStage, setSelectedStage] = useState(row.status);
   const [stageChecklists, setStageChecklists] = useState<Record<string, boolean[]>>({
     'Enquiring': [true, true, true, true, true, false, false, false, false, false],
     'Qualified': [false, false, false, false, false, false, false, false, false, false],
@@ -235,118 +232,16 @@ export function ProspectDetail({ onNavigate, prospectId }: ProspectDetailProps) 
   const [isEditingMedicalHistory, setIsEditingMedicalHistory] = useState(false);
   const [isEditingOtherDetails, setIsEditingOtherDetails] = useState(false);
   
-  // Form data states
-  const [detailsFormData, setDetailsFormData] = useState({
-    name: 'Lee Wei Xiong',
-    nric: 'S1234567D',
-    gender: 'Female',
-    dateOfBirth: '1956-03-15',
-    age: '69',
-    mobile: '9876 5432',
-    email: 'email@email.com',
-    residentialStatus: 'Citizen',
-    religion: 'Buddhism',
-    preferredLanguages: ['English', 'Mandarin'] as string[],
-    race: 'Chinese',
-    address: '123 Bedok North Street 1, #05-123, Singapore 460123',
-    postalCode: '460123',
-    sourceType: 'Event',
-    sourceName: 'Community Health Roadshow - Bedok',
-    referredBy: 'Dr. Sarah Tan',
-    programEnrolled: 'Mammobus',
-    chasCardType: 'Blue',
-    healthierSg: 'yes',
-    firstMammogramScreening: 'no',
-    lastScreeningYear: '2023',
-    subsidyType: 'Healthier SG',
-    hasChronicConditions: 'Yes',
-    chronicConditions: 'Hypertension, Diabetes',
-    currentMedications: 'Metformin, Lisinopril',
-    allergies: 'Penicillin',
-    smokingStatus: 'Non-smoker',
-    alcoholConsumption: 'Occasional',
-    riskLevel: 'High',
-    personalCancerHistory: 'No',
-    preExistingConditions: 'None',
-    familyHistory: 'Mother had breast cancer at age 55',
-    cancerScreeningEligibilityCheck: 'No',
-    riskFactors: 'Family history of breast cancer, Age above 60',
-    pdpaConsent: 'Consented',
-    edmSubscription: 'Subscribed',
-    consentContact: 'Consented to be contacted for screening appointment booking',
-    consentDate: '2025-11-01',
-    marketingConsent: 'No',
-    /** Screening registration `Appointment Preferences` — same keys as mammobus/hpv/fit `reg-*-appointment` */
-    preferredScreeningDate: '15-11-2025',
-    preferredTimeSlot: 'morning',
-    screeningLocationEvent: 'Bedok Community Centre — Mammobus',
-    reviewPeriod: '6months',
-    nextReviewDate: '09/10/2026',
-  });
-  
-  const [medicalHistoryFormData, setMedicalHistoryFormData] = useState({
-    familyCancerHistory: 'Yes',
-    relativesWithCancer: 'Mother (Breast Cancer), Aunt (Ovarian Cancer)',
-    personalCancerHistory: 'No',
-    previousScreenings: 'Mammogram (2023), Pap Smear (2024)',
-    abnormalResults: 'No',
-    treatmentHistory: 'None',
-    breastSurgery: 'No',
-    breastSymptoms: 'No',
-    lastMammogramDate: '2023-06-15',
-    pregnancyStatus: 'Not applicable',
-    breastfeeding: 'No',
-    hormonalTherapy: 'No',
-    implants: 'No',
-    historyOfCancer: 'No',
-    diagnosedYear: '-',
-    cancerDetail: '-',
-    followUpAt: '-',
-    surgery: 'No',
-    radiationTherapy: 'No',
-    chemotherapy: 'No'
-  });
-  
-  const [otherDetailsFormData, setOtherDetailsFormData] = useState({
-    emergencyContactName: 'John Doe',
-    emergencyContactRelation: 'Spouse',
-    emergencyContactPhone: '9123 4567',
-    preferredContactTime: 'Morning (9am - 12pm)',
-    transportNeeded: 'No',
-    languageSupport: 'No',
-    accessibilityNeeds: 'Wheelchair access required',
-    dietaryRestrictions: 'None',
-    religiousConsiderations: 'None',
-    insurance: 'Yes',
-    insuranceProvider: 'AIA',
-    policyNumber: 'AIA123456789',
-    employmentStatus: 'Retired',
-    education: 'Secondary',
-    householdIncome: '$2,000 - $4,000',
-    otherMedicalIllness: '1) Left breast abscess surgery, drainage done 3x in 2010 @NCC\n2) Depression, OCD (cu IHH, on Fluoxetine)\n3) L5CS x1 (2006)\n4) L3, L4, L5, S1 bone degeneration, spinal stenosis admitted to NUH in 2018',
-    currentMedication: 'Fluoxetine',
-    drugAllergy: 'No',
-    immunosuppressiveCondition: 'No',
-    ageFirstIntercourse: '16',
-    multipleSexualPartners: 'Yes',
-    smoking: 'Yes',
-    smokingDuration: '30',
-    sexuallyTransmittedInfections: 'No',
-    ocpUse: '0',
-    childrenCount: '1',
-    hpvVaccinated: 'No',
-    cervicalOtherDetails: 'Started smoking at age 24 years old, currently smokes about 8 cig/day. Advised to stop smoking.',
-    lastPapTestDate: '4/2/21',
-    lastPapTestResult: 'Negative',
-    lastMammogramDate: '6/4/26',
-    chasCardHolder: 'Yes',
-    ageAtMenarche: '12',
-    ageAtMenopause: '48',
-    ageAtFirstChildbirth: '36',
-    hrtDuration: '',
-    preMalignantConditions: 'No',
-    breastConditionsDetails: 'Breast abscesses x3 in 2012, drainage op done. Now ok'
-  });
+  // Form data — seeded from master individual profile (see `data/prospectDetailSeed.ts`)
+  const [detailsFormData, setDetailsFormData] = useState(() => buildDetailsFormDataForRow(row));
+
+  const [medicalHistoryFormData, setMedicalHistoryFormData] = useState(() =>
+    buildMedicalHistoryFormDataForRow(row)
+  );
+
+  const [otherDetailsFormData, setOtherDetailsFormData] = useState(() =>
+    buildOtherDetailsFormDataForRow(row)
+  );
   
   const [prospectTags, setProspectTags] = useState<Array<{
     id: number;
@@ -451,9 +346,6 @@ export function ProspectDetail({ onNavigate, prospectId }: ProspectDetailProps) 
       notes: 'Met client at community roadshow. Discussed health concerns and provided educational materials. Client requested callback for appointment scheduling.'
     }
   ]);
-  
-  // Get prospect data or default
-  const prospect = mockProspectData[prospectId] || mockProspectData['PROS-001234'];
 
   // Handle task creation
   const handleCreateTask = (taskData: { name: string; dueDate: string; dueTime: string }) => {
@@ -520,58 +412,36 @@ export function ProspectDetail({ onNavigate, prospectId }: ProspectDetailProps) 
 
   const handleSaveDetails = () => {
     setIsEditingDetails(false);
-    // Save logic here - would typically call an API
+    updateProfile(row.recordId, detailsFormToProfilePatch(detailsFormData));
+    const label = formatProspectIdentifier(detailsFormData.name, detailsFormData.nric);
+    const now = new Date();
+    setContactLogs((prev) => [
+      {
+        id: `audit-${now.getTime()}`,
+        contactType: 'System',
+        date: now.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        }),
+        time: now.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        }),
+        duration: '—',
+        recordedBy: 'Current user',
+        outcome: 'Profile updated',
+        message: `Personal information saved for ${label}`,
+        notes: 'Master individual profile updated — visible in prospect list, header, and related views.',
+      },
+      ...prev,
+    ]);
   };
 
   const handleCancelDetails = () => {
     setIsEditingDetails(false);
-    // Reset form data to original values
-    setDetailsFormData({
-      name: 'Lee Wei Xiong',
-      nric: 'S1234567D',
-      gender: 'Female',
-      dateOfBirth: '1956-03-15',
-      age: '69',
-      mobile: '9876 5432',
-      email: 'email@email.com',
-      residentialStatus: 'Citizen',
-      religion: 'Buddhism',
-      preferredLanguages: ['English', 'Mandarin'],
-      race: 'Chinese',
-      address: '123 Bedok North Street 1, #05-123, Singapore 460123',
-      postalCode: '460123',
-      sourceType: 'Event',
-      sourceName: 'Community Health Roadshow - Bedok',
-      referredBy: 'Dr. Sarah Tan',
-      programEnrolled: 'Mammobus',
-      chasCardType: 'Blue',
-      healthierSg: 'yes',
-      firstMammogramScreening: 'no',
-      lastScreeningYear: '2023',
-      subsidyType: 'Healthier SG',
-      hasChronicConditions: 'Yes',
-      chronicConditions: 'Hypertension, Diabetes',
-      currentMedications: 'Metformin, Lisinopril',
-      allergies: 'Penicillin',
-      smokingStatus: 'Non-smoker',
-      alcoholConsumption: 'Occasional',
-      riskLevel: 'High',
-      personalCancerHistory: 'No',
-      preExistingConditions: 'None',
-      familyHistory: 'Mother had breast cancer at age 55',
-      cancerScreeningEligibilityCheck: 'No',
-      riskFactors: 'Family history of breast cancer, Age above 60',
-      pdpaConsent: 'Consented',
-      edmSubscription: 'Subscribed',
-      consentContact: 'Consented to be contacted for screening appointment booking',
-      consentDate: '2025-11-01',
-      marketingConsent: 'No',
-      preferredScreeningDate: '15-11-2025',
-      preferredTimeSlot: 'morning',
-      screeningLocationEvent: 'Bedok Community Centre — Mammobus',
-      reviewPeriod: '6months',
-      nextReviewDate: '09/10/2026',
-    });
+    setDetailsFormData(buildDetailsFormDataForRow(row));
   };
 
   // Handle edit mode for Medical History tab
@@ -586,22 +456,7 @@ export function ProspectDetail({ onNavigate, prospectId }: ProspectDetailProps) 
 
   const handleCancelMedicalHistory = () => {
     setIsEditingMedicalHistory(false);
-    // Reset form data
-    setMedicalHistoryFormData({
-      familyCancerHistory: 'Yes',
-      relativesWithCancer: 'Mother (Breast Cancer), Aunt (Ovarian Cancer)',
-      personalCancerHistory: 'No',
-      previousScreenings: 'Mammogram (2023), Pap Smear (2024)',
-      abnormalResults: 'No',
-      treatmentHistory: 'None',
-      breastSurgery: 'No',
-      breastSymptoms: 'No',
-      lastMammogramDate: '2023-06-15',
-      pregnancyStatus: 'Not applicable',
-      breastfeeding: 'No',
-      hormonalTherapy: 'No',
-      implants: 'No'
-    });
+    setMedicalHistoryFormData(buildMedicalHistoryFormDataForRow(row));
   };
 
   // Handle edit mode for Other Details tab
@@ -616,37 +471,7 @@ export function ProspectDetail({ onNavigate, prospectId }: ProspectDetailProps) 
 
   const handleCancelOtherDetails = () => {
     setIsEditingOtherDetails(false);
-    // Reset form data
-    setOtherDetailsFormData({
-      emergencyContactName: 'John Doe',
-      emergencyContactRelation: 'Spouse',
-      emergencyContactPhone: '9123 4567',
-      preferredContactTime: 'Morning (9am - 12pm)',
-      transportNeeded: 'No',
-      languageSupport: 'No',
-      accessibilityNeeds: 'Wheelchair access required',
-      dietaryRestrictions: 'None',
-      religiousConsiderations: 'None',
-      insurance: 'Yes',
-      insuranceProvider: 'AIA',
-      policyNumber: 'AIA123456789',
-      employmentStatus: 'Retired',
-      education: 'Secondary',
-      householdIncome: '$2,000 - $4,000',
-      otherMedicalIllness: '1) Left breast abscess surgery, drainage done 3x in 2010 @NCC\n2) Depression, OCD (cu IHH, on Fluoxetine)\n3) L5CS x1 (2006)\n4) L3, L4, L5, S1 bone degeneration, spinal stenosis admitted to NUH in 2018',
-      currentMedication: 'Fluoxetine',
-      drugAllergy: 'No',
-      immunosuppressiveCondition: 'No',
-      ageFirstIntercourse: '16',
-      multipleSexualPartners: 'Yes',
-      smoking: 'Yes',
-      smokingDuration: '30',
-      sexuallyTransmittedInfections: 'No',
-      ocpUse: '0',
-      childrenCount: '1',
-      hpvVaccinated: 'No',
-      cervicalOtherDetails: 'Started smoking at age 24 years old, currently smokes about 8 cig/day. Advised to stop smoking.'
-    });
+    setOtherDetailsFormData(buildOtherDetailsFormDataForRow(row));
   };
 
   // Handle checklist toggle
@@ -698,6 +523,36 @@ export function ProspectDetail({ onNavigate, prospectId }: ProspectDetailProps) 
       content: 'Follow-up needed regarding insurance coverage questions. Client mentioned family history of breast cancer - flagging for priority screening.'
     }
   ]);
+
+  useEffect(() => {
+    const r = resolveProspectByRef(prospectRef, profilesByRecordId) ?? MOCK_PROSPECTS[0];
+    setDetailsFormData(buildDetailsFormDataForRow(r));
+    setMedicalHistoryFormData(buildMedicalHistoryFormDataForRow(r));
+    setOtherDetailsFormData(buildOtherDetailsFormDataForRow(r));
+    setSelectedStage(r.status);
+    setIsEditingDetails(false);
+    setIsEditingMedicalHistory(false);
+    setIsEditingOtherDetails(false);
+    const rl = r.riskLevel ?? 'Medium';
+    setProspectTags([
+      {
+        id: 1,
+        name: 'Screening',
+        category: 'Screening Stage',
+        color: '#F3F4F6',
+        textColor: '#374151',
+        borderColor: '#E5E7EB',
+      },
+      {
+        id: 2,
+        name: `${rl} Risk`,
+        category: 'Risk',
+        color: rl === 'High' ? '#FEE2E2' : rl === 'Medium' ? '#FEF3C7' : '#DBEAFE',
+        textColor: rl === 'High' ? '#DC2626' : rl === 'Medium' ? '#D97706' : '#1E40AF',
+        borderColor: rl === 'High' ? '#FECACA' : rl === 'Medium' ? '#FDE68A' : '#BFDBFE',
+      },
+    ]);
+  }, [prospectRef]);
 
   // Handle note creation
   const handleAddNote = (noteContent: string) => {
@@ -848,7 +703,7 @@ export function ProspectDetail({ onNavigate, prospectId }: ProspectDetailProps) 
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <button onClick={() => onNavigate('all-prospects')} style={{ color: 'var(--primary)' }} className="hover:underline">Prospect Management</button>
               <span>›</span>
-              <span className="text-gray-900">{prospect.id}</span>
+              <span className="text-gray-900">{formatProspectIdentifier(prospect.name, prospect.nric)}</span>
             </div>
           </div>
 
@@ -983,75 +838,70 @@ export function ProspectDetail({ onNavigate, prospectId }: ProspectDetailProps) 
             <div className="space-y-6">
               {/* Activity Timeline */}
               <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)' }}>
-                    Activity Timeline
-                  </h3>
+                <div className="flex items-center justify-between gap-4 pb-3 mb-5 border-b border-slate-200">
+                  <h2 className={cn(FORM_CARD_SECTION_TITLE_TEXT_CLASS, 'm-0')}>ACTIVITY TIMELINE</h2>
                   <Button variant="ghost" size="sm">
                     View All
                   </Button>
                 </div>
                 <div className="space-y-4">
-                  {/* Timeline Item Example */}
-                  <div className="flex gap-4">
-                    <div className="flex flex-col items-center">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: '#EFF6FF' }}>
-                        <Phone className="w-4 h-4" style={{ color: 'var(--primary)' }} />
+                  {contactLogs.slice(0, 8).map((log) => (
+                    <div key={log.id} className="flex gap-4">
+                      <div className="flex flex-col items-center">
+                        <div
+                          className="w-8 h-8 rounded-full flex items-center justify-center"
+                          style={{
+                            backgroundColor:
+                              log.contactType === 'System'
+                                ? '#EEF2FF'
+                                : log.contactType === 'Email'
+                                  ? '#EFF6FF'
+                                  : '#FEF3C7',
+                          }}
+                        >
+                          {log.contactType === 'System' ? (
+                            <FileText className="w-4 h-4" style={{ color: 'var(--primary)' }} />
+                          ) : log.contactType === 'Email' ? (
+                            <Mail className="w-4 h-4" style={{ color: 'var(--primary)' }} />
+                          ) : (
+                            <Phone className="w-4 h-4" style={{ color: 'var(--primary)' }} />
+                          )}
+                        </div>
+                        <div className="w-0.5 flex-1 bg-gray-200 mt-2" />
                       </div>
-                      <div className="w-0.5 flex-1 bg-gray-200 mt-2" />
-                    </div>
-                    <div className="flex-1 pb-4">
-                      <div className="flex items-start justify-between mb-1">
-                        <p style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)' }}>
-                          Phone Call
+                      <div className="flex-1 pb-4">
+                        <div className="flex items-start justify-between mb-1">
+                          <p style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)' }}>
+                            {log.contactType}
+                            {log.outcome ? ` · ${log.outcome}` : ''}
+                          </p>
+                          <span style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-weight-normal)', color: '#6B7280' }}>
+                            {log.date} {log.time}
+                          </span>
+                        </div>
+                        <p style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-weight-normal)', color: '#6B7280' }}>
+                          {log.message}
                         </p>
-                        <span style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-weight-normal)', color: '#6B7280' }}>
-                          2 hours ago
-                        </span>
-                      </div>
-                      <p style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-weight-normal)', color: '#6B7280' }}>
-                        Contacted prospect regarding screening appointment
-                      </p>
-                      <p style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-weight-normal)', color: '#6B7280' }}>
-                        By: Jasmine Lim
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* More timeline items would go here */}
-                  <div className="flex gap-4">
-                    <div className="flex flex-col items-center">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: '#FEF3C7' }}>
-                        <AlertCircle className="w-4 h-4 text-yellow-600" />
-                      </div>
-                      <div className="w-0.5 flex-1 bg-gray-200 mt-2" />
-                    </div>
-                    <div className="flex-1 pb-4">
-                      <div className="flex items-start justify-between mb-1">
-                        <p style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)' }}>
-                          Status Updated
+                        {log.notes ? (
+                          <p style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-weight-normal)', color: '#6B7280' }}>
+                            {log.notes}
+                          </p>
+                        ) : null}
+                        <p style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-weight-normal)', color: '#6B7280' }}>
+                          By: {log.recordedBy}
                         </p>
-                        <span style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-weight-normal)', color: '#6B7280' }}>
-                          1 day ago
-                        </span>
                       </div>
-                      <p style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-weight-normal)', color: '#6B7280' }}>
-                        Status changed from "New" to "Contacted"
-                      </p>
-                      <p style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-weight-normal)', color: '#6B7280' }}>
-                        By: System
-                      </p>
                     </div>
-                  </div>
+                  ))}
                 </div>
               </div>
 
               {/* Stage Checklist */}
               <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--primary)' }}>
-                    {prospect.currentStage} — tasks
-                  </h3>
+                <div className="flex items-center justify-between gap-4 pb-3 mb-5 border-b border-slate-200">
+                  <h2 className={cn(FORM_CARD_SECTION_TITLE_TEXT_CLASS, 'm-0')}>
+                    {String(prospect.currentStage || '').toUpperCase()} — TASKS
+                  </h2>
                   <span style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-weight-normal)', color: '#9CA3AF' }}>
                     {getTaskStats().completed} / {getTaskStats().total} completed
                   </span>
@@ -1201,18 +1051,24 @@ export function ProspectDetail({ onNavigate, prospectId }: ProspectDetailProps) 
 
                       <div>
                         <FormFieldLabel htmlFor="prospect-detail-nric" label="NRIC / FIN Number" required />
-                        <NricRevealInput
-                          id="prospect-detail-nric"
-                          value={detailsFormData.nric}
-                          onChange={(value) => setDetailsFormData({ ...detailsFormData, nric: value })}
-                          disabled={!isEditingDetails}
-                          required
-                        />
+                        {isEditingDetails ? (
+                          <NricRevealInput
+                            id="prospect-detail-nric"
+                            value={detailsFormData.nric}
+                            onChange={(value) => setDetailsFormData({ ...detailsFormData, nric: value })}
+                            disabled={false}
+                            required
+                          />
+                        ) : (
+                          <p className={DETAIL_FIELD_VALUE_CLASS}>
+                            {detailsFormData.nric?.trim() ? detailsFormData.nric : '—'}
+                          </p>
+                        )}
                       </div>
 
                       <EditableField
                         label="Date of Birth"
-                        value="15/03/1988"
+                        value={detailsFormData.dateOfBirth}
                         isEditing={isEditingDetails}
                         onChange={(value) => setDetailsFormData({ ...detailsFormData, dateOfBirth: value })}
                         type="date"
@@ -1249,13 +1105,20 @@ export function ProspectDetail({ onNavigate, prospectId }: ProspectDetailProps) 
 
                       <div>
                         <FormFieldLabel label="Contact Number" required />
-                        <PhonePrefixInput
-                          value={detailsFormData.mobile}
-                          onChange={(value) => setDetailsFormData({ ...detailsFormData, mobile: value })}
-                          disabled={!isEditingDetails}
-                          required
-                          placeholder="E.g. 8123 4567"
-                        />
+                        {isEditingDetails ? (
+                          <PhonePrefixInput
+                            value={detailsFormData.mobile}
+                            onChange={(value) => setDetailsFormData({ ...detailsFormData, mobile: value })}
+                            required
+                            placeholder="E.g. 8123 4567"
+                          />
+                        ) : (
+                          <p className={DETAIL_FIELD_VALUE_CLASS}>
+                            {detailsFormData.mobile?.trim()
+                              ? `+65 ${detailsFormData.mobile}`
+                              : '—'}
+                          </p>
+                        )}
                       </div>
 
                       <EditableField
@@ -1270,13 +1133,7 @@ export function ProspectDetail({ onNavigate, prospectId }: ProspectDetailProps) 
                       <div className="md:col-span-2">
                         <FormFieldLabel label="Preferred Language" />
                         {!isEditingDetails ? (
-                          <p
-                            style={{
-                              fontSize: 'var(--text-base)',
-                              color: '#111827',
-                              margin: 0,
-                            }}
-                          >
+                          <p className={DETAIL_FIELD_VALUE_CLASS}>
                             {detailsFormData.preferredLanguages.length > 0
                               ? detailsFormData.preferredLanguages.join(', ')
                               : '—'}
@@ -1328,46 +1185,66 @@ export function ProspectDetail({ onNavigate, prospectId }: ProspectDetailProps) 
 
                       <div>
                         <FormFieldLabel label="Are you enrolled under Healthier SG?" />
-                        <select
-                          id="prospect-healthier-sg"
-                          value={detailsFormData.healthierSg}
-                          onChange={(e) =>
-                            setDetailsFormData({ ...detailsFormData, healthierSg: e.target.value })
-                          }
-                          disabled={!isEditingDetails}
-                          className="flex h-9 w-full min-w-0 rounded-lg border border-[var(--input-border)] bg-[var(--input-background)] px-3 py-1 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
-                          style={{ color: 'var(--input-text)', borderColor: 'var(--input-border)' }}
-                        >
-                          <option value="">Select Enrolment Status</option>
-                          <option value="yes">Yes</option>
-                          <option value="no">No</option>
-                          <option value="unsure">Unsure / Prefer not to say</option>
-                        </select>
+                        {isEditingDetails ? (
+                          <select
+                            id="prospect-healthier-sg"
+                            value={detailsFormData.healthierSg}
+                            onChange={(e) =>
+                              setDetailsFormData({ ...detailsFormData, healthierSg: e.target.value })
+                            }
+                            className="flex h-9 w-full min-w-0 rounded-lg border border-[var(--input-border)] bg-[var(--input-background)] px-3 py-1 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                            style={{ color: 'var(--input-text)', borderColor: 'var(--input-border)' }}
+                          >
+                            <option value="">Select Enrolment Status</option>
+                            <option value="yes">Yes</option>
+                            <option value="no">No</option>
+                            <option value="unsure">Unsure / Prefer not to say</option>
+                          </select>
+                        ) : (
+                          <p className={DETAIL_FIELD_VALUE_CLASS}>
+                            {detailsFormData.healthierSg === 'yes'
+                              ? 'Yes'
+                              : detailsFormData.healthierSg === 'no'
+                                ? 'No'
+                                : detailsFormData.healthierSg === 'unsure'
+                                  ? 'Unsure / Prefer not to say'
+                                  : '—'}
+                          </p>
+                        )}
                       </div>
 
                       <div className="md:col-span-2 space-y-3">
                         <FormFieldLabel label="Is this your first mammogram screening?" />
-                        <RadioGroup
-                          value={detailsFormData.firstMammogramScreening}
-                          onValueChange={(v) =>
-                            setDetailsFormData({ ...detailsFormData, firstMammogramScreening: v })
-                          }
-                          disabled={!isEditingDetails}
-                          className="flex flex-wrap gap-6"
-                        >
-                          <div className="flex items-center gap-2">
-                            <RadioGroupItem value="yes" id="first-mammo-yes" />
-                            <Label htmlFor="first-mammo-yes" className="cursor-pointer font-normal text-gray-900">
-                              Yes
-                            </Label>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <RadioGroupItem value="no" id="first-mammo-no" />
-                            <Label htmlFor="first-mammo-no" className="cursor-pointer font-normal text-gray-900">
-                              No
-                            </Label>
-                          </div>
-                        </RadioGroup>
+                        {isEditingDetails ? (
+                          <RadioGroup
+                            value={detailsFormData.firstMammogramScreening}
+                            onValueChange={(v) =>
+                              setDetailsFormData({ ...detailsFormData, firstMammogramScreening: v })
+                            }
+                            className="flex flex-wrap gap-6"
+                          >
+                            <div className="flex items-center gap-2">
+                              <RadioGroupItem value="yes" id="first-mammo-yes" />
+                              <Label htmlFor="first-mammo-yes" className="cursor-pointer text-sm font-normal text-gray-900">
+                                Yes
+                              </Label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <RadioGroupItem value="no" id="first-mammo-no" />
+                              <Label htmlFor="first-mammo-no" className="cursor-pointer text-sm font-normal text-gray-900">
+                                No
+                              </Label>
+                            </div>
+                          </RadioGroup>
+                        ) : (
+                          <p className={DETAIL_FIELD_VALUE_CLASS}>
+                            {detailsFormData.firstMammogramScreening === 'yes'
+                              ? 'Yes'
+                              : detailsFormData.firstMammogramScreening === 'no'
+                                ? 'No'
+                                : '—'}
+                          </p>
+                        )}
                       </div>
 
                       <EditableField
@@ -1486,8 +1363,7 @@ export function ProspectDetail({ onNavigate, prospectId }: ProspectDetailProps) 
                         />
                         <label
                           htmlFor="risk-eligibility-check"
-                          className="text-base text-gray-900 cursor-pointer pt-0.5"
-                          style={{ fontSize: 'var(--text-base)' }}
+                          className="text-sm text-gray-600 cursor-pointer pt-0.5"
                         >
                           Cancer Screening Eligibility Check
                         </label>
@@ -2044,7 +1920,7 @@ export function ProspectDetail({ onNavigate, prospectId }: ProspectDetailProps) 
                       FAMILY CANCER BACKGROUND
                     </h2>
                     
-                    <div className="grid grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <EditableSelect
                         label="Breast Cancer"
                         value="Yes"
@@ -2085,7 +1961,7 @@ export function ProspectDetail({ onNavigate, prospectId }: ProspectDetailProps) 
                       HISTORY OF CANCER
                     </h2>
                     
-                    <div className="grid grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <EditableSelect
                         label="History of Cancer"
                         value={medicalHistoryFormData.historyOfCancer}
@@ -2126,7 +2002,7 @@ export function ProspectDetail({ onNavigate, prospectId }: ProspectDetailProps) 
                       TREATMENT DONE
                     </h2>
                     
-                    <div className="grid grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <EditableSelect
                         label="Surgery"
                         value={medicalHistoryFormData.surgery}
@@ -2256,7 +2132,7 @@ export function ProspectDetail({ onNavigate, prospectId }: ProspectDetailProps) 
                         rows={5}
                       />
                       
-                      <div className="grid grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <EditableField
                           label="Current Medication"
                           value={otherDetailsFormData.currentMedication}
@@ -2287,7 +2163,7 @@ export function ProspectDetail({ onNavigate, prospectId }: ProspectDetailProps) 
                       CERVICAL CANCER RISK FACTORS
                     </h2>
                     
-                    <div className="grid grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <EditableField
                         label="Age at First Sexual Intercourse"
                         value={otherDetailsFormData.ageFirstIntercourse}
@@ -2359,7 +2235,7 @@ export function ProspectDetail({ onNavigate, prospectId }: ProspectDetailProps) 
                       OTHER DETAILS
                     </h2>
                     
-                    <div className="grid grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <EditableField
                         label="Para (No. Of Children Delivered)"
                         value={otherDetailsFormData.childrenCount}
@@ -2406,7 +2282,7 @@ export function ProspectDetail({ onNavigate, prospectId }: ProspectDetailProps) 
                       BREAST CANCER RISK FACTORS
                     </h2>
                     
-                    <div className="grid grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <EditableField
                         label="Age at Menarche (FMP)"
                         value={otherDetailsFormData.ageAtMenarche}

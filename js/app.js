@@ -35,6 +35,142 @@
                       <option value="no">No</option>
                       <option value="unsure">Unsure / Prefer not to say</option>`;
 
+  /**
+   * Demo clients for registration “existing client” lookup (NRIC or name).
+   * In production this would call an API; values align with list/detail prototype where possible.
+   */
+  const REG_EXISTING_CLIENTS = [
+    {
+      name: "Lee Wei Xiong",
+      nric: "S1234567D",
+      residential: "Citizen",
+      dob: "15-03-1956",
+      gender: "Male",
+      race: "Chinese",
+      phone: "9876 5432",
+      email: "email@email.com",
+      block: "123",
+      street: "Ang Mo Kio Avenue 6",
+      floor: "12",
+      unit: "12-345",
+      postal: "560123",
+      country: "Singapore",
+    },
+    {
+      name: "Nurul Huda",
+      nric: "S887782A",
+      residential: "Citizen",
+      dob: "12-06-1988",
+      gender: "Female",
+      race: "Malay",
+      phone: "9421 0785",
+      email: "nurul.huda@gmail.com",
+      block: "45",
+      street: "Bedok North Street 1",
+      floor: "05",
+      unit: "123",
+      postal: "460123",
+      country: "Singapore",
+    },
+    {
+      name: "Mohammed Ali",
+      nric: "S123345F",
+      residential: "PR",
+      dob: "03-11-1969",
+      gender: "Male",
+      race: "Malay",
+      phone: "9647 3012",
+      email: "mohammedali@gmail.com",
+      block: "202",
+      street: "Pasir Ris Drive 4",
+      floor: "08",
+      unit: "881",
+      postal: "510202",
+      country: "Singapore",
+    },
+    {
+      name: "Olivia Wilson",
+      nric: "S991112B",
+      residential: "Citizen",
+      dob: "22-01-1997",
+      gender: "Female",
+      race: "Eurasian",
+      phone: "9285 7401",
+      email: "olivia.wilson@gmail.com",
+      block: "10",
+      street: "Tampines Central 7",
+      floor: "03",
+      unit: "456",
+      postal: "520710",
+      country: "Singapore",
+    },
+    {
+      name: "Adam Sim Wei Wen",
+      nric: "S772223E",
+      residential: "Citizen",
+      dob: "30-07-1963",
+      gender: "Male",
+      race: "Chinese",
+      phone: "8246 3791",
+      email: "adamsim@example.net",
+      block: "88",
+      street: "Bishan Street 13",
+      floor: "14",
+      unit: "1402",
+      postal: "570088",
+      country: "Singapore",
+    },
+    /** Matches prospect list PROS-001238 (masked NRIC S****556D on list). */
+    {
+      name: "John Tan",
+      nric: "S1234556D",
+      residential: "Citizen",
+      dob: "20-03-1972",
+      gender: "Male",
+      race: "Chinese",
+      phone: "8756 3421",
+      email: "jr.hong.ccc@gmail.com",
+      block: "56",
+      street: "Hougang Avenue 9",
+      floor: "12",
+      unit: "128",
+      postal: "530056",
+      country: "Singapore",
+    },
+    {
+      name: "Chen Wei Ning",
+      nric: "S889901C",
+      residential: "Citizen",
+      dob: "18-04-1981",
+      gender: "Female",
+      race: "Chinese",
+      phone: "9781 2345",
+      email: "chenweining@outlook.com",
+      block: "301",
+      street: "Clementi Avenue 4",
+      floor: "09",
+      unit: "902",
+      postal: "120301",
+      country: "Singapore",
+    },
+    {
+      name: "Eva Rodriguez",
+      nric: "S334667G",
+      residential: "Citizen",
+      dob: "15-09-1993",
+      gender: "Female",
+      race: "Indian",
+      phone: "8573 5294",
+      email: "eva.rod@gmail.com",
+      block: "12",
+      street: "Kent Ridge Drive",
+      floor: "04",
+      unit: "08",
+      postal: "119082",
+      country: "Singapore",
+    },
+  ];
+
   const PROSPECTS = [
     {
       rowKey: "PROS-001234-Mammobus",
@@ -221,58 +357,16 @@
     },
   ];
 
+  /** Fallback detail shell when no list row matches — aligned with first grid prospect (Nurul / Mammobus). */
   const DETAIL_DEFAULT = {
-    rowKey: "PROS-00123",
-    id: "PROS-00123",
-    name: "Lee Wei Xiong",
-    subtitle: "Male • 69 years • Next Review: 6 November 2025",
-    programTags: ["Mammobus", "FIT", "HPV / PAP"],
-    risk: "high",
-    pipeline: "qualified",
-    timeline: [
-      {
-        stage: "qualified",
-        dateTime: "7 Apr 2026, 9:15 am",
-        title: "Phone Call",
-        body: "Contacted prospect regarding screening appointment",
-        by: "Jasmine Lim",
-      },
-      {
-        stage: "qualified",
-        dateTime: "6 Apr 2026, 4:30 pm",
-        title: "Status Updated",
-        body: 'Status changed from "New" to "Contacted"',
-        by: "System",
-      },
-      {
-        stage: "booked",
-        dateTime: "5 Apr 2026, 11:00 am",
-        title: "Appointment reminder scheduled",
-        body: "SMS reminder queued for mammography appointment",
-        by: "System",
-      },
-      {
-        stage: "booked",
-        dateTime: "4 Apr 2026, 2:45 pm",
-        title: "Confirmation email sent",
-        body: "Participant received booking summary and venue map.",
-        by: "System",
-      },
-      {
-        stage: "booked",
-        dateTime: "3 Apr 2026, 8:00 am",
-        title: "1-week reminder",
-        body: "Automated reminder SMS dispatched.",
-        by: "System",
-      },
-      {
-        stage: "screened",
-        dateTime: "28 Mar 2026, 3:20 pm",
-        title: "Screening documentation",
-        body: "Prior screening notes archived to profile",
-        by: "Coordinator",
-      },
-    ],
+    rowKey: "PROS-001234-Mammobus",
+    id: "PROS-001234",
+    name: "Nurul Huda",
+    subtitle: "Female • 37 years • Next Review: 14 May 2026",
+    programTags: ["Mammobus", "HPV / PAP"],
+    risk: "medium",
+    pipeline: "booked",
+    timeline: structuredClone(PROSPECTS[0].activityTimeline || []),
     tasks: [
       { id: "t1", label: "All eligibility criteria met and documented", done: true },
       { id: "t2", label: "Subsidy pathway confirmed (Healthier SG / CHAS / self-pay)", done: true },
@@ -536,23 +630,7 @@
       if (switched) {
         state.detail = mergeDetailFromProspect(p);
         state.pipeline = state.detail.pipeline;
-        const defNr =
-          (typeof window.WD_DETAIL_FORM_DEFAULTS === "object" &&
-            window.WD_DETAIL_FORM_DEFAULTS.details &&
-            window.WD_DETAIL_FORM_DEFAULTS.details.nextReviewDate) ||
-          "09/10/2026";
-        const ddmm = isoToDdMmYyyy(p.nextReview);
-        const defRisk =
-          (typeof window.WD_DETAIL_FORM_DEFAULTS === "object" &&
-            window.WD_DETAIL_FORM_DEFAULTS.details &&
-            window.WD_DETAIL_FORM_DEFAULTS.details.riskLevel) ||
-          "Medium";
-        const riskLabel = riskLevelFormLabelFromSlug(p.risk) || defRisk;
-        state.detailFormValues.details = {
-          ...(state.detailFormValues.details || {}),
-          nextReviewDate: ddmm || defNr,
-          riskLevel: riskLabel,
-        };
+        state.detailFormValues = buildProspectDetailFormValuesBundle(p);
       }
       /* Same prospect: keep pipeline + checklist state (do not reset from p.status each render — that broke task counts / stepper). */
       lastDetailId = id;
@@ -560,6 +638,12 @@
       if (lastDetailId !== id) {
         state.detail = structuredClone(DETAIL_DEFAULT);
         state.pipeline = state.detail.pipeline;
+        const D = window.WD_DETAIL_FORM_DEFAULTS;
+        state.detailFormValues = {
+          details: D && D.details ? structuredClone(D.details) : {},
+          medicalHistory: D && D.medicalHistory ? structuredClone(D.medicalHistory) : {},
+          otherDetails: D && D.otherDetails ? structuredClone(D.otherDetails) : {},
+        };
       }
       lastDetailId = id;
     }
@@ -706,6 +790,98 @@
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const yyyy = d.getFullYear();
     return `${dd}/${mm}/${yyyy}`;
+  }
+
+  function regResidentialToFormStatus(abbr) {
+    const a = String(abbr || "").trim().toLowerCase();
+    if (a === "pr") return "Permanent Resident";
+    if (a === "foreigner") return "Foreigner";
+    return "Singapore Citizen";
+  }
+
+  /** Match `REG_EXISTING_CLIENTS[].name` to prospect list row for shared NRIC / address master data. */
+  function findRegExistingClientByName(name) {
+    const n = String(name || "").trim();
+    if (!n) return null;
+    return REG_EXISTING_CLIENTS.find((c) => c.name === n) || null;
+  }
+
+  /** Registration-style DOB in detail tabs uses `DD/MM/YYYY` (slashes). */
+  function regDobToDetailDob(isoLike) {
+    return String(isoLike || "")
+      .trim()
+      .replace(/^(\d{2})-(\d{2})-(\d{4})$/, "$1/$2/$3");
+  }
+
+  /** Preferred screening date fields use `DD-MM-YYYY` (hyphens), aligned with screening forms. */
+  function isoDateToPreferredScreening(iso) {
+    if (iso == null || String(iso).trim() === "") return "";
+    const d = new Date(String(iso).trim() + "T12:00:00");
+    if (Number.isNaN(d.getTime())) return "";
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    return `${dd}-${mm}-${yyyy}`;
+  }
+
+  /**
+   * Single source of truth for Personal Details + aligned list fields when opening a prospect.
+   * Merges `WD_DETAIL_FORM_DEFAULTS.details` with list row + `REG_EXISTING_CLIENTS` (name match).
+   */
+  function buildProspectDetailsMaster(p) {
+    const D = window.WD_DETAIL_FORM_DEFAULTS;
+    const base = D && D.details ? structuredClone(D.details) : {};
+    const reg = findRegExistingClientByName(p.name);
+    const nextReviewDate = isoToDdMmYyyy(p.nextReview) || base.nextReviewDate || "";
+    const riskLevel = riskLevelFormLabelFromSlug(p.risk) || base.riskLevel || "Medium";
+
+    const out = {
+      ...base,
+      fullName: p.name,
+      contact: p.phone,
+      email: p.email,
+      sourceType: p.sourceType,
+      sourceName: p.sourceDetail,
+      nextReviewDate,
+      riskLevel,
+      screeningLocationEvent:
+        p.sourceDetail && String(p.sourceDetail).trim() ? String(p.sourceDetail).trim() : base.screeningLocationEvent,
+      preferredScreeningDate: isoDateToPreferredScreening(p.dateRegistered) || base.preferredScreeningDate,
+    };
+
+    if (reg) {
+      out.nric = reg.nric;
+      if (reg.gender === "Male" || reg.gender === "Female") out.gender = reg.gender;
+      out.dob = regDobToDetailDob(reg.dob);
+      out.race = reg.race;
+      out.residentialStatus = regResidentialToFormStatus(reg.residential);
+      out.block = reg.block;
+      out.street = reg.street;
+      out.floor = reg.floor;
+      out.unit = reg.unit;
+      out.postal = reg.postal;
+      out.country = reg.country;
+    } else {
+      const { age, gender } = parseProspectAgeGender(p.ageGender);
+      if (gender === "female") out.gender = "Female";
+      else if (gender === "male") out.gender = "Male";
+      if (age != null) out.dob = `01/06/${2026 - age}`;
+    }
+
+    return out;
+  }
+
+  /** Replace all detail tab drafts when switching prospects — avoids stale “Lee Wei Xiong” merges. */
+  function buildProspectDetailFormValuesBundle(p) {
+    const D = window.WD_DETAIL_FORM_DEFAULTS;
+    if (!D) {
+      return { details: {}, medicalHistory: {}, otherDetails: {} };
+    }
+    return {
+      details: buildProspectDetailsMaster(p),
+      medicalHistory: structuredClone(D.medicalHistory),
+      otherDetails: structuredClone(D.otherDetails),
+    };
   }
 
   /** Listing Name column second line, e.g. `S****345F , Female, 56 years`. */
@@ -1548,7 +1724,7 @@
           <div class="reg-landing__logos">
             <img src="assets/branding/scs-logo.png" alt="Singapore Cancer Society" class="reg-landing__logo reg-landing__logo--scs" width="160" height="52" />
             <span class="reg-landing__logo-divider" aria-hidden="true"></span>
-            <img src="assets/branding/logo-bcf.png" alt="Breast Cancer Foundation" class="reg-landing__logo reg-landing__logo--bcf" width="120" height="160" />
+            <img src="assets/branding/logo-bcf.png" alt="Breast Cancer Foundation" class="reg-landing__logo reg-landing__logo--bcf" width="200" height="120" />
             <span class="reg-landing__logo-divider" aria-hidden="true"></span>
             <img src="assets/branding/logo-nhg-diagnostics.png" alt="NHG Health Diagnostics" class="reg-landing__logo reg-landing__logo--nhg" width="220" height="56" />
           </div>
@@ -1753,8 +1929,198 @@
     );
   }
 
+  function renderRegistrationClientLookupSection() {
+    if (state.registerSelfService) return "";
+    return `
+                <div class="registration__basic-info">
+                  <div class="registration__client-search-row">
+                    <div class="registration__client-search-field">
+                      <i class="fi fi-rr-search registration__client-search-icon" aria-hidden="true"></i>
+                      <input
+                        type="search"
+                        class="registration__client-search-input"
+                        data-reg-client-search
+                        name="clientLookup"
+                        autocomplete="off"
+                        placeholder="Search existing Client information by input NRIC or Client Name"
+                        aria-describedby="reg-client-search-hint"
+                      />
+                    </div>
+                    <button type="button" class="btn registration__client-search-reset" data-reg-client-search-reset>Reset</button>
+                  </div>
+                  <p id="reg-client-search-hint" class="registration__client-search-status" data-reg-client-search-status role="status" aria-live="polite"></p>
+                </div>`;
+  }
+
+  function normalizeRegistrationNricQuery(s) {
+    return String(s || "")
+      .replace(/\s/g, "")
+      .toUpperCase();
+  }
+
+  function findExistingClientByRegistrationQuery(raw) {
+    const q = String(raw || "").trim();
+    if (!q) return null;
+    const nq = normalizeRegistrationNricQuery(q);
+    const lq = q.toLowerCase();
+
+    if (nq.length >= 4) {
+      const exact = REG_EXISTING_CLIENTS.find((c) => normalizeRegistrationNricQuery(c.nric) === nq);
+      if (exact) return exact;
+      const byNric = REG_EXISTING_CLIENTS.find((c) => {
+        const cn = normalizeRegistrationNricQuery(c.nric);
+        return cn.includes(nq) || nq.includes(cn);
+      });
+      if (byNric) return byNric;
+    }
+
+    const words = lq.split(/\s+/).filter(Boolean);
+    if (words.length) {
+      const byWords = REG_EXISTING_CLIENTS.find((c) => {
+        const name = c.name.toLowerCase();
+        return words.every((w) => name.includes(w));
+      });
+      if (byWords) return byWords;
+    }
+
+    return REG_EXISTING_CLIENTS.find((c) => c.name.toLowerCase().includes(lq)) || null;
+  }
+
+  function setRegistrationNricValue(form, storeInputId, value) {
+    const store = form.querySelector(`#${CSS.escape(storeInputId)}`);
+    if (!(store instanceof HTMLInputElement) || !store.classList.contains("field__nric-store")) return;
+    const shell = store.closest(".field__nric");
+    if (!shell) return;
+    const edit = shell.querySelector(".field__nric-edit");
+    store.value = value || "";
+    if (edit instanceof HTMLInputElement) edit.value = value || "";
+    if (typeof window.WD_syncNricMasks === "function") {
+      window.WD_syncNricMasks(form);
+    }
+  }
+
+  function applyRegistrationExistingClientAutofill(form, program, client) {
+    if (!form || !client) return;
+    const ids =
+      program === "hpv"
+        ? {
+            nricStore: "hpvNric",
+            fullName: "hpvFullName",
+            residential: "hpvResidential",
+            dob: "hpvDob",
+            gender: "hpvGender",
+            race: "hpvRace",
+            phone: "hpvMobile",
+            email: "hpvEmail",
+            block: "hpvBlock",
+            street: "hpvStreet",
+            floor: "hpvFloor",
+            unit: "hpvUnit",
+            postal: "hpvPostal",
+            country: "hpvCountry",
+          }
+        : program === "fit"
+          ? {
+              nricStore: "fitNric",
+              fullName: "fitFullName",
+              residential: "fitResidential",
+              dob: "fitDob",
+              gender: "fitGender",
+              race: "fitRace",
+              phone: "fitContact",
+              email: "fitEmail",
+              block: "fitBlock",
+              street: "fitStreet",
+              floor: "fitFloor",
+              unit: "fitUnit",
+              postal: "fitPostal",
+              country: "fitCountry",
+            }
+          : {
+              nricStore: "nric",
+              fullName: "fullName",
+              residential: "residential",
+              dob: "dob",
+              gender: "gender",
+              race: "race",
+              phone: "phone",
+              email: "email",
+              block: "block",
+              street: "street",
+              floor: "floor",
+              unit: "unit",
+              postal: "postal",
+              country: "country",
+            };
+
+    const setVal = (fieldId, val) => {
+      const el = form.querySelector(`#${CSS.escape(fieldId)}`);
+      if (el && "value" in el) el.value = val != null ? String(val) : "";
+    };
+
+    setVal(ids.fullName, client.name);
+    setVal(ids.residential, client.residential);
+    setRegistrationNricValue(form, ids.nricStore, client.nric);
+    setVal(ids.dob, client.dob);
+    setVal(ids.gender, client.gender);
+    setVal(ids.race, client.race);
+    setVal(ids.phone, client.phone);
+    setVal(ids.email, client.email);
+    setVal(ids.block, client.block);
+    setVal(ids.street, client.street);
+    setVal(ids.floor, client.floor);
+    setVal(ids.unit, client.unit);
+    setVal(ids.postal, client.postal);
+    setVal(ids.country, client.country);
+  }
+
+  function bindRegistrationClientLookup(form) {
+    if (!form || state.registerSelfService) return;
+    const searchInput = form.querySelector("[data-reg-client-search]");
+    const resetBtn = form.querySelector("[data-reg-client-search-reset]");
+    const statusEl = form.querySelector("[data-reg-client-search-status]");
+    if (!(searchInput instanceof HTMLInputElement)) return;
+
+    const setStatus = (msg, isError) => {
+      if (!(statusEl instanceof HTMLElement)) return;
+      statusEl.textContent = msg || "";
+      statusEl.classList.toggle("registration__client-search-status--error", Boolean(isError));
+    };
+
+    const runLookup = () => {
+      const q = searchInput.value.trim();
+      if (!q) {
+        setStatus("Enter an NRIC or client name, then press Enter to search.", false);
+        return;
+      }
+      const client = findExistingClientByRegistrationQuery(q);
+      if (!client) {
+        setStatus("No matching client found. You can continue as a new registration.", true);
+        showToast("No existing client match");
+        return;
+      }
+      applyRegistrationExistingClientAutofill(form, state.registerProgram, client);
+      setStatus("Existing client found — personal details and residential address were filled in. Please verify before submitting.", false);
+      showToast("Existing client found — details filled in");
+    };
+
+    searchInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        runLookup();
+      }
+    });
+
+    resetBtn?.addEventListener("click", () => {
+      searchInput.value = "";
+      setStatus("");
+      searchInput.focus();
+    });
+  }
+
   function renderRegisterMammobus() {
     const navHtml = renderRegistrationNavButtonsHtml();
+    const clientLookupHtml = renderRegistrationClientLookupSection();
 
     return `
         <div class="${registrationBodyClass()}">
@@ -1781,9 +2147,10 @@
 
               <section id="reg-personal" class="registration-card" tabindex="-1">
                 <h2 class="registration__section-label">Personal Information</h2>
+                ${clientLookupHtml}
                 <div class="form-grid form-grid--reg">
                   <div class="field">
-                    <label for="fullName">Name (as per NRIC)<span class="field__req" aria-hidden="true">*</span></label>
+                    <label for="fullName">Full Name (as per NRIC)<span class="field__req" aria-hidden="true">*</span></label>
                     <input id="fullName" name="fullName" type="text" required autocomplete="name" placeholder="Enter full name as in NRIC" />
                   </div>
                   <div class="field">
@@ -2038,6 +2405,7 @@
 
   function renderRegisterHpv() {
     const navHtml = renderRegistrationNavButtonsHtml();
+    const clientLookupHtml = renderRegistrationClientLookupSection();
 
     return `
         <div class="${registrationBodyClass()}">
@@ -2073,9 +2441,10 @@
 
               <section id="reg-hpv-personal" class="registration-card" tabindex="-1">
                 <h2 class="registration__section-label">Personal Information</h2>
+                ${clientLookupHtml}
                 <div class="form-grid form-grid--reg">
                   <div class="field">
-                    <label for="hpvFullName">Name (as per NRIC)<span class="field__req" aria-hidden="true">*</span></label>
+                    <label for="hpvFullName">Full Name (as per NRIC)<span class="field__req" aria-hidden="true">*</span></label>
                     <input id="hpvFullName" name="hpvFullName" type="text" required autocomplete="name" placeholder="Enter full name as in NRIC" />
                   </div>
                   <div class="field">
@@ -2305,6 +2674,7 @@
 
   function renderRegisterFit() {
     const navHtml = renderRegistrationNavButtonsHtml();
+    const clientLookupHtml = renderRegistrationClientLookupSection();
 
     return `
         <div class="${registrationBodyClass()}">
@@ -2330,9 +2700,10 @@
 
               <section id="reg-fit-personal" class="registration-card" tabindex="-1">
                 <h2 class="registration__section-label">Personal Information</h2>
+                ${clientLookupHtml}
                 <div class="form-grid form-grid--reg">
                   <div class="field">
-                    <label for="fitFullName">Name (as per NRIC)<span class="field__req" aria-hidden="true">*</span></label>
+                    <label for="fitFullName">Full Name (as per NRIC)<span class="field__req" aria-hidden="true">*</span></label>
                     <input id="fitFullName" name="fitFullName" type="text" required autocomplete="name" placeholder="Enter full name as in NRIC" />
                   </div>
                   <div class="field">
@@ -3483,6 +3854,8 @@
     if (typeof window.WD_initNricFields === "function") {
       window.WD_initNricFields(document.getElementById("app"));
     }
+    const regForm = document.getElementById("registration-form");
+    bindRegistrationClientLookup(regForm instanceof HTMLFormElement ? regForm : null);
   }
 
   document.getElementById("app").addEventListener("click", (e) => {

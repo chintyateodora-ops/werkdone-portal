@@ -7,6 +7,11 @@ import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Checkbox } from '../ui/checkbox';
 import { X, ChevronDown, MoreHorizontal, Search } from 'lucide-react';
+import { encodeProspectRecordRef, formatProspectIdentifier } from '../../lib/prospectRef';
+
+function prospectSelectionKey(p: { recordId: string }): string {
+  return encodeProspectRecordRef(p.recordId);
+}
 
 interface Criterion {
   label?: string;
@@ -26,7 +31,9 @@ interface SegmentData {
 }
 
 interface Prospect {
-  id: string;
+  recordId: string;
+  nric: string;
+  maskedNric: string;
   name: string;
   age: string;
   contact: string;
@@ -68,7 +75,7 @@ interface CreateSegmentDialogProps {
 export function CreateSegmentDialog({ open, onOpenChange, onCreateSegment, prospects, editMode, initialData, onUpdateSegment }: CreateSegmentDialogProps) {
   const [activeTab, setActiveTab] = useState<'criteria' | 'users'>('criteria');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedProspectIds, setSelectedProspectIds] = useState<Set<string>>(new Set());
+  const [selectedProspectRefs, setSelectedProspectRefs] = useState<Set<string>>(new Set());
   
   const parseInitialData = () => {
     if (!editMode || !initialData) {
@@ -207,8 +214,8 @@ export function CreateSegmentDialog({ open, onOpenChange, onCreateSegment, prosp
 
   const handleNext = () => {
     // Pre-select prospects that match criteria when navigating to Users tab
-    const matchingIds = new Set(matchingProspects.map(p => p.id));
-    setSelectedProspectIds(matchingIds);
+    const matchingRefs = new Set(matchingProspects.map(p => prospectSelectionKey(p)));
+    setSelectedProspectRefs(matchingRefs);
     setActiveTab('users');
   };
 
@@ -254,7 +261,7 @@ export function CreateSegmentDialog({ open, onOpenChange, onCreateSegment, prosp
     onCreateSegment({
       name: segmentData.name || 'Untitled Segment',
       criteria,
-      population: selectedProspectIds.size
+      population: selectedProspectRefs.size
     });
 
     // Reset form
@@ -268,7 +275,7 @@ export function CreateSegmentDialog({ open, onOpenChange, onCreateSegment, prosp
       lastContacted: '',
       tag: []
     });
-    setSelectedProspectIds(new Set());
+    setSelectedProspectRefs(new Set());
     setSearchQuery('');
     setActiveTab('criteria');
     onOpenChange(false);
@@ -313,7 +320,7 @@ export function CreateSegmentDialog({ open, onOpenChange, onCreateSegment, prosp
       id: initialData?.id || 0,
       name: segmentData.name || 'Untitled Segment',
       criteria,
-      population: selectedProspectIds.size
+      population: selectedProspectRefs.size
     });
 
     // Reset form
@@ -327,7 +334,7 @@ export function CreateSegmentDialog({ open, onOpenChange, onCreateSegment, prosp
       lastContacted: '',
       tag: []
     });
-    setSelectedProspectIds(new Set());
+    setSelectedProspectRefs(new Set());
     setSearchQuery('');
     setActiveTab('criteria');
     onOpenChange(false);
@@ -339,13 +346,13 @@ export function CreateSegmentDialog({ open, onOpenChange, onCreateSegment, prosp
   );
 
   // Toggle individual prospect selection
-  const toggleProspectSelection = (prospectId: string) => {
-    setSelectedProspectIds(prev => {
+  const toggleProspectSelection = (prospectRef: string) => {
+    setSelectedProspectRefs(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(prospectId)) {
-        newSet.delete(prospectId);
+      if (newSet.has(prospectRef)) {
+        newSet.delete(prospectRef);
       } else {
-        newSet.add(prospectId);
+        newSet.add(prospectRef);
       }
       return newSet;
     });
@@ -353,21 +360,21 @@ export function CreateSegmentDialog({ open, onOpenChange, onCreateSegment, prosp
 
   // Toggle all visible prospects
   const toggleAllVisible = () => {
-    const allVisibleIds = searchFilteredProspects.map(p => p.id);
-    const allSelected = allVisibleIds.every(id => selectedProspectIds.has(id));
+    const allVisibleRefs = searchFilteredProspects.map(p => prospectSelectionKey(p));
+    const allSelected = allVisibleRefs.every(ref => selectedProspectRefs.has(ref));
     
     if (allSelected) {
       // Deselect all visible
-      setSelectedProspectIds(prev => {
+      setSelectedProspectRefs(prev => {
         const newSet = new Set(prev);
-        allVisibleIds.forEach(id => newSet.delete(id));
+        allVisibleRefs.forEach(ref => newSet.delete(ref));
         return newSet;
       });
     } else {
       // Select all visible
-      setSelectedProspectIds(prev => {
+      setSelectedProspectRefs(prev => {
         const newSet = new Set(prev);
-        allVisibleIds.forEach(id => newSet.add(id));
+        allVisibleRefs.forEach(ref => newSet.add(ref));
         return newSet;
       });
     }
@@ -619,7 +626,7 @@ export function CreateSegmentDialog({ open, onOpenChange, onCreateSegment, prosp
                   />
                 </div>
                 <div style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--primary)' }}>
-                  {selectedProspectIds.size} Selected ({matchingProspects.length} matching criteria)
+                  {selectedProspectRefs.size} Selected ({matchingProspects.length} matching criteria)
                 </div>
               </div>
 
@@ -631,12 +638,12 @@ export function CreateSegmentDialog({ open, onOpenChange, onCreateSegment, prosp
                       <tr>
                         <th className="px-6 py-3 text-left">
                           <Checkbox
-                            checked={searchFilteredProspects.length > 0 && searchFilteredProspects.every(p => selectedProspectIds.has(p.id))}
+                            checked={searchFilteredProspects.length > 0 && searchFilteredProspects.every(p => selectedProspectRefs.has(prospectSelectionKey(p)))}
                             onCheckedChange={toggleAllVisible}
                           />
                         </th>
                         <th className="px-6 py-3 text-left text-xs text-gray-600 uppercase tracking-wider">
-                          Prospect ID
+                          Identifier
                         </th>
                         <th className="px-6 py-3 text-left text-xs text-gray-600 uppercase tracking-wider">
                           Prospect Name
@@ -657,12 +664,12 @@ export function CreateSegmentDialog({ open, onOpenChange, onCreateSegment, prosp
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {searchFilteredProspects.length > 0 ? (
-                        searchFilteredProspects.map((prospect, index) => (
-                          <tr key={index} className="hover:bg-gray-50">
+                        searchFilteredProspects.map((prospect) => (
+                          <tr key={prospectSelectionKey(prospect)} className="hover:bg-gray-50">
                             <td className="px-6 py-4">
                               <Checkbox
-                                checked={selectedProspectIds.has(prospect.id)}
-                                onCheckedChange={() => toggleProspectSelection(prospect.id)}
+                                checked={selectedProspectRefs.has(prospectSelectionKey(prospect))}
+                                onCheckedChange={() => toggleProspectSelection(prospectSelectionKey(prospect))}
                               />
                             </td>
                             <td className="px-6 py-4" style={{ 
@@ -670,7 +677,7 @@ export function CreateSegmentDialog({ open, onOpenChange, onCreateSegment, prosp
                               fontSize: 'var(--text-base)',
                               fontWeight: 'var(--font-weight-normal)'
                             }}>
-                              {prospect.id}
+                              {formatProspectIdentifier(prospect.name, prospect.maskedNric)}
                             </td>
                             <td className="px-6 py-4">
                               <div style={{ 

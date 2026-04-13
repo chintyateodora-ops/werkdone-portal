@@ -13,12 +13,14 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
+import { formatProspectIdentifier } from '../../lib/prospectRef';
 
 interface AssignStaffDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  prospectId: string;
   prospectName: string;
+  /** NRIC/FIN for display (full or masked). */
+  nric: string;
   currentAssignedStaff?: string[];
   onAssignStaff: (staffNames: string[]) => void;
 }
@@ -36,8 +38,8 @@ const staffMembers = [
 export function AssignStaffDialog({ 
   open, 
   onOpenChange, 
-  prospectId, 
   prospectName,
+  nric,
   currentAssignedStaff,
   onAssignStaff 
 }: AssignStaffDialogProps) {
@@ -92,7 +94,7 @@ export function AssignStaffDialog({
 
         {/* Body */}
         <div className="px-6 py-4 space-y-4">
-          {/* Prospect ID */}
+          {/* Identifier (name + NRIC) */}
           <div>
             <label style={{
               fontSize: 'var(--text-sm)',
@@ -101,7 +103,7 @@ export function AssignStaffDialog({
               display: 'block',
               marginBottom: '8px'
             }}>
-              Prospect ID
+              Identifier
             </label>
             <div 
               className="px-3 py-2 rounded"
@@ -112,31 +114,7 @@ export function AssignStaffDialog({
                 border: '1px solid var(--border)'
               }}
             >
-              {prospectId}
-            </div>
-          </div>
-
-          {/* Prospect Name */}
-          <div>
-            <label style={{
-              fontSize: 'var(--text-sm)',
-              fontWeight: 'var(--font-weight-medium)',
-              color: 'var(--foreground)',
-              display: 'block',
-              marginBottom: '8px'
-            }}>
-              Prospect Name
-            </label>
-            <div 
-              className="px-3 py-2 rounded"
-              style={{ 
-                backgroundColor: '#F8F9FA',
-                fontSize: 'var(--text-sm)',
-                color: 'var(--foreground)',
-                border: '1px solid var(--border)'
-              }}
-            >
-              {prospectName}
+              {formatProspectIdentifier(prospectName, nric)}
             </div>
           </div>
 

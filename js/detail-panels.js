@@ -45,21 +45,21 @@
   /** Default field values for editable detail tabs (merged with state.detailFormValues in app.js) */
   const DETAIL_FORM_DEFAULTS = {
     details: {
-      fullName: "Lee Wei Xiong",
+      fullName: "Nurul Huda",
       gender: "Female",
-      dob: "15/03/1988",
-      email: "email@email.com",
-      contact: "9876 5432",
-      nric: "S1234567D",
-      race: "Chinese",
-      religion: "Buddhism",
-      preferredLanguages: "English, Mandarin",
+      dob: "12/06/1988",
+      email: "nurul.huda@gmail.com",
+      contact: "9421 0785",
+      nric: "S887782A",
+      race: "Malay",
+      religion: "Islam",
+      preferredLanguages: "English, Malay",
       residentialStatus: "Singapore Citizen",
       chasCardType: "Blue",
       healthierSg: "yes",
       firstMammogramScreening: "no",
       lastScreeningYear: "2023",
-      riskLevel: "High",
+      riskLevel: "Medium",
       personalCancerHistory: "No",
       cancerScreeningEligibilityCheck: "No",
       preExistingConditions: "None",
@@ -72,19 +72,19 @@
       pdpaConsent: "Yes",
       edmSubscription: "Yes",
       consentContact: "Yes",
-      block: "123",
-      street: "Ang Mo Kio Avenue 6",
-      floor: "12",
-      unit: "12-345",
-      postal: "560123",
+      block: "45",
+      street: "Bedok North Street 1",
+      floor: "05",
+      unit: "123",
+      postal: "460123",
       country: "Singapore",
       /** Maps to screening registration `reg-appointment` / `reg-hpv-appointment` / `reg-fit-appointment` */
-      preferredScreeningDate: "15-11-2025",
+      preferredScreeningDate: "28-10-2025",
       preferredTimeSlot: "morning",
-      screeningLocationEvent: "Bedok Community Centre — Mammobus",
+      screeningLocationEvent: "Community Health Roadshow - Bedok",
       /** Screening tab — review cadence (values match `fieldSelectValueLabel` options) */
       reviewPeriod: "6months",
-      nextReviewDate: "09/10/2026",
+      nextReviewDate: "14/05/2026",
     },
     medicalHistory: {
       breastCancer: "Yes",
@@ -155,6 +155,14 @@
     return { ...def, ...(formValues || {}) };
   }
 
+  /** Prospect profile: show NRIC like list view (e.g. S****567D), not full string. */
+  function maskNricForProfileDisplay(raw) {
+    const s = String(raw || "").trim();
+    if (!s) return "—";
+    if (s.length <= 5) return `${s.charAt(0)}****`;
+    return `${s.charAt(0)}****${s.slice(-4)}`;
+  }
+
   function regNavHtml(e, items, activeId) {
     return items
       .map(
@@ -173,8 +181,20 @@
     const inputType = opts.inputType != null ? String(opts.inputType) : "text";
     const val = merged[key] != null ? String(merged[key]) : "";
     const fid = `df-${tabKey}-${key}`;
+    const lid = `${fid}-label`;
     const reqHtml = required ? '<span class="field__req" aria-hidden="true">*</span>' : "";
     const gridClass = fullWidth ? " field--full" : "";
+    /** Matches screening form “Full Name (as per NRIC)” — identifier; not editable on profile. */
+    if (opts.identifierReadonly) {
+      if (editing) {
+        return `<div class="field field--identifier-readonly${gridClass}">
+        <label id="${e(lid)}">${e(label)}${reqHtml}</label>
+        <input type="hidden" data-detail-field="${e(key)}" value="${e(val)}"${required ? " required" : ""} />
+        <div class="field__identifier-readonly-display" role="text" aria-labelledby="${e(lid)}" aria-readonly="true">${e(val)}</div>
+      </div>`;
+      }
+      return `<div class="detail-field${fullWidth ? " detail-field--full" : ""}"><span class="detail-field__label">${e(label)}${reqHtml}</span><span class="detail-field__value">${e(val)}</span></div>`;
+    }
     if (editing) {
       const phAttr = placeholder ? ` placeholder="${e(placeholder)}"` : "";
       return `<div class="field${gridClass}">
@@ -185,28 +205,23 @@
     return `<div class="detail-field${fullWidth ? " detail-field--full" : ""}"><span class="detail-field__label">${e(label)}${reqHtml}</span><span class="detail-field__value">${e(val)}</span></div>`;
   }
 
-  /** NRIC with mask + reveal — pairs with `js/nric-toggle.js` */
+  /** NRIC on profile: always masked in UI; not editable (full value kept in hidden field when editing for save). */
   function fieldNric(e, label, key, tabKey, merged, editing, opts) {
     opts = opts || {};
     const required = !!opts.required;
     const val = merged[key] != null ? String(merged[key]) : "";
     const fid = `df-${tabKey}-${key}`;
+    const lid = `${fid}-label`;
     const reqHtml = required ? '<span class="field__req" aria-hidden="true">*</span>' : "";
+    const masked = maskNricForProfileDisplay(val);
     if (editing) {
-      const toggleIcons = `<span class="field__nric-toggle-icons" aria-hidden="true"><i class="fi fi-rr-eye-crossed field__nric-toggle-ico field__nric-toggle-ico--when-masked"></i><i class="fi fi-rr-eye field__nric-toggle-ico field__nric-toggle-ico--when-revealed"></i></span>`;
-      return `<div class="field">
-        <label for="${e(fid)}">${e(label)}${reqHtml}</label>
-        <div class="field__nric field__nric--revealed">
-          <input type="hidden" class="field__nric-store" data-detail-field="${e(key)}" value="${e(val)}" />
-          <div class="field__nric-face">
-            <span class="field__nric-asterisks" aria-hidden="true"></span>
-            <input id="${e(fid)}" type="text" class="field__nric-edit" autocomplete="off" maxlength="20" placeholder="Enter NRIC No."${required ? " required" : ""} />
-          </div>
-          <button type="button" class="field__nric-toggle" aria-label="Hide NRIC" aria-pressed="true" title="Hide NRIC" data-nric-toggle>${toggleIcons}</button>
-        </div>
+      return `<div class="field field--nric-readonly">
+        <label id="${e(lid)}">${e(label)}${reqHtml}</label>
+        <input type="hidden" data-detail-field="${e(key)}" value="${e(val)}" />
+        <div class="field__nric-readonly-display" role="text" aria-labelledby="${e(lid)}" aria-readonly="true">${e(masked)}</div>
       </div>`;
     }
-    return `<div class="detail-field"><span class="detail-field__label">${e(label)}${reqHtml}</span><span class="detail-field__value">${e(val)}</span></div>`;
+    return `<div class="detail-field"><span class="detail-field__label">${e(label)}${reqHtml}</span><span class="detail-field__value">${e(masked)}</span></div>`;
   }
 
   /** +65 | mobile — same shell as registration */
@@ -561,9 +576,8 @@
               .map(
                 (ev) => `
                   <li class="timeline__item">
-                    <div>
-                      <div class="timeline__icon" aria-hidden="true"><span class="timeline__dot"></span></div>
-                      <div class="timeline__line"></div>
+                    <div class="timeline__track" aria-hidden="true">
+                      <span class="timeline__dot"></span>
                     </div>
                     <div class="timeline__body timeline__body--clear">
                       <span class="timeline__meta">${e(timelineMetaLine(ev))}</span>
@@ -618,9 +632,10 @@
                   e,
                   "PERSONAL INFORMATION",
                   `<div class="detail-fields detail-fields--2">
-                    ${fieldInput(e, "Name (as per NRIC)", "fullName", "details", merged, editing, {
+                    ${fieldInput(e, "Full Name (as per NRIC)", "fullName", "details", merged, editing, {
                       required: true,
                       placeholder: "Enter full name as in NRIC",
+                      identifierReadonly: true,
                     })}
                     ${fieldSelect(
                       e,

@@ -2159,28 +2159,52 @@ button {
   font-weight: var(--weight-semibold);
 }
 
-/* Timeline */
+/* Timeline — single continuous rail + purple dots (overview activity feed) */
 .timeline {
+  position: relative;
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.timeline__item {
-  display: grid;
-  grid-template-columns: 2rem 1fr;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
+/* Centred in the first grid column; aligns with .timeline__track / .timeline__dot */
+.timeline::before {
+  content: "";
+  position: absolute;
+  left: calc(0.625rem - 1px);
+  top: 0.375rem;
+  bottom: 0.375rem;
+  width: 2px;
+  border-radius: 2px;
+  background: #e2e8f0;
+  pointer-events: none;
 }
 
-.timeline__icon {
-  width: 2rem;
-  min-height: 0.75rem;
-  display: flex;
+.timeline:has(.timeline__item--empty)::before {
+  display: none;
+}
+
+.timeline__item {
+  display: grid;
+  grid-template-columns: 1.25rem 1fr;
+  gap: 0.75rem 1rem;
   align-items: flex-start;
+  margin: 0;
+  padding-bottom: 1.25rem;
+}
+
+.timeline__item:last-child {
+  padding-bottom: 0;
+}
+
+.timeline__track {
+  position: relative;
+  z-index: 1;
+  display: flex;
   justify-content: center;
-  padding-top: 0.25rem;
-  background: transparent;
+  align-items: flex-start;
+  width: 100%;
+  padding-top: 0.125rem;
 }
 
 .timeline__dot {
@@ -2189,14 +2213,7 @@ button {
   border-radius: 50%;
   background: var(--color-primary-500);
   flex-shrink: 0;
-}
-
-.timeline__line {
-  width: 2px;
-  flex: 1;
-  min-height: 1rem;
-  background: var(--color-neutral-4);
-  margin: 0.25rem auto 0;
+  box-shadow: 0 0 0 3px var(--color-white);
 }
 
 .timeline__body--clear {
@@ -2358,9 +2375,43 @@ button {
   cursor: pointer;
 }
 
+/* Disabled controls: keep the same light border as enabled fields (UAs often draw a dark ring on selects) */
+.field input:disabled:not([type="radio"]):not([type="checkbox"]):not(.field__prefix),
+.field textarea:disabled {
+  border: 1px solid var(--color-neutral-5);
+  outline: none;
+  box-shadow: none;
+}
+
+.field select:disabled {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid var(--color-neutral-5);
+  outline: none;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
 .field textarea {
   min-height: 100px;
   resize: vertical;
+}
+
+/* Prospect profile — NRIC/FIN + full name: non-editable identifiers (mirrors disabled input fill) */
+.field.field--nric-readonly .field__nric-readonly-display,
+.field.field--identifier-readonly .field__identifier-readonly-display {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-neutral-5);
+  border-radius: var(--radius-md);
+  font-size: var(--text-body-m);
+  line-height: 1.45;
+  color: var(--color-gray-900);
+  background: var(--color-gray-50);
+  cursor: default;
+  user-select: none;
 }
 
 .field input:focus,
@@ -2695,6 +2746,79 @@ button {
 .registration__form {
   max-width: 56rem;
   margin: 0 auto;
+}
+
+.registration__basic-info {
+  margin: 0 0 1.25rem;
+}
+
+.registration__client-search-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.75rem;
+}
+
+.registration__client-search-field {
+  position: relative;
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.registration__client-search-icon {
+  position: absolute;
+  left: 0.875rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1rem;
+  color: var(--color-gray-500);
+  pointer-events: none;
+}
+
+.registration__client-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.875rem 0.5rem 2.5rem;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-size: var(--text-body-m);
+  background: var(--color-gray-50);
+  color: var(--color-gray-900);
+}
+
+.registration__client-search-input:focus {
+  outline: 2px solid var(--color-primary-400);
+  outline-offset: 1px;
+  background: var(--color-white);
+}
+
+.registration__client-search-reset {
+  flex: 0 0 auto;
+  align-self: center;
+  background: var(--color-white);
+  color: var(--color-primary-500);
+  border: 1px solid var(--color-primary-500);
+  min-height: 2.75rem;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+}
+
+.registration__client-search-reset:hover {
+  background: rgba(242, 238, 246);
+}
+
+.registration__client-search-status {
+  margin: 0.5rem 0 0;
+  font-size: var(--text-body-s);
+  color: var(--color-gray-600);
+  line-height: 1.45;
+  min-height: 1.35em;
+}
+
+.registration__client-search-status--error {
+  color: #b45309;
 }
 
 .registration-card {
@@ -3752,14 +3876,13 @@ body.registration-nav-drawer-open {
   max-width: 11rem;
 }
 
-/* BCF asset is on black; pad so the block reads as intentional on a light header */
+/* BCF — full-colour mark on white (heart ribbons + wordmark) */
 .reg-landing__logo--bcf {
   height: 3rem;
   width: auto;
-  max-width: 5.25rem;
-  padding: 0.2rem 0.35rem;
-  background: #000;
-  border-radius: var(--radius-sm);
+  max-width: 7.5rem;
+  padding: 0;
+  background: transparent;
   box-sizing: content-box;
 }
 
@@ -3906,9 +4029,17 @@ body.registration-nav-drawer-open {
 .field--singpass-locked textarea:disabled {
   background: var(--color-gray-100);
   color: var(--color-neutral-9);
-  border-color: var(--color-gray-300);
+  /* Match standalone text inputs: soft 1px border (invalid --color-gray-300 broke this rule before) */
+  border: 1px solid var(--color-neutral-5);
+  outline: none;
+  box-shadow: none;
   cursor: not-allowed;
   opacity: 1;
+}
+
+.field--singpass-locked select:disabled {
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .registration__radio-label--singpass-locked {

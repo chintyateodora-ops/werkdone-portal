@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Search, Plus, ChevronDown, MoreHorizontal, Filter, List, LayoutGrid, CheckCircle, Circle } from 'lucide-react';
@@ -13,151 +13,8 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuSeparator,
 } from '../ui/dropdown-menu';
-
-// Extended mock data with program information
-const mockProspectsWithPrograms = [
-  {
-    id: 'PROS-001234',
-    name: 'Nurul Huda',
-    maskedNric: 'S****782A',
-    age: '37 years',
-    gender: 'Female',
-    contact: '9421 0785',
-    email: 'nurul.huda@gmail.com',
-    status: 'Booked',
-    programs: ['mammobus', 'hpv'], // Enrolled in multiple programs
-    source: 'Event',
-    sourceDetail: 'Community Health Roadshow - Bedok',
-    nextReview: '2026-05-14',
-    assignTo: ['Jasmine Lim'],
-    tasksCompleted: 3,
-    tasksTotal: 8,
-    riskLevel: 'Medium',
-    residentialStatus: 'Citizen',
-    /** Screening registration form submitted (ISO YYYY-MM-DD). */
-    dateRegistered: '2025-10-28',
-  },
-  {
-    id: 'PROS-001235',
-    name: 'Mohammed Ali',
-    maskedNric: 'S****345F',
-    age: '56 years',
-    gender: 'Male',
-    contact: '9647 3012',
-    email: 'mohammedali@gmail.com',
-    status: 'Enquiring',
-    programs: ['fit'],
-    source: 'Campaign',
-    sourceDetail: 'Cancer Awareness 2025',
-    nextReview: '2026-04-01',
-    assignTo: [],
-    tasksCompleted: 5,
-    tasksTotal: 10,
-    riskLevel: 'Low',
-    residentialStatus: 'PR',
-    dateRegistered: '2025-10-18',
-  },
-  {
-    id: 'PROS-001236',
-    name: 'Chen Wei Ning',
-    maskedNric: 'S****901C',
-    age: '45 years',
-    gender: 'Female',
-    contact: '9781 2345',
-    email: 'chenweining@outlook.com',
-    status: 'Enquiring',
-    programs: ['mammobus'],
-    source: 'Manual',
-    sourceDetail: 'Walk-in Registration',
-    nextReview: '2026-06-15',
-    assignTo: ['Jasmine Lim'],
-    tasksCompleted: 7,
-    tasksTotal: 10,
-    riskLevel: 'Medium',
-    residentialStatus: 'Citizen',
-    dateRegistered: '2025-10-12',
-  },
-  {
-    id: 'PROS-001237',
-    name: 'Olivia Wilson',
-    maskedNric: 'S****112B',
-    age: '28 years',
-    gender: 'Female',
-    contact: '9285 7401',
-    email: 'olivia.wilson@gmail.com',
-    status: 'Qualified',
-    programs: ['hpv'],
-    source: 'Event',
-    sourceDetail: 'Community Health Roadshow - Bedok',
-    nextReview: '2026-03-10',
-    assignTo: ['Jasmine Lim', 'Fan Wei Zhe'],
-    tasksCompleted: 4,
-    tasksTotal: 10,
-    riskLevel: 'High',
-    residentialStatus: 'Foreigner',
-    dateRegistered: '2025-10-05',
-  },
-  {
-    id: 'PROS-001238',
-    name: 'John Tan',
-    maskedNric: 'S****556D',
-    age: '54 years',
-    gender: 'Male',
-    contact: '8756 3421',
-    email: 'jr.hong.ccc@gmail.com',
-    status: 'Booked',
-    programs: ['fit'],
-    source: 'Event',
-    sourceDetail: 'Community Health Roadshow - Bedok',
-    nextReview: '2026-07-01',
-    assignTo: ['Jasmine Lim'],
-    tasksCompleted: 6,
-    tasksTotal: 8,
-    riskLevel: 'Medium',
-    residentialStatus: 'Citizen',
-    dateRegistered: '2025-09-28',
-  },
-  {
-    id: 'PROS-001239',
-    name: 'Adam Sim Wei Wen',
-    maskedNric: 'S****223E',
-    age: '62 years',
-    gender: 'Male',
-    contact: '8246 3791',
-    email: 'adamsim@example.net',
-    status: 'Screened',
-    programs: ['mammobus', 'fit'],
-    source: 'Campaign',
-    sourceDetail: 'Pink for Life 2025',
-    nextReview: '2026-11-09',
-    assignTo: ['Fan Wei Zhe'],
-    tasksCompleted: 10,
-    tasksTotal: 10,
-    riskLevel: 'Medium',
-    residentialStatus: 'PR',
-    dateRegistered: '2025-08-15',
-  },
-  {
-    id: 'PROS-001240',
-    name: 'Eva Rodriguez',
-    maskedNric: 'S****667G',
-    age: '33 years',
-    gender: 'Female',
-    contact: '8573 5294',
-    email: 'eva.rod@gmail.com',
-    status: 'Enquiring',
-    programs: ['hpv'],
-    source: 'Event',
-    sourceDetail: 'Race for Life',
-    nextReview: '2026-09-15',
-    assignTo: ['Fan Wei Zhe'],
-    tasksCompleted: 2,
-    tasksTotal: 10,
-    riskLevel: 'Low',
-    residentialStatus: 'Foreigner',
-    dateRegistered: '2026-03-01',
-  },
-];
+import { encodeProspectRecordRef, formatProspectIdentifier } from '../../lib/prospectRef';
+import { useIndividualProfiles } from '../../context/IndividualProfileContext';
 
 function formatScreeningFormSubmittedDate(iso: string | undefined): string {
   if (iso == null || String(iso).trim() === '') return '—';
@@ -178,13 +35,35 @@ function riskLevelTagFromAssessment(level: string | undefined): string {
 type ProgramFilter = 'all' | 'mammobus' | 'hpv' | 'fit';
 type ViewMode = 'table' | 'kanban';
 
+const PROSPECTS_VIEW_MODE_STORAGE_KEY = 'werkdone-prospects-view-mode';
+
+function readStoredViewMode(): ViewMode {
+  try {
+    const raw = localStorage.getItem(PROSPECTS_VIEW_MODE_STORAGE_KEY);
+    if (raw === 'table' || raw === 'kanban') return raw;
+  } catch {
+    /* private mode / unavailable */
+  }
+  return 'table';
+}
+
 interface AllProspectsProps {
   onNavigate: (page: Page) => void;
   programFilter: ProgramFilter;
 }
 
 export function AllProspects({ onNavigate, programFilter }: AllProspectsProps) {
-  const [viewMode, setViewMode] = useState<ViewMode>('table');
+  const { orderedProspects: masterProspects } = useIndividualProfiles();
+
+  const [viewMode, setViewMode] = useState<ViewMode>(readStoredViewMode);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(PROSPECTS_VIEW_MODE_STORAGE_KEY, viewMode);
+    } catch {
+      /* ignore */
+    }
+  }, [viewMode]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStages, setSelectedStages] = useState<string[]>([]);
   const [currentProgramFilter, setCurrentProgramFilter] = useState<ProgramFilter>(programFilter);
@@ -245,7 +124,7 @@ export function AllProspects({ onNavigate, programFilter }: AllProspectsProps) {
 
   // Filter prospects based on program and expand for multiple programs
   const getFilteredProspects = () => {
-    let prospects = mockProspectsWithPrograms;
+    let prospects = masterProspects;
 
     // Filter by program
     if (currentProgramFilter !== 'all') {
@@ -526,7 +405,7 @@ export function AllProspects({ onNavigate, programFilter }: AllProspectsProps) {
                   <thead style={{ backgroundColor: '#F9FAFB' }}>
                     <tr>
                       <th className="text-left p-4" style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-weight-semibold)', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                        Prospect ID
+                        Identifier
                       </th>
                       <th className="text-left p-4" style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-weight-semibold)', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                         Name
@@ -567,10 +446,15 @@ export function AllProspects({ onNavigate, programFilter }: AllProspectsProps) {
                       const programColor = getProgramColor(prospect.currentProgram || prospect.programs[0]);
                       return (
                         <tr
-                          key={`${prospect.id}-${prospect.currentProgram || index}`}
+                          key={`${prospect.nric}-${prospect.currentProgram || index}`}
                           className="border-t cursor-pointer hover:bg-gray-50"
                           style={{ borderColor: '#E5E7EB' }}
-                          onClick={() => onNavigate({ page: 'prospect-detail', prospectId: prospect.id })}
+                          onClick={() =>
+                            onNavigate({
+                              page: 'prospect-detail',
+                              prospectRef: encodeProspectRecordRef(prospect.recordId),
+                            })
+                          }
                         >
                           <td className="p-4">
                             <span 
@@ -582,7 +466,7 @@ export function AllProspects({ onNavigate, programFilter }: AllProspectsProps) {
                               }}
                               className="hover:underline"
                             >
-                              {prospect.id}
+                              {formatProspectIdentifier(prospect.name, prospect.maskedNric)}
                             </span>
                           </td>
                           <td className="p-4">
@@ -599,7 +483,10 @@ export function AllProspects({ onNavigate, programFilter }: AllProspectsProps) {
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  onNavigate({ page: 'prospect-detail', prospectId: prospect.id });
+                                  onNavigate({
+                                    page: 'prospect-detail',
+                                    prospectRef: encodeProspectRecordRef(prospect.recordId),
+                                  });
                                 }}
                               >
                                 {prospect.name}
@@ -711,7 +598,10 @@ export function AllProspects({ onNavigate, programFilter }: AllProspectsProps) {
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={(e) => {
                                   e.stopPropagation();
-                                  onNavigate({ page: 'prospect-detail', prospectId: prospect.id });
+                                  onNavigate({
+                                    page: 'prospect-detail',
+                                    prospectRef: encodeProspectRecordRef(prospect.recordId),
+                                  });
                                 }}>
                                   View Details
                                 </DropdownMenuItem>
@@ -798,10 +688,15 @@ export function AllProspects({ onNavigate, programFilter }: AllProspectsProps) {
                         
                         return (
                           <div
-                            key={`${prospect.id}-${prospect.currentProgram || index}`}
+                            key={`${prospect.nric}-${prospect.currentProgram || index}`}
                             className="bg-white border rounded-lg p-3 cursor-pointer hover:shadow-md transition-all"
                             style={{ borderColor: '#E5E7EB' }}
-                            onClick={() => onNavigate({ page: 'prospect-detail', prospectId: prospect.id })}
+                            onClick={() =>
+                              onNavigate({
+                                page: 'prospect-detail',
+                                prospectRef: encodeProspectRecordRef(prospect.recordId),
+                              })
+                            }
                           >
                             {/* Status Chip - Top */}
                             <div className="mb-4">
@@ -827,7 +722,7 @@ export function AllProspects({ onNavigate, programFilter }: AllProspectsProps) {
                                     fontWeight: 'var(--font-weight-medium)'
                                   }}
                                 >
-                                  {prospect.id}
+                                  {formatProspectIdentifier(prospect.name, prospect.maskedNric)}
                                 </span>
                               )}
                             </div>

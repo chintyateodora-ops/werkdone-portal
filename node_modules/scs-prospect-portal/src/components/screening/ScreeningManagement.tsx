@@ -1,71 +1,78 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Search, ChevronDown, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
 import { Page } from '../../App';
+import { encodeProspectRecordRef } from '../../lib/prospectRef';
+import { useIndividualProfiles } from '../../context/IndividualProfileContext';
 
 interface ScreeningManagementProps {
   onNavigate: (page: Page) => void;
 }
 
-const mockScreeningData = [
+const SCREENING_ROWS = [
   {
     id: 'SCS-SCV-2026-93093',
-    prospectId: 'PROS-001234',
-    prospectName: 'TAN, CHWEE LAN',
-    contact: '9000 0000',
+    recordId: 'IND-001',
     dateOfVisit: '6/6/26',
     status: 'Completed (with test)',
-    testType: 'Pap Test / HPV Test'
+    testType: 'Pap Test / HPV Test',
   },
   {
     id: 'SCS-SCV-2026-12345',
-    prospectId: 'PROS-001235',
-    prospectName: 'RAUZANAH',
-    contact: '9123 4567',
+    recordId: 'IND-002',
     dateOfVisit: '6/6/26',
     status: 'Pending Lab Result',
-    testType: 'Pap Test'
+    testType: 'Pap Test',
   },
   {
     id: 'SCS-SCV-2026-12346',
-    prospectId: 'PROS-001236',
-    prospectName: 'Siti Aishah binte Rosli',
-    contact: '9456 7890',
+    recordId: 'IND-003',
     dateOfVisit: '5/6/26',
     status: 'Pending Doctor Input',
-    testType: 'HPV Test'
+    testType: 'HPV Test',
   },
   {
     id: 'SCS-SCV-2026-12347',
-    prospectId: 'PROS-001237',
-    prospectName: 'Chen Mei Ling',
-    contact: '9789 0123',
+    recordId: 'IND-004',
     dateOfVisit: '4/6/26',
     status: 'Pending Print Result',
-    testType: 'Pap Test / HPV Test'
+    testType: 'Pap Test / HPV Test',
   },
   {
     id: 'SCS-SCV-2026-12348',
-    prospectId: 'PROS-001238',
-    prospectName: 'Lim Hui Min',
-    contact: '9012 3456',
+    recordId: 'IND-005',
     dateOfVisit: '3/6/26',
     status: 'Completed (no test done)',
-    testType: '-'
+    testType: '-',
   },
   {
     id: 'SCS-SCV-2026-12349',
-    prospectId: 'PROS-001239',
-    prospectName: 'Nurul Aisyah',
-    contact: '9234 5678',
+    recordId: 'IND-006',
     dateOfVisit: '2/6/26',
     status: 'Pending Lab Result',
-    testType: 'Pap Test'
+    testType: 'Pap Test',
   },
 ];
 
 export function ScreeningManagement({ onNavigate }: ScreeningManagementProps) {
+  const { profilesByRecordId } = useIndividualProfiles();
+  const mockScreeningData = useMemo(
+    () =>
+      SCREENING_ROWS.map((row) => {
+        const p = profilesByRecordId[row.recordId];
+        return {
+          id: row.id,
+          prospectRef: encodeProspectRecordRef(row.recordId),
+          prospectName: (p?.name ?? '').toUpperCase(),
+          contact: p?.contact ?? '—',
+          dateOfVisit: row.dateOfVisit,
+          status: row.status,
+          testType: row.testType,
+        };
+      }),
+    [profilesByRecordId]
+  );
   const getStatusStyle = (status: string) => {
     switch (status) {
       case 'Pending Lab Result':
@@ -167,7 +174,7 @@ export function ScreeningManagement({ onNavigate }: ScreeningManagementProps) {
                           <button
                             onClick={() => {
                               // Navigate to prospect detail with screening tab active
-                              onNavigate({ page: 'prospect-detail', prospectId: screening.prospectId });
+                              onNavigate({ page: 'prospect-detail', prospectRef: screening.prospectRef });
                             }}
                             className="hover:underline"
                             style={{ 
@@ -182,7 +189,7 @@ export function ScreeningManagement({ onNavigate }: ScreeningManagementProps) {
                         <td className="px-6 py-4">
                           <button
                             onClick={() => {
-                              onNavigate({ page: 'prospect-detail', prospectId: screening.prospectId });
+                              onNavigate({ page: 'prospect-detail', prospectRef: screening.prospectRef });
                             }}
                             className="hover:underline"
                             style={{ 
@@ -233,7 +240,7 @@ export function ScreeningManagement({ onNavigate }: ScreeningManagementProps) {
                             size="sm"
                             className="p-1 h-auto"
                             onClick={() => {
-                              onNavigate({ page: 'prospect-detail', prospectId: screening.prospectId });
+                              onNavigate({ page: 'prospect-detail', prospectRef: screening.prospectRef });
                             }}
                           >
                             <Eye className="w-4 h-4" style={{ color: '#6B7280' }} />

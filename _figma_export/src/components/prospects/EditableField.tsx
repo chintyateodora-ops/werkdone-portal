@@ -1,31 +1,25 @@
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
-import { Label } from '../ui/label';
 import { cn } from '../ui/utils';
 import { DdMmYyyyDateInput } from '../ui/dd-mm-yyyy-date-input';
+import { DETAIL_FIELD_LABEL_CLASS, DETAIL_FIELD_VALUE_CLASS } from '../../lib/detailFieldDisplay';
 
-/** Label + required asterisk — matches screening registration (`AddProspect.tsx`). */
+/** Label + required asterisk — aligns with prospect detail view (gray label). */
 export function FormFieldLabel({
   htmlFor,
   label,
-  required
+  required,
+  className,
 }: {
   htmlFor?: string;
   label: string;
   required?: boolean;
+  className?: string;
 }) {
   return (
-    <label
-      htmlFor={htmlFor}
-      className="block mb-2"
-      style={{
-        fontSize: 'var(--text-base)',
-        fontWeight: 'var(--font-weight-normal)',
-        color: '#111827'
-      }}
-    >
+    <label htmlFor={htmlFor} className={cn(DETAIL_FIELD_LABEL_CLASS, className)}>
       {label}
-      {required ? <span style={{ color: '#DC2626' }}>*</span> : null}
+      {required ? <span className="text-red-600">*</span> : null}
     </label>
   );
 }
@@ -53,18 +47,21 @@ export function EditableField({
 }: EditableFieldProps) {
   const inputId = `prospect-field-${label.replace(/\s+/g, '-').toLowerCase()}`;
 
+  const displayValue = value.trim() ? value : '—';
+
   return (
     <div className={className}>
       <FormFieldLabel htmlFor={inputId} label={label} required={required} />
-      {type === 'date' ? (
+      {!isEditing ? (
+        <p className={DETAIL_FIELD_VALUE_CLASS}>{displayValue}</p>
+      ) : type === 'date' ? (
         <DdMmYyyyDateInput
           id={inputId}
           value={value}
           onChange={onChange}
-          disabled={!isEditing}
+          disabled={false}
           required={required}
           placeholder={placeholder || 'DD-MM-YYYY'}
-          className={cn(!isEditing && 'bg-[#F9FAFB]')}
         />
       ) : (
         <Input
@@ -73,9 +70,8 @@ export function EditableField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          disabled={!isEditing}
           required={required}
-          className={cn('w-full', !isEditing && 'bg-[#F9FAFB]')}
+          className="w-full"
         />
       )}
     </div>
@@ -105,19 +101,24 @@ export function EditableTextArea({
 }: EditableTextAreaProps) {
   const id = `prospect-ta-${label.replace(/\s+/g, '-').toLowerCase()}`;
 
+  const displayValue = value.trim() ? value : '—';
+
   return (
     <div className={className}>
       <FormFieldLabel htmlFor={id} label={label} required={required} />
-      <Textarea
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        rows={rows}
-        disabled={!isEditing}
-        required={required}
-        className={cn('w-full min-h-[5rem]', !isEditing && 'bg-[#F9FAFB]')}
-      />
+      {!isEditing ? (
+        <p className={cn(DETAIL_FIELD_VALUE_CLASS, 'whitespace-pre-wrap')}>{displayValue}</p>
+      ) : (
+        <Textarea
+          id={id}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          rows={rows}
+          required={required}
+          className="w-full min-h-[5rem]"
+        />
+      )}
     </div>
   );
 }
@@ -144,6 +145,16 @@ function optionLabel(opt: EditableSelectOption): string {
   return typeof opt === 'string' ? opt : opt.label;
 }
 
+function selectedOptionLabel(
+  value: string,
+  options: EditableSelectOption[],
+  emptyOptionLabel: string
+): string {
+  if (!value) return emptyOptionLabel;
+  const opt = options.find((o) => optionValue(o) === value);
+  return opt ? optionLabel(opt) : value;
+}
+
 export function EditableSelect({
   label,
   value,
@@ -156,40 +167,41 @@ export function EditableSelect({
 }: EditableSelectProps) {
   const id = `prospect-sel-${label.replace(/\s+/g, '-').toLowerCase()}`;
 
+  const readLabel = selectedOptionLabel(value, options, emptyOptionLabel);
+  const displayRead = value.trim() ? readLabel : '—';
+
   return (
     <div className={className}>
-      <Label htmlFor={id} className="mb-2 block text-base font-normal text-gray-900">
-        {label}
-        {required ? <span className="text-red-600">*</span> : null}
-      </Label>
-      <select
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={!isEditing}
-        required={required}
-        className={cn(
-          'flex h-9 w-full min-w-0 rounded-lg border border-[var(--input-border)] bg-[var(--input-background)] px-3 py-1 text-sm transition-[color,box-shadow] outline-none',
-          'focus-visible:ring-[3px] focus-visible:ring-ring/50',
-          'disabled:cursor-not-allowed disabled:opacity-50',
-          !isEditing && 'bg-[#F9FAFB]'
-        )}
-        style={{
-          color: 'var(--input-text)',
-          borderColor: 'var(--input-border)'
-        }}
-      >
-        {!value && <option value="">{emptyOptionLabel}</option>}
-        {options.map((option) => {
-          const v = optionValue(option);
-          const lbl = optionLabel(option);
-          return (
-            <option key={v} value={v}>
-              {lbl}
-            </option>
-          );
-        })}
-      </select>
+      <FormFieldLabel htmlFor={id} label={label} required={required} />
+      {!isEditing ? (
+        <p className={DETAIL_FIELD_VALUE_CLASS}>{displayRead}</p>
+      ) : (
+        <select
+          id={id}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          required={required}
+          className={cn(
+            'flex h-9 w-full min-w-0 rounded-lg border border-[var(--input-border)] bg-[var(--input-background)] px-3 py-1 text-sm transition-[color,box-shadow] outline-none',
+            'focus-visible:ring-[3px] focus-visible:ring-ring/50'
+          )}
+          style={{
+            color: 'var(--input-text)',
+            borderColor: 'var(--input-border)',
+          }}
+        >
+          {!value && <option value="">{emptyOptionLabel}</option>}
+          {options.map((option) => {
+            const v = optionValue(option);
+            const lbl = optionLabel(option);
+            return (
+              <option key={v} value={v}>
+                {lbl}
+              </option>
+            );
+          })}
+        </select>
+      )}
     </div>
   );
 }

@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { Page } from '../../App';
+import type { MockProspectListRow } from '../../data/mockProspectsList';
+import { encodeProspectRecordRef, formatProspectIdentifier } from '../../lib/prospectRef';
+import { useIndividualProfiles } from '../../context/IndividualProfileContext';
 import { Search, Filter, Plus, MoreHorizontal, UserPlus, MessageSquare, Tag, ChevronDown } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -11,145 +14,66 @@ interface ScreeningProgramsProps {
 type ProgramType = 'mammobus' | 'hpv' | 'fit';
 
 export function ScreeningPrograms({ onNavigate }: ScreeningProgramsProps) {
+  const { orderedProspects: MOCK_PROSPECTS } = useIndividualProfiles();
   const [activeProgram, setActiveProgram] = useState<ProgramType>('mammobus');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProspects, setSelectedProspects] = useState<string[]>([]);
 
-  // Mock prospects data filtered by program
-  const mammobusProspects = [
-    {
-      id: 'PROS-001234',
-      name: 'Sarah Lim',
-      age: 'Female, 52 years',
-      contact: '9123 4567',
-      email: 'sarah.lim@gmail.com',
-      status: 'Booked',
-      program: 'Mammobus',
-      bookingDate: '15 Nov 2025',
-      location: 'Bedok Community Center',
-      assignTo: ['Jasmine Lim'],
-      tag: 'Screening',
-      risk: 'Medium Risk'
-    },
-    {
-      id: 'PROS-001235',
-      name: 'Mary Tan',
-      age: 'Female, 45 years',
-      contact: '9234 5678',
-      email: 'mary.tan@outlook.com',
-      status: 'Qualified',
-      program: 'Mammobus',
-      bookingDate: '-',
-      location: '-',
-      assignTo: ['Fan Wei Zhe'],
-      tag: 'Screening',
-      risk: 'Low Risk'
-    },
-    {
-      id: 'PROS-001236',
-      name: 'Grace Wong',
-      age: 'Female, 58 years',
-      contact: '9345 6789',
-      email: 'grace.wong@gmail.com',
-      status: 'Screened',
-      program: 'Mammobus',
-      bookingDate: '10 Nov 2025',
-      location: 'Tampines Hub',
-      assignTo: ['Jasmine Lim'],
-      tag: 'Screening',
-      risk: 'High Risk'
-    }
-  ];
+  const mapProgramRow = (
+    p: MockProspectListRow,
+    program: string,
+    tag: string,
+    bookingDate: string,
+    location: string
+  ) => {
+    const prospectRef = encodeProspectRecordRef(p.recordId);
+    return {
+      prospectRef,
+      selectionKey: prospectRef,
+      displayId: formatProspectIdentifier(p.name, p.maskedNric),
+      name: p.name,
+      age: `${p.gender}, ${p.age}`,
+      contact: p.contact,
+      email: p.email,
+      status: p.status,
+      program,
+      bookingDate,
+      location,
+      assignTo: p.assignTo,
+      tag,
+      risk: `${p.riskLevel} Risk`,
+    };
+  };
 
-  const hpvProspects = [
-    {
-      id: 'PROS-001237',
-      name: 'Jennifer Koh',
-      age: 'Female, 35 years',
-      contact: '9456 7890',
-      email: 'jennifer.koh@gmail.com',
-      status: 'Booked',
-      program: 'HPV',
-      bookingDate: '18 Nov 2025',
-      location: 'SCS Health Center',
-      assignTo: ['Jasmine Lim'],
-      tag: 'PAP Test',
-      risk: 'Low Risk'
-    },
-    {
-      id: 'PROS-001238',
-      name: 'Michelle Lee',
-      age: 'Female, 42 years',
-      contact: '9567 8901',
-      email: 'michelle.lee@outlook.com',
-      status: 'Enquiring',
-      program: 'HPV',
-      bookingDate: '-',
-      location: '-',
-      assignTo: ['Fan Wei Zhe'],
-      tag: 'PAP Test',
-      risk: 'Medium Risk'
-    },
-    {
-      id: 'PROS-001239',
-      name: 'Rachel Tan',
-      age: 'Female, 38 years',
-      contact: '9678 9012',
-      email: 'rachel.tan@gmail.com',
-      status: 'Aware',
-      program: 'HPV',
-      bookingDate: '-',
-      location: '-',
-      assignTo: [],
-      tag: 'Screening',
-      risk: 'Low Risk'
-    }
-  ];
+  const mammobusProspects = MOCK_PROSPECTS.filter((x) => x.programs.includes('mammobus')).map((p) =>
+    mapProgramRow(
+      p,
+      'Mammobus',
+      'Screening',
+      p.status === 'Booked' ? '15 Nov 2025' : p.status === 'Screened' ? '10 Nov 2025' : '—',
+      p.status === 'Booked' ? 'Bedok Community Centre' : p.status === 'Screened' ? 'Tampines Hub' : '—'
+    )
+  );
 
-  const fitProspects = [
-    {
-      id: 'PROS-001240',
-      name: 'David Wong',
-      age: 'Male, 55 years',
-      contact: '9789 0123',
-      email: 'david.wong@gmail.com',
-      status: 'Booked',
-      program: 'FIT',
-      bookingDate: '20 Nov 2025',
-      location: 'Home Collection',
-      assignTo: ['Jasmine Lim'],
-      tag: 'Screening',
-      risk: 'Medium Risk'
-    },
-    {
-      id: 'PROS-001241',
-      name: 'Robert Tan',
-      age: 'Male, 62 years',
-      contact: '9890 1234',
-      email: 'robert.tan@gmail.com',
-      status: 'Qualified',
-      program: 'FIT',
-      bookingDate: '-',
-      location: '-',
-      assignTo: ['Fan Wei Zhe'],
-      tag: 'Screening',
-      risk: 'High Risk'
-    },
-    {
-      id: 'PROS-001242',
-      name: 'Michael Lim',
-      age: 'Male, 58 years',
-      contact: '9901 2345',
-      email: 'michael.lim@outlook.com',
-      status: 'Screened',
-      program: 'FIT',
-      bookingDate: '12 Nov 2025',
-      location: 'Home Collection',
-      assignTo: ['Jasmine Lim'],
-      tag: 'Screening',
-      risk: 'Low Risk'
-    }
-  ];
+  const hpvProspects = MOCK_PROSPECTS.filter((x) => x.programs.includes('hpv')).map((p) =>
+    mapProgramRow(
+      p,
+      'HPV',
+      'PAP Test',
+      p.status === 'Booked' ? '18 Nov 2025' : '—',
+      p.status === 'Booked' ? 'SCS Health Center' : '—'
+    )
+  );
+
+  const fitProspects = MOCK_PROSPECTS.filter((x) => x.programs.includes('fit')).map((p) =>
+    mapProgramRow(
+      p,
+      'FIT',
+      'Screening',
+      p.status === 'Booked' ? '20 Nov 2025' : p.status === 'Screened' ? '12 Nov 2025' : '—',
+      p.status === 'Booked' || p.status === 'Screened' ? 'Home Collection' : '—'
+    )
+  );
 
   const getCurrentProspects = () => {
     switch (activeProgram) {
@@ -228,7 +152,7 @@ export function ScreeningPrograms({ onNavigate }: ScreeningProgramsProps) {
     if (selectedProspects.length === currentProspects.length) {
       setSelectedProspects([]);
     } else {
-      setSelectedProspects(currentProspects.map(p => p.id));
+      setSelectedProspects(currentProspects.map((p) => p.selectionKey));
     }
   };
 
@@ -423,7 +347,7 @@ export function ScreeningPrograms({ onNavigate }: ScreeningProgramsProps) {
                     color: '#6B7280',
                     backgroundColor: '#F9FAFB'
                   }}>
-                    ID
+                    Identifier
                   </th>
                   <th className="text-left px-6 py-3" style={{ 
                     fontSize: 'var(--text-xs)', 
@@ -510,22 +434,22 @@ export function ScreeningPrograms({ onNavigate }: ScreeningProgramsProps) {
               <tbody>
                 {currentProspects.map((prospect) => (
                   <tr 
-                    key={prospect.id} 
+                    key={prospect.selectionKey} 
                     style={{ borderBottom: '1px solid #F3F4F6' }} 
                     className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() => onNavigate({ page: 'prospect-detail', prospectId: prospect.id })}
+                    onClick={() => onNavigate({ page: 'prospect-detail', prospectRef: prospect.prospectRef })}
                   >
                     <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
-                        checked={selectedProspects.includes(prospect.id)}
-                        onChange={() => toggleProspectSelection(prospect.id)}
+                        checked={selectedProspects.includes(prospect.selectionKey)}
+                        onChange={() => toggleProspectSelection(prospect.selectionKey)}
                         className="rounded"
                         style={{ accentColor: 'var(--primary)' }}
                       />
                     </td>
                     <td className="px-6 py-4" style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-weight-medium)', color: '#111827' }}>
-                      {prospect.id}
+                      {prospect.displayId}
                     </td>
                     <td className="px-6 py-4" style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-weight-normal)', color: '#111827' }}>
                       {prospect.name}

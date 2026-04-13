@@ -1,14 +1,19 @@
 import { Button } from '../ui/button';
 import { ChevronLeft } from 'lucide-react';
 import { Page } from '../../App';
+import { resolveProspectByRef } from '../../lib/prospectRef';
+import { useIndividualProfiles } from '../../context/IndividualProfileContext';
 
 interface VisitDetailsProps {
   onNavigate: (page: Page) => void;
   visitId: string;
-  prospectId: string;
+  prospectRef: string;
 }
 
-export function VisitDetails({ onNavigate, visitId, prospectId }: VisitDetailsProps) {
+export function VisitDetails({ onNavigate, visitId, prospectRef }: VisitDetailsProps) {
+  const { profilesByRecordId } = useIndividualProfiles();
+  const prospectRow = resolveProspectByRef(prospectRef, profilesByRecordId);
+  const patientDisplayName = prospectRow?.name ? prospectRow.name.toUpperCase() : '—';
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
@@ -18,7 +23,7 @@ export function VisitDetails({ onNavigate, visitId, prospectId }: VisitDetailsPr
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onNavigate({ page: 'prospect-detail', prospectId })}
+              onClick={() => onNavigate({ page: 'prospect-detail', prospectRef })}
               className="p-2"
             >
               <ChevronLeft className="w-5 h-5" />
@@ -31,7 +36,7 @@ export function VisitDetails({ onNavigate, visitId, prospectId }: VisitDetailsPr
           <div className="flex items-center gap-3">
             <div className="text-right">
               <p style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--primary)' }}>
-                TAN, CHWEE LAN
+                {patientDisplayName}
               </p>
               <p style={{ fontSize: 'var(--text-sm)', color: '#6B7280' }}>Patient Name</p>
             </div>
@@ -70,7 +75,7 @@ export function VisitDetails({ onNavigate, visitId, prospectId }: VisitDetailsPr
             Visit Details
           </button>
           <button
-            onClick={() => onNavigate({ page: 'visit-notes', visitId, prospectId })}
+            onClick={() => onNavigate({ page: 'visit-notes', visitId, prospectRef })}
             className="pb-3 border-b-2 border-transparent text-gray-600 hover:text-gray-900"
             style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-normal)' }}
           >
@@ -154,7 +159,7 @@ export function VisitDetails({ onNavigate, visitId, prospectId }: VisitDetailsPr
                   Patient Name
                 </label>
                 <button 
-                  onClick={() => onNavigate({ page: 'prospect-detail', prospectId })}
+                  onClick={() => onNavigate({ page: 'prospect-detail', prospectRef })}
                   className="hover:underline"
                   style={{ fontSize: 'var(--text-base)', color: 'var(--primary)' }}
                 >

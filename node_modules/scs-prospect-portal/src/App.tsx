@@ -39,9 +39,9 @@ export type Page =
   | 'hpv-prospects'
   | 'fit-prospects'
   | { page: 'add-prospect'; program: ScreeningProgramKey }
-  | { page: 'prospect-detail'; prospectId: string }
-  | { page: 'visit-details'; visitId: string; prospectId: string }
-  | { page: 'visit-notes'; visitId: string; prospectId: string }
+  | { page: 'prospect-detail'; prospectRef: string }
+  | { page: 'visit-details'; visitId: string; prospectRef: string }
+  | { page: 'visit-notes'; visitId: string; prospectRef: string }
   | 'segments'
   | 'self-registration'
   | 'email-screening-request'
@@ -69,13 +69,13 @@ export default function App() {
 
   const renderPage = () => {
     if (typeof currentPage === 'object' && currentPage.page === 'prospect-detail') {
-      return <ProspectDetail onNavigate={setCurrentPage} prospectId={currentPage.prospectId} />;
+      return <ProspectDetail onNavigate={setCurrentPage} prospectRef={currentPage.prospectRef} />;
     }
     if (typeof currentPage === 'object' && currentPage.page === 'visit-details') {
-      return <VisitDetails onNavigate={setCurrentPage} visitId={currentPage.visitId} prospectId={currentPage.prospectId} />;
+      return <VisitDetails onNavigate={setCurrentPage} visitId={currentPage.visitId} prospectRef={currentPage.prospectRef} />;
     }
     if (typeof currentPage === 'object' && currentPage.page === 'visit-notes') {
-      return <VisitNotes onNavigate={setCurrentPage} visitId={currentPage.visitId} prospectId={currentPage.prospectId} />;
+      return <VisitNotes onNavigate={setCurrentPage} visitId={currentPage.visitId} prospectRef={currentPage.prospectRef} />;
     }
     if (typeof currentPage === 'object' && currentPage.page === 'add-prospect') {
       if (currentPage.program === 'mammobus') {
