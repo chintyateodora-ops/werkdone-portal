@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { ChevronLeft, Link2, Check, CheckCircle2, X } from 'lucide-react';
 import { Page } from '../../App';
+import { HEALTHIER_SG_FORM_OPTIONS } from '../../lib/healthierSgProfile';
 import { Checkbox } from '../ui/checkbox';
 import { toast } from 'sonner@2.0.3';
 import { Label } from '../ui/label';
@@ -32,6 +33,7 @@ export function AddProspect({ onNavigate, initialProgram = 'mammobus' }: AddPros
   const [selectedFormType, setSelectedFormType] = useState(initialProgram);
   const [linkCopied, setLinkCopied] = useState(false);
   const [activeSection, setActiveSection] = useState('eligibility');
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const [formData, setFormData] = useState({
     // Personal Information
     name: '',
@@ -44,6 +46,10 @@ export function AddProspect({ onNavigate, initialProgram = 'mammobus' }: AddPros
     email: '',
     chasCardType: '',
     healthierSgEnrolled: '',
+
+    appointmentType: 'mammobus',
+    healthierSgBooked: '',
+    healthierSgScreeningDate: '',
     postalCode: '',
     blockNumber: '',
     streetName: '',
@@ -61,11 +67,6 @@ export function AddProspect({ onNavigate, initialProgram = 'mammobus' }: AddPros
     breastSymptoms: '',
     breastImplants: '',
     everHadBreastCancer: '',
-    
-    // Emergency Contact
-    emergencyName: '',
-    emergencyRelationship: '',
-    emergencyContact: '',
     
     // Medical History
     familyCancerHistory: '',
@@ -88,14 +89,14 @@ export function AddProspect({ onNavigate, initialProgram = 'mammobus' }: AddPros
   });
 
   const formTypes = [
-    { value: 'mammobus', label: 'Community Mammobus Programme', available: true },
+    { value: 'mammobus', label: 'Mammogram Screening Registration', available: true },
     { value: 'hpv', label: 'HPV Screening Programme', available: false },
     { value: 'fit', label: 'FIT Screening Programme', available: false }
   ];
 
   const getFormTitle = () => {
     const form = formTypes.find(f => f.value === selectedFormType);
-    return form?.label || 'Community Mammobus Programme';
+    return form?.label || 'Mammogram Screening Registration';
   };
 
   const getRegistrationLink = () => {
@@ -161,7 +162,17 @@ export function AddProspect({ onNavigate, initialProgram = 'mammobus' }: AddPros
   };
 
   const handleInputChange = (field: string, value: string | boolean | string[]) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const next = { ...prev, [field]: value };
+      if (field === 'healthierSgBooked' && value === 'no') {
+        next.healthierSgScreeningDate = '';
+      }
+      if (field === 'appointmentType' && value !== 'healthier-sg') {
+        next.healthierSgBooked = '';
+        next.healthierSgScreeningDate = '';
+      }
+      return next;
+    });
   };
 
   const toggleArrayValue = (field: string, value: string) => {
@@ -187,10 +198,17 @@ export function AddProspect({ onNavigate, initialProgram = 'mammobus' }: AddPros
 
   const scrollToSection = (sectionId: string) => {
     setActiveSection(sectionId);
+    const container = scrollContainerRef.current;
     const element = document.getElementById(sectionId);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    if (!container || !element) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const elementRect = element.getBoundingClientRect();
+    const currentScrollTop = container.scrollTop;
+    const delta = elementRect.top - containerRect.top;
+    const targetTop = Math.max(0, currentScrollTop + delta - 16);
+
+    container.scrollTo({ top: targetTop, behavior: 'smooth' });
   };
 
   return (
@@ -283,10 +301,10 @@ export function AddProspect({ onNavigate, initialProgram = 'mammobus' }: AddPros
               [
                 ['eligibility', 'Medical Eligibility'],
                 ['personal', 'Personal Information'],
-                ['emergency', 'Emergency Contact'],
                 ['address', 'Residential Address'],
                 ['subsidies', 'Healthier SG & Subsidies'],
-                ['appointment', 'Appointment Preferences'],
+                ['appointment-type', 'Appointment Type'],
+                ...(formData.appointmentType === 'healthier-sg' ? [] : ([['appointment', 'Appointment Preferences']] as const)),
                 ['screening', 'Screening Questions'],
                 ['engagement', 'Engagement'],
                 ['consent', 'Consent'],
@@ -311,7 +329,7 @@ export function AddProspect({ onNavigate, initialProgram = 'mammobus' }: AddPros
         </div>
 
         {/* Right content area */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <div ref={scrollContainerRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
           <div className="min-h-0 flex-1">
             <div className="max-w-4xl mx-auto p-6">
               {/* Medical Eligibility — content moved from former Medical History; order matches screening form standard */}
@@ -671,77 +689,6 @@ export function AddProspect({ onNavigate, initialProgram = 'mammobus' }: AddPros
                 </div>
               </section>
 
-              <section id="emergency" className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-                <h2 className={FORM_CARD_SECTION_TITLE_CLASS}>
-                  EMERGENCY CONTACT
-                </h2>
-
-                <div className="space-y-6">
-                  <div>
-                    <label
-                      className="block mb-2"
-                      style={{
-                        fontSize: 'var(--text-base)',
-                        fontWeight: 'var(--font-weight-normal)',
-                        color: '#111827',
-                      }}
-                    >
-                      Emergency Contact Name<span style={{ color: '#DC2626' }}>*</span>
-                    </label>
-                    <Input
-                      placeholder="Enter emergency contact name"
-                      value={formData.emergencyName}
-                      onChange={(e) => handleInputChange('emergencyName', e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <Label htmlFor="field-emergency-relationship" className="mb-2 block text-base font-normal text-gray-900">
-                        Relationship<span className="text-red-600">*</span>
-                      </Label>
-                      <Select
-                        value={formData.emergencyRelationship || SEL_NONE}
-                        onValueChange={(v) => handleInputChange('emergencyRelationship', v === SEL_NONE ? '' : v)}
-                      >
-                        <SelectTrigger id="field-emergency-relationship" className="w-full">
-                          <SelectValue placeholder="Select Relationship" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={SEL_NONE}>Select Relationship</SelectItem>
-                          <SelectItem value="Spouse">Spouse</SelectItem>
-                          <SelectItem value="Parent">Parent</SelectItem>
-                          <SelectItem value="Child">Child</SelectItem>
-                          <SelectItem value="Sibling">Sibling</SelectItem>
-                          <SelectItem value="Friend">Friend</SelectItem>
-                          <SelectItem value="Other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <label
-                        className="block mb-2"
-                        style={{
-                          fontSize: 'var(--text-base)',
-                          fontWeight: 'var(--font-weight-normal)',
-                          color: '#111827',
-                        }}
-                      >
-                        Emergency Contact Number<span style={{ color: '#DC2626' }}>*</span>
-                      </label>
-                      <PhonePrefixInput
-                        value={formData.emergencyContact}
-                        onChange={(v) => handleInputChange('emergencyContact', v)}
-                        required
-                        placeholder="E.g. 8123 4567"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </section>
-
               {/* Residential Address */}
               <section id="address" className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
                 <h2 className={FORM_CARD_SECTION_TITLE_CLASS}>
@@ -890,72 +837,231 @@ export function AddProspect({ onNavigate, initialProgram = 'mammobus' }: AddPros
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value={SEL_NONE}>Select</SelectItem>
-                        <SelectItem value="yes">Yes</SelectItem>
-                        <SelectItem value="no">No</SelectItem>
-                        <SelectItem value="unsure">Unsure / Prefer not to say</SelectItem>
+                        {HEALTHIER_SG_FORM_OPTIONS.map((o) => (
+                          <SelectItem key={o.value} value={o.value}>
+                            {o.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
               </section>
 
-              {/* Appointment Preferences */}
-              <section id="appointment" className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-                <h2 className={FORM_CARD_SECTION_TITLE_CLASS}>
-                  APPOINTMENT PREFERENCES
-                </h2>
+              {/* Appointment Type */}
+              <section id="appointment-type" className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+                <h2 className={FORM_CARD_SECTION_TITLE_CLASS}>APPOINTMENT TYPE</h2>
 
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  <div>
-                    <label
-                      className="mb-2 block"
-                      style={{
-                        fontSize: 'var(--text-base)',
-                        fontWeight: 'var(--font-weight-normal)',
-                        color: '#111827',
-                      }}
-                    >
-                      Preferred Screening Date<span style={{ color: '#DC2626' }}>*</span>
-                    </label>
-                    <DdMmYyyyDateInput
-                      id="field-preferred-screening-date"
-                      value={formData.preferredScreeningDate}
-                      onChange={(v) => handleInputChange('preferredScreeningDate', v)}
-                      required
+                <p className="mb-5 text-gray-700" style={{ fontSize: 'var(--text-base)', lineHeight: 1.55 }}>
+                  There are several avenues where you can sign up for a mammogram. Please select one of the options below.
+                </p>
+
+                <div role="radiogroup" aria-label="Appointment Type" className="space-y-4">
+                  {(
+                    [
+                      {
+                        value: 'mammobus',
+                        title: 'Community Mammobus Programme',
+                        desc: 'An initiative by SCS, BCF, and NHGD to bring subsidised mammogram screenings to different neighbourhoods across Singapore.',
+                        note: 'Note: The Mammobus is not wheelchair-accessible.',
+                        tag: 'Available to all eligible clients',
+                      },
+                      {
+                        value: 'scs-clinic',
+                        title: 'SCS Clinic @ Bishan',
+                        desc: 'Located at 9 Bishan Place, Junction 8 Office Tower, #06-05. Offers mammograms at no cost for eligible individuals with a Blue or Orange CHAS card, aged 50 and above.',
+                        tag: 'You are eligible for this option',
+                      },
+                      {
+                        value: 'healthier-sg',
+                        title: 'Healthier SG Programme',
+                        desc: 'The national health screening programme under Health Promotion Board. Book an appointment for any recommended subsidised screening test on HealthHub.',
+                        tag: 'Available to Singapore Citizens',
+                      },
+                    ] as const
+                  ).map((opt) => {
+                    const selected = formData.appointmentType === opt.value;
+                    return (
+                      <label
+                        key={opt.value}
+                        className="block cursor-pointer rounded-xl border p-5 transition-colors"
+                        style={{
+                          borderColor: selected ? '#B91C1C' : '#E5E7EB',
+                          backgroundColor: selected ? 'rgba(185, 28, 28, 0.04)' : 'white',
+                        }}
+                      >
+                        <input
+                          className="sr-only"
+                          type="radio"
+                          name="appointmentType"
+                          value={opt.value}
+                          checked={selected}
+                          onChange={() => handleInputChange('appointmentType', opt.value)}
+                        />
+
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <div className="text-gray-900" style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)' }}>
+                              {opt.title}
+                            </div>
+                          </div>
+                          <div
+                            aria-hidden="true"
+                            className="mt-1 h-4 w-4 rounded-full border-2"
+                            style={{
+                              borderColor: selected ? '#B91C1C' : '#D1D5DB',
+                              backgroundColor: selected ? '#B91C1C' : 'transparent',
+                            }}
+                          />
+                        </div>
+
+                        <p className="mt-2 text-gray-700" style={{ fontSize: 'var(--text-base)', lineHeight: 1.55 }}>
+                          {opt.desc}
+                        </p>
+
+                        {opt.note && (
+                          <p className="mt-2 text-gray-500" style={{ fontSize: 'var(--text-sm)', lineHeight: 1.45 }}>
+                            <em>{opt.note}</em>
+                          </p>
+                        )}
+
+                        <span
+                          className="mt-3 inline-flex items-center rounded-full px-3 py-1"
+                          style={{
+                            backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                            color: '#047857',
+                            fontSize: 'var(--text-sm)',
+                            fontWeight: 'var(--font-weight-medium)',
+                          }}
+                        >
+                          {opt.tag}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </section>
+
+              {formData.appointmentType === 'healthier-sg' && (
+                <section id="healthier-sg-questions" className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+                  <h2 className={FORM_CARD_SECTION_TITLE_CLASS}>HEALTHIER SG PROGRAMME</h2>
+
+                  <div className="space-y-4">
+                    <div className="rounded-lg border border-gray-200 bg-white p-5">
+                      <div className="mb-2 uppercase tracking-wide text-gray-500" style={{ fontSize: 'var(--text-xs)' }}>
+                        QUESTION 1 OF 2
+                      </div>
+                      <div className="mb-4 text-gray-900" style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-medium)' }}>
+                        Have you booked your Healthier SG mammogram screening yet?
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4" role="radiogroup" aria-label="Healthier SG booking status">
+                        {(
+                          [
+                            { value: 'no', label: 'No' },
+                            { value: 'yes', label: 'Yes' },
+                          ] as const
+                        ).map((o) => {
+                          const selected = formData.healthierSgBooked === o.value;
+                          return (
+                            <button
+                              key={o.value}
+                              type="button"
+                              onClick={() => handleInputChange('healthierSgBooked', o.value)}
+                              className="rounded-md border px-4 py-3 font-medium transition-colors"
+                              style={{
+                                borderColor: selected ? 'var(--primary)' : '#D1D5DB',
+                                backgroundColor: selected ? 'rgba(124, 58, 237, 0.06)' : 'white',
+                                color: selected ? 'var(--primary)' : '#111827',
+                                fontSize: 'var(--text-base)',
+                              }}
+                              aria-pressed={selected}
+                            >
+                              {o.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="rounded-lg border border-gray-200 bg-white p-5">
+                      <div className="mb-2 uppercase tracking-wide text-gray-500" style={{ fontSize: 'var(--text-xs)' }}>
+                        QUESTION 2 OF 2
+                      </div>
+                      <div className="mb-4 text-gray-900" style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-medium)' }}>
+                        When is the date of your screening?
+                      </div>
+
+                      <Input
+                        placeholder="DD/MM/YYYY"
+                        value={formData.healthierSgScreeningDate}
+                        onChange={(e) => handleInputChange('healthierSgScreeningDate', e.target.value)}
+                        disabled={formData.healthierSgBooked !== 'yes'}
+                      />
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {/* Appointment Preferences (hidden for Healthier SG Programme) */}
+              {formData.appointmentType !== 'healthier-sg' && (
+                <section id="appointment" className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+                  <h2 className={FORM_CARD_SECTION_TITLE_CLASS}>
+                    APPOINTMENT PREFERENCES
+                  </h2>
+
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    <div>
+                      <label
+                        className="mb-2 block"
+                        style={{
+                          fontSize: 'var(--text-base)',
+                          fontWeight: 'var(--font-weight-normal)',
+                          color: '#111827',
+                        }}
+                      >
+                        Preferred Screening Date<span style={{ color: '#DC2626' }}>*</span>
+                      </label>
+                      <DdMmYyyyDateInput
+                        id="field-preferred-screening-date"
+                        value={formData.preferredScreeningDate}
+                        onChange={(v) => handleInputChange('preferredScreeningDate', v)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="field-preferred-time-slot" className="mb-2 block text-base font-normal text-gray-900">
+                        Preferred Time Slot
+                      </Label>
+                      <Select
+                        value={formData.preferredTimeSlot || SEL_NONE}
+                        onValueChange={(v) => handleInputChange('preferredTimeSlot', v === SEL_NONE ? '' : v)}
+                      >
+                        <SelectTrigger id="field-preferred-time-slot" className="w-full">
+                          <SelectValue placeholder="Select Preferred Time Slot" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={SEL_NONE}>Select Preferred Time Slot</SelectItem>
+                          <SelectItem value="morning">Morning</SelectItem>
+                          <SelectItem value="afternoon">Afternoon</SelectItem>
+                          <SelectItem value="evening">Evening</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="mt-6">
+                    <Label htmlFor="field-screening-location-event" className="mb-2 block text-base font-normal text-gray-900">
+                      Screening Location / Event
+                    </Label>
+                    <Input
+                      id="field-screening-location-event"
+                      placeholder="Enter Screening Location / Event"
+                      value={formData.screeningLocationEvent}
+                      onChange={(e) => handleInputChange('screeningLocationEvent', e.target.value)}
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="field-preferred-time-slot" className="mb-2 block text-base font-normal text-gray-900">
-                      Preferred Time Slot
-                    </Label>
-                    <Select
-                      value={formData.preferredTimeSlot || SEL_NONE}
-                      onValueChange={(v) => handleInputChange('preferredTimeSlot', v === SEL_NONE ? '' : v)}
-                    >
-                      <SelectTrigger id="field-preferred-time-slot" className="w-full">
-                        <SelectValue placeholder="Select Preferred Time Slot" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={SEL_NONE}>Select Preferred Time Slot</SelectItem>
-                        <SelectItem value="morning">Morning</SelectItem>
-                        <SelectItem value="afternoon">Afternoon</SelectItem>
-                        <SelectItem value="evening">Evening</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="mt-6">
-                  <Label htmlFor="field-screening-location-event" className="mb-2 block text-base font-normal text-gray-900">
-                    Screening Location / Event
-                  </Label>
-                  <Input
-                    id="field-screening-location-event"
-                    placeholder="Enter Screening Location / Event"
-                    value={formData.screeningLocationEvent}
-                    onChange={(e) => handleInputChange('screeningLocationEvent', e.target.value)}
-                  />
-                </div>
-              </section>
+                </section>
+              )}
 
               {/* Screening Questions Section */}
               <section id="screening" className="bg-white rounded-lg border border-gray-200 p-6 mb-6">

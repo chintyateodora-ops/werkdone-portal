@@ -9,7 +9,7 @@
 
   const PROGRAMS = [
     { id: "all", label: "All Prospects", figma: "1:2" },
-    { id: "mammobus", label: "Mammobus Prospects", figma: "1:800" },
+    { id: "mammobus", label: "Mammogram Prospects", figma: "1:800" },
     { id: "hpv", label: "HPV Prospects", figma: "1:996" },
     { id: "fit", label: "FIT Prospects", figma: "1:1468" },
   ];
@@ -31,9 +31,19 @@
 
   const REG_SUBSIDIES_HEALTHIER_SG_OPTIONS = `
                       <option value="">Select Enrolment Status</option>
-                      <option value="yes">Yes</option>
-                      <option value="no">No</option>
-                      <option value="unsure">Unsure / Prefer not to say</option>`;
+                      <option value="enrolled">Enrolled</option>
+                      <option value="not-enrolled">Not Enrolled</option>
+                      <option value="unsure">Unsure</option>`;
+
+  /** Normalize stored Healthier SG enrolment to canonical keys (enrolled | not-enrolled | unsure). */
+  function healthierSgCanonicalStored(stored) {
+    const s = String(stored || "").trim().toLowerCase();
+    const compact = s.replace(/[^a-z0-9]/g, "");
+    if (compact === "yes" || compact === "enrolled") return "enrolled";
+    if (compact === "no" || compact === "notenrolled") return "not-enrolled";
+    if (compact === "unsure" || compact.startsWith("unsure") || compact.includes("prefernottosay")) return "unsure";
+    return String(stored || "").trim();
+  }
 
   /**
    * Demo clients for registration “existing client” lookup (NRIC or name).
@@ -189,6 +199,8 @@
       dateRegistered: "2025-10-28",
       /** Next review date — ISO YYYY-MM-DD; list column + Screening tab + hero subtitle. */
       nextReview: "2026-05-14",
+      /** Latest attendance for this programme row (list column); aligns with screening attendance options. */
+      attendance: "Rescheduled",
       activityTimeline: [
         {
           stage: "qualified",
@@ -242,6 +254,7 @@
       risk: "medium",
       dateRegistered: "2025-10-22",
       nextReview: "2026-08-20",
+      attendance: "Attended",
     },
     {
       rowKey: "PROS-001235",
@@ -258,6 +271,7 @@
       risk: "low",
       dateRegistered: "2025-10-18",
       nextReview: "2026-04-01",
+      attendance: "Cancelled",
     },
     {
       rowKey: "PROS-001236",
@@ -274,6 +288,7 @@
       risk: "medium",
       dateRegistered: "2025-10-12",
       nextReview: "2026-06-15",
+      attendance: "No Show",
     },
     {
       rowKey: "PROS-001237",
@@ -290,6 +305,7 @@
       risk: "high",
       dateRegistered: "2025-10-05",
       nextReview: "2026-03-10",
+      attendance: "Rescheduled",
     },
     {
       rowKey: "PROS-001238",
@@ -306,6 +322,7 @@
       risk: "medium",
       dateRegistered: "2025-09-28",
       nextReview: "2026-07-01",
+      attendance: "Attended",
     },
     {
       rowKey: "PROS-001239-Mammobus",
@@ -322,6 +339,7 @@
       risk: "medium",
       dateRegistered: "2025-08-12",
       nextReview: "2026-11-09",
+      attendance: "Attended",
     },
     {
       rowKey: "PROS-001239-FIT",
@@ -336,8 +354,9 @@
       sourceType: "Campaign",
       sourceDetail: "Pink for Life 2025",
       risk: "medium",
-      dateRegistered: "2025-08-18",
+      dateRegistered: "2026-04-12",
       nextReview: "2026-12-01",
+      attendance: "No Show",
     },
     {
       rowKey: "PROS-001240",
@@ -354,6 +373,7 @@
       risk: "low",
       dateRegistered: "2026-03-01",
       nextReview: "2026-09-15",
+      attendance: "Cancelled",
     },
   ];
 
@@ -384,6 +404,8 @@
       booked: [true, true, true, false, false, false, false, false],
       screened: [false, false, false, false, false, false, false, false, false, false],
     },
+    /** List column programme for this row (Mammobus | HPV | FIT) — V1 header “active screening”. */
+    activeListProgram: "Mammobus",
   };
 
   const state = {
@@ -397,7 +419,22 @@
     listFilters: { stages: [], genders: [], risks: [], ageMin: 18, ageMax: 100 },
     /** Table sort */
     listSort: { key: "name", dir: "asc" },
-    detailTab: "overview",
+    detailTab: "details",
+    /** Classic collapsible screening records table (Prospect V1 + classic detail): filter + expanded row */
+    classicScreeningFilter: "all",
+    classicScreeningExpandedId: null,
+    /** id → partial raw record fields merged onto `#wd-classic-screening-records` seed (prototype session). */
+    classicScreeningEditById: {},
+    classicScreeningUpdateModalId: null,
+    /** Screening table: open task checklist modal for this record id */
+    classicScreeningTasksModalId: null,
+    /** Screening record id → { qualified: boolean[], booked: boolean[], screened: boolean[] } (lengths match WD_STAGE_CHECKLISTS) */
+    classicScreeningTaskDoneByRecordId: {},
+    screeningTab: "details",
+    prospectV3Tab: "overview",
+    /** Prospect v3 Biodata tab: inline edit (Data Source stays read-only). */
+    prospectV3BiodataModalOpen: false,
+    prospectV3BiodataDraft: null,
     pipeline: DETAIL_DEFAULT.pipeline,
     detail: structuredClone(DETAIL_DEFAULT),
     programMenuOpen: false,
@@ -411,6 +448,8 @@
     detailFormDraft: null,
     /** After Edit/Save/Cancel on detail form tabs, restore #detail-flow-scroll-root scroll (full re-render resets it). */
     detailScrollPreservePending: false,
+    /** Classic prospect: Activity timeline right sidebar drawer. */
+    activityTimelineDrawerOpen: false,
     detailFormValues: {
       details: {},
       medicalHistory: {},
@@ -422,8 +461,16 @@
     detailDocumentsByProspect: {},
     /** Prospect detail Notes tab: rowKey → user-added { id, body, submittedAt, authorName, authorRole }[] (session prototype) */
     detailNotesByProspect: {},
-    /** Add-note dialog on prospect Notes tab */
+    /** Add-note / edit-note dialog on prospect Notes tab */
     detailAddNoteModalOpen: false,
+    /** When set, note dialog is editing this note id (seed or user-added). */
+    detailNoteEditId: null,
+    /** Delete confirmation: note id pending confirm, or null. */
+    detailDeleteNoteId: null,
+    /** rowKey → { [noteId]: { body, submittedAt } } — edits to seeded notes (immutable seed). */
+    detailNoteEdits: {},
+    /** rowKey → note ids removed from merged list (seed ids or soft-delete bookkeeping). */
+    detailNoteDeletedIds: {},
     /** Prospect overview Activity Timeline: rowKey → { id, atIso, title, body, by, stage }[] (session log) */
     detailActivityFeedByProspect: {},
     /** True when registration opened with ?sr_token=… (patient self-service link) */
@@ -436,14 +483,76 @@
     registerSingpassLocked: false,
   };
 
+  const PROSPECT_V3_TAB_IDS = ["overview", "screenings", "biodata", "eligibility", "documents", "notes"];
+
+  /**
+   * V3 Biodata edit: control types + option lists match classic prospect form (`detail-panels.js`
+   * — Personal Information, Address, Healthier SG & Subsidies, Risk Assessment).
+   *
+   * Edit control mapping:
+   * - Text: firstName, lastName, nric, age, email, postal, lastScreeningYear
+   * - Date (DD-MM-YYYY + calendar widget): dob — same shell as `fieldDateInput`
+   * - Phone (+65 prefix | tel): contact — same pattern as `fieldPhone`
+   * - Select: gender, race, religion, residentialStatus, chasCardType
+   * - Select (value ≠ label): healthierSg — same pairs as `fieldSelectValueLabel` for Healthier SG
+   * - Multi-checkbox (saved comma-separated): preferredLanguages — same options as `fieldCheckboxMulti`
+   * - Residential address: block, street, floor, unit, postal, country — same fields as screening registration (`reg-address`)
+   * - Textarea: priorCancerScreening (3); personalCancerHistory, preExistingConditions,
+   *   familyHistory (4 rows) — same as risk section `fieldTextarea`s
+   * - Engagement & consent: sourceType, sourceName (text); pdpaConsent, edmSubscription, consentContact (yes/no)
+    */
+   const V3_BIODATA_OPTIONS = Object.freeze({
+    residentialStatus: ["Singapore Citizen", "Permanent Resident", "Foreigner"],
+    gender: ["Female", "Male", "Other"],
+    race: ["Chinese", "Malay", "Indian", "Eurasian", "Others"],
+    religion: [
+      "Buddhism",
+      "Catholicism",
+      "Christianity",
+      "Free Thinker",
+      "Hinduism",
+      "Islam",
+      "Sikhism",
+      "Taoism",
+      "Others",
+    ],
+    chasCardType: ["Blue", "Orange", "Green", "Not Applicable"],
+    /** value → label (same as `fieldSelectValueLabel` for Healthier SG). */
+    healthierSg: Object.freeze([
+      ["enrolled", "Enrolled"],
+      ["not-enrolled", "Not Enrolled"],
+      ["unsure", "Unsure"],
+    ]),
+    preferredLanguages: Object.freeze([
+      "English",
+      "Mandarin",
+      "Malay",
+      "Tamil",
+      "Hokkien",
+      "Cantonese",
+      "Teochew",
+      "Others",
+    ]),
+    /** Same country list as screening registration + classic detail address (`detail-panels.js`). */
+    addressCountry: Object.freeze(["Singapore", "Malaysia", "Indonesia", "Other"]),
+  });
+
   /** Query param on self-registration URLs (patient-facing token link). */
   const SELF_REG_TOKEN_PARAM = "sr_token";
 
   /** Logged-in portal user (aligned with header chip; prototype). */
   const PORTAL_CURRENT_USER = Object.freeze({
-    name: "Thong Han",
-    role: "Super Admin",
+    name: "Saphira Jane",
+    role: "CPC Team",
   });
+
+  function portalCurrentUserInitials() {
+    const n = String(PORTAL_CURRENT_USER.name || "").trim();
+    const parts = n.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+    if (parts.length === 1 && parts[0].length >= 2) return parts[0].slice(0, 2).toUpperCase();
+    return "—";
+  }
 
   /** Demo notes merged with user-added notes on the Notes tab (sorted newest first in UI). */
   const DETAIL_NOTES_SEED = Object.freeze([
@@ -483,11 +592,10 @@
     chasCardType: "Blue",
   });
 
-  let lastDetailTabForForm = "overview";
+  let lastDetailTabForForm = "details";
   let lastRenderWasRegisterSelfService = false;
 
   const DETAIL_TAB_IDS = [
-    "overview",
     "details",
     "medical-history",
     "other-details",
@@ -496,6 +604,8 @@
     "documents",
     "notes",
   ];
+
+  const SCREENING_TAB_IDS = ["details", "tasks", "eligibility"];
 
   const DETAIL_FORM_TAB_IDS = ["details", "medical-history", "other-details"];
 
@@ -518,6 +628,8 @@
   const PIPELINE_KEYS = ["qualified", "booked", "screened"];
 
   let lastDetailId = null;
+  /** When set, skip re-applying default screening row expand (same prospect + screening tab until user leaves). */
+  let lastScreeningExpandSig = null;
   let searchDebounce = null;
 
   function pipelineFromStatus(status) {
@@ -602,11 +714,12 @@
     }
 
     base.timeline = p.activityTimeline ? structuredClone(p.activityTimeline) : structuredClone(DETAIL_DEFAULT.timeline);
+    base.activeListProgram = p.program;
     return base;
   }
 
   function persistProspectChecklistsFromDetail() {
-    if (state.route !== "detail") return;
+    if (state.route !== "detail" && state.route !== "screening") return;
     const p = PROSPECTS.find((x) => x.rowKey === state.detail.rowKey);
     if (!p) return;
     ensureProspectChecklists(p);
@@ -620,7 +733,7 @@
   }
 
   function syncDetailFromRoute() {
-    if (state.route !== "detail") return;
+    if (state.route !== "detail" && state.route !== "screening" && state.route !== "prospectv3") return;
     const rawId = state.routeId || DETAIL_DEFAULT.rowKey;
     const id = decodeURIComponent(rawId);
     const p = PROSPECTS.find((x) => x.rowKey === id || x.id === id);
@@ -631,6 +744,10 @@
         state.detail = mergeDetailFromProspect(p);
         state.pipeline = state.detail.pipeline;
         state.detailFormValues = buildProspectDetailFormValuesBundle(p);
+        state.prospectV3BiodataModalOpen = false;
+        state.prospectV3BiodataDraft = null;
+        state.classicScreeningUpdateModalId = null;
+        state.activityTimelineDrawerOpen = false;
       }
       /* Same prospect: keep pipeline + checklist state (do not reset from p.status each render — that broke task counts / stepper). */
       lastDetailId = id;
@@ -644,6 +761,10 @@
           medicalHistory: D && D.medicalHistory ? structuredClone(D.medicalHistory) : {},
           otherDetails: D && D.otherDetails ? structuredClone(D.otherDetails) : {},
         };
+        state.prospectV3BiodataModalOpen = false;
+        state.prospectV3BiodataDraft = null;
+        state.classicScreeningUpdateModalId = null;
+        state.activityTimelineDrawerOpen = false;
       }
       lastDetailId = id;
     }
@@ -687,6 +808,11 @@
       '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>',
     chevronRightSm:
       '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>',
+    /** Collapsible table rows (screening records): same stroke weight as chevronRightSm, fixed14px */
+    rowExpandClosed:
+      '<svg class="data-table__expand-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>',
+    rowExpandOpen:
+      '<svg class="data-table__expand-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>',
     checkStep:
       '<svg class="pipeline__check-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>',
     sort:
@@ -694,6 +820,8 @@
     /** List table: neutral chevrons when column is not the active sort */
     tableSortNeutral:
       '<svg class="data-table__sort-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 15l5 5 5-5M7 9l5-5 5 5"/></svg>',
+    trendUp:
+      '<svg class="prospect-summary-card__arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>',
     menuHamburger:
       '<svg class="registration__nav-hamburger-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>',
   };
@@ -724,8 +852,19 @@
   }
 
   function programDisplayLabel(program) {
-    const map = { Mammobus: "Mammobus", FIT: "FIT", HPV: "HPV / PAP" };
+    const map = { Mammobus: "Mammogram", FIT: "FIT", HPV: "HPV / PAP" };
     return map[program] || program || "";
+  }
+
+  /** Prospect V1 subtitle chip: active screening from list programme (not prospect id). */
+  function v1ClientActiveScreeningLabel(listProgram) {
+    const key = String(listProgram || "").trim();
+    if (!key) return "—";
+    const lower = key.toLowerCase();
+    if (lower === "mammobus") return "Mammogram";
+    if (lower === "hpv") return "HPV";
+    if (lower === "fit") return "FIT";
+    return programDisplayLabel(listProgram) || key;
   }
 
   /** Unique programme tags for a prospect id (multiple enrolments / rowKeys). */
@@ -765,6 +904,53 @@
     if (lower.includes("female")) gender = "female";
     else if (lower.includes("male")) gender = "male";
     return { age: Number.isFinite(age) ? age : null, gender };
+  }
+
+  /** Age in years from Personal Details DOB `DD/MM/YYYY` (biodata / screening-aligned). */
+  function ageFromDobDdMmYyyy(dobStr) {
+    const s = String(dobStr || "").trim();
+    const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (!m) return null;
+    const dd = parseInt(m[1], 10);
+    const mo = parseInt(m[2], 10);
+    const yyyy = parseInt(m[3], 10);
+    if (mo < 1 || mo > 12 || dd < 1 || dd > 31) return null;
+    const birth = new Date(yyyy, mo - 1, dd);
+    if (Number.isNaN(birth.getTime())) return null;
+    const ref = new Date();
+    let age = ref.getFullYear() - birth.getFullYear();
+    const dm = ref.getMonth() - birth.getMonth();
+    if (dm < 0 || (dm === 0 && ref.getDate() < birth.getDate())) age--;
+    if (age < 0 || age > 130) return null;
+    return age;
+  }
+
+  /**
+   * Prospect V1 hero line: gender from biodata/personal details, then listing `ageGender`.
+   */
+  function v1ProspectDisplayGender(details, listRow) {
+    const g = String(details?.gender || "").trim();
+    if (g) return g;
+    const { gender } = parseProspectAgeGender(listRow?.ageGender || "");
+    if (gender === "female") return "Female";
+    if (gender === "male") return "Male";
+    return "—";
+  }
+
+  /**
+   * Prospect V1 hero line: numeric age from biodata, else derived from DOB, else listing.
+   */
+  function v1ProspectDisplayAge(details, listRow) {
+    const raw = details?.age;
+    if (raw != null && String(raw).trim() !== "") {
+      const n = parseInt(String(raw).replace(/[^\d]/g, ""), 10);
+      if (Number.isFinite(n) && n >= 0 && n <= 130) return String(n);
+    }
+    const fromDob = ageFromDobDdMmYyyy(details?.dob);
+    if (fromDob != null) return String(fromDob);
+    const { age } = parseProspectAgeGender(listRow?.ageGender || "");
+    if (age != null) return String(age);
+    return "—";
   }
 
   /** Screening registration form submitted date — `PROSPECTS[].dateRegistered` as ISO YYYY-MM-DD. */
@@ -853,6 +1039,8 @@
       out.nric = reg.nric;
       if (reg.gender === "Male" || reg.gender === "Female") out.gender = reg.gender;
       out.dob = regDobToDetailDob(reg.dob);
+      const aReg = ageFromDobDdMmYyyy(out.dob);
+      if (aReg != null) out.age = String(aReg);
       out.race = reg.race;
       out.residentialStatus = regResidentialToFormStatus(reg.residential);
       out.block = reg.block;
@@ -865,7 +1053,10 @@
       const { age, gender } = parseProspectAgeGender(p.ageGender);
       if (gender === "female") out.gender = "Female";
       else if (gender === "male") out.gender = "Male";
-      if (age != null) out.dob = `01/06/${2026 - age}`;
+      if (age != null) {
+        out.age = String(age);
+        out.dob = `01/06/${2026 - age}`;
+      }
     }
 
     return out;
@@ -898,7 +1089,7 @@
   }
 
   function renderProspectNameCell(r) {
-    const href = `#/prospect/${encodeURIComponent(r.rowKey)}`;
+    const href = `#/prospect/${encodeURIComponent(r.rowKey)}/screening`;
     return `<td class="data-table__cell--prospect-name">
       <div class="prospect-name-cell">
         <a class="prospect-name-cell__link" href="${escapeAttr(href)}">${escapeAttr(r.name)}</a>
@@ -906,6 +1097,468 @@
       </div>
     </td>`;
   }
+
+  /** Expanded screening row: Result, Next review period, Next review date, Last updated by (— if empty). */
+  function normalizeClassicScreeningExpandedDetails(r) {
+    const dash = "—";
+    const val = (x) => (x != null && String(x).trim() !== "" ? String(x).trim() : dash);
+    return [
+      ["Result", val(r.result)],
+      ["Next review period", val(r.nextReviewPeriod)],
+      ["Next review date", val(r.nextReviewDate)],
+      ["Last updated by", val(r.lastUpdatedBy)],
+    ];
+  }
+
+  /** Mammogram registration `name="appointmentType"` values → card titles (Screening Form). */
+  const CLASSIC_MAMMOGRAM_APPOINTMENT_TYPE_LABELS = Object.freeze({
+    mammobus: "Community Mammobus Programme",
+    "scs-clinic": "SCS Clinic @ Bishan",
+    "healthier-sg": "Healthier SG Programme",
+  });
+
+  const CLASSIC_SCREENING_STATUS_BY_KEY = Object.freeze({
+    booked: { key: "booked", label: "Booked", tone: "sr-status--booked" },
+    qualified: { key: "qualified", label: "Qualified", tone: "sr-status--qualified" },
+    screened: { key: "screened", label: "Screened", tone: "sr-status--screened" },
+  });
+
+  const CLASSIC_SCREENING_ATTENDANCE_OPTIONS = Object.freeze(["Attended", "No Show", "Cancelled", "Rescheduled"]);
+
+  function normalizeClassicScreeningRecord(r) {
+    if (!r || typeof r !== "object") return null;
+    const id = r.id != null ? String(r.id) : "";
+    if (!id) return null;
+    return {
+      id,
+      submitted: String(r.submitted || "—"),
+      type: r.type || { key: "MMG", label: "—", tone: "sr-type--mmg" },
+      status: r.status || { key: "qualified", label: "—", tone: "sr-status--qualified" },
+      appointment: r.appointment == null ? null : r.appointment,
+      venue: r.venue != null ? String(r.venue) : "—",
+      attendance: r.attendance != null ? String(r.attendance).trim() : "",
+      /** Form field value: `mammobus` | `scs-clinic` | `healthier-sg` (mammogram only). */
+      appointmentType: r.appointmentType != null ? String(r.appointmentType).trim() : "",
+      /** Legacy demo seed only; used as fallback when `appointmentType` is missing (MMG). */
+      apptType: r.apptType != null ? String(r.apptType) : "",
+      action: r.action && typeof r.action === "object" ? r.action : null,
+      expandedDetails: normalizeClassicScreeningExpandedDetails(r),
+    };
+  }
+
+  function classicScreeningAttendanceDisplay(r) {
+    const raw = r?.attendance != null ? String(r.attendance).trim() : "";
+    if (!raw) return "—";
+    const hit = CLASSIC_SCREENING_ATTENDANCE_OPTIONS.find((x) => x.toLowerCase() === raw.toLowerCase());
+    return hit || raw;
+  }
+
+  /** "Appointment Type" column: mammogram labels from screening form; other types show —. */
+  function classicScreeningAppointmentTypeDisplay(r) {
+    if (!r || r.type?.key !== "MMG") return "—";
+    const at = String(r.appointmentType || "").trim().toLowerCase();
+    if (at && CLASSIC_MAMMOGRAM_APPOINTMENT_TYPE_LABELS[at]) {
+      return CLASSIC_MAMMOGRAM_APPOINTMENT_TYPE_LABELS[at];
+    }
+    const legacy = String(r.apptType || "").trim().toLowerCase();
+    if (!legacy) return "—";
+    if (legacy === "mammobus" || legacy.includes("community mammobus")) {
+      return CLASSIC_MAMMOGRAM_APPOINTMENT_TYPE_LABELS.mammobus;
+    }
+    if (legacy.includes("bishan") || legacy.includes("scs clinic")) {
+      return CLASSIC_MAMMOGRAM_APPOINTMENT_TYPE_LABELS["scs-clinic"];
+    }
+    if (legacy.includes("healthiersg") || legacy.includes("healthier sg")) {
+      return CLASSIC_MAMMOGRAM_APPOINTMENT_TYPE_LABELS["healthier-sg"];
+    }
+    return "—";
+  }
+
+  /** Rows from `#wd-classic-screening-records` in `index.html` (client-profile_2 demo). */
+  function getClassicScreeningRecordsRawArray() {
+    const el = document.getElementById("wd-classic-screening-records");
+    if (!el || !el.textContent || !el.textContent.trim()) return [];
+    try {
+      const raw = JSON.parse(el.textContent);
+      return Array.isArray(raw) ? raw : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function getClassicScreeningRecordsRawMerged() {
+    return getClassicScreeningRecordsRawArray().map((item) => {
+      const id = item.id != null ? String(item.id) : "";
+      const patch = id ? state.classicScreeningEditById[id] : null;
+      return patch ? { ...item, ...patch } : { ...item };
+    });
+  }
+
+  function getClassicScreeningRecordsCatalog() {
+    return getClassicScreeningRecordsRawMerged().map(normalizeClassicScreeningRecord).filter(Boolean);
+  }
+
+  /** List `program` / enrolment label → screening table `type.key` (MMG | FIT | PAP). */
+  function screeningTypeKeyFromListProgram(programRaw) {
+    const p = String(programRaw || "").trim().toLowerCase();
+    if (!p) return null;
+    if (p.includes("mammobus") || p.includes("mammogram")) return "MMG";
+    if (p === "fit" || p.includes("fit")) return "FIT";
+    if (p.includes("hpv") || p.includes("pap")) return "PAP";
+    return null;
+  }
+
+  function classicScreeningFilterKeyFromListProgram(programRaw) {
+    return screeningTypeKeyFromListProgram(programRaw);
+  }
+
+  function pickClassicScreeningRecordIdForListProgram(programRaw) {
+    const typeKey = screeningTypeKeyFromListProgram(programRaw);
+    if (!typeKey) return null;
+    const records = getClassicScreeningRecordsCatalog();
+    const fk = classicScreeningFilterKey();
+    const visible = fk === "all" ? records : records.filter((r) => r.type?.key === fk);
+    const hit = visible.find((r) => r.type?.key === typeKey);
+    return hit ? hit.id : null;
+  }
+
+  /**
+   * After navigation to classic / v1 screening table: align chip filter with list programme (new prospect)
+   * and expand the matching record. Re-renders on the same view preserve manual expand/collapse.
+   */
+  function applyClassicScreeningRowExpandFromNavigation() {
+    const onScr =
+      (state.route === "detail" && state.detailTab === "screening") ||
+      (state.route === "prospectv3" && state.prospectV3Tab === "screenings");
+    if (!onScr) {
+      lastScreeningExpandSig = null;
+      return;
+    }
+    const rid = state.routeId || state.detail?.rowKey || "";
+    const sig = `${state.route}|${rid}`;
+    if (lastScreeningExpandSig === sig) return;
+    lastScreeningExpandSig = sig;
+    const prog = state.detail?.activeListProgram;
+    const fk = classicScreeningFilterKeyFromListProgram(prog);
+    if (fk) state.classicScreeningFilter = fk;
+    const id = pickClassicScreeningRecordIdForListProgram(prog);
+    state.classicScreeningExpandedId = id || null;
+  }
+
+  function getClassicScreeningMergedRawById(id) {
+    const sid = id != null ? String(id) : "";
+    if (!sid) return null;
+    return getClassicScreeningRecordsRawMerged().find((x) => String(x.id) === sid) || null;
+  }
+
+  function persistClassicScreeningUpdateFromForm() {
+    const id = state.classicScreeningUpdateModalId;
+    if (!id) return false;
+    const merged = getClassicScreeningMergedRawById(id);
+    if (!merged) return false;
+    const isMmg = merged.type?.key === "MMG";
+    const submitted = document.getElementById("csu-submitted")?.value?.trim() || "—";
+    const statusKey =
+      document.getElementById("csu-status-value")?.value?.trim() ||
+      document.querySelector("#classic-screening-update-modal [data-csu-status].is-selected")?.getAttribute("data-csu-status") ||
+      "qualified";
+    const status =
+      CLASSIC_SCREENING_STATUS_BY_KEY[statusKey] || CLASSIC_SCREENING_STATUS_BY_KEY.qualified;
+    const d = document.getElementById("csu-appt-date")?.value?.trim() || "";
+    const t = document.getElementById("csu-appt-time")?.value?.trim() || "";
+    const appointment = d && t ? { date: d, time: t } : null;
+    const venue = document.getElementById("csu-venue")?.value?.trim() || "—";
+    const attendance = document.getElementById("csu-attendance")?.value?.trim() || "";
+    const result = document.getElementById("csu-result")?.value?.trim() || "";
+    const nextReviewPeriod = document.getElementById("csu-next-review-period")?.value?.trim() || "";
+    const nextReviewDate = document.getElementById("csu-next-review-date")?.value?.trim() || "";
+    const patch = {
+      submitted,
+      status,
+      appointment,
+      venue,
+      attendance,
+      result,
+      nextReviewPeriod,
+      nextReviewDate,
+      lastUpdatedBy: PORTAL_CURRENT_USER.name,
+    };
+    if (isMmg) {
+      patch.appointmentType = String(document.getElementById("csu-appointment-type")?.value || "").trim();
+    }
+    state.classicScreeningEditById[id] = { ...(state.classicScreeningEditById[id] || {}), ...patch };
+    return true;
+  }
+
+  function classicScreeningTypeCounts(records) {
+    const out = { all: 0, MMG: 0, FIT: 0, PAP: 0 };
+    (records || []).forEach((r) => {
+      out.all += 1;
+      const k = r?.type?.key;
+      if (k === "MMG") out.MMG += 1;
+      else if (k === "FIT") out.FIT += 1;
+      else if (k === "PAP") out.PAP += 1;
+    });
+    return out;
+  }
+
+  function classicScreeningFilterKey() {
+    const raw = String(state.classicScreeningFilter || "all").toUpperCase();
+    if (raw === "MMG" || raw === "FIT" || raw === "PAP") return raw;
+    return "all";
+  }
+
+  /** Status badge with leading dot (collapsible screening table reference). */
+  function screeningRecordStatusPill(esc, statusKey, label) {
+    const k = String(statusKey || "").toLowerCase();
+    const mod =
+      k === "booked"
+        ? "screening-records-status--booked"
+        : k === "completed" || k === "screened"
+          ? "screening-records-status--screened"
+          : "screening-records-status--qualified";
+    return `<span class="screening-records-status ${mod}">${esc(label)}</span>`;
+  }
+
+  function screeningRecordTypeClass(tone) {
+    const raw = String(tone || "sr-type--mmg");
+    const mod = raw.startsWith("sr-type--") ? raw.slice("sr-type--".length) : "mmg";
+    return `screening-records-type--${mod}`;
+  }
+
+  const SCREENING_TABLE_TASK_STAGES = ["qualified", "booked", "screened"];
+
+  function stageChecklistLabelCount(stage) {
+    const L = window.WD_STAGE_CHECKLISTS;
+    const arr = L && L[stage] && Array.isArray(L[stage]) ? L[stage] : [];
+    return arr.length;
+  }
+
+  function stageChecklistLabelsForRecord(stage) {
+    const L = window.WD_STAGE_CHECKLISTS;
+    return L && L[stage] && Array.isArray(L[stage]) ? L[stage] : [];
+  }
+
+  function classicScreeningRecordTaskStage(record) {
+    const k = String(record?.status?.key || "").toLowerCase();
+    if (k === "booked") return "booked";
+    if (k === "screened" || k === "completed") return "screened";
+    return "qualified";
+  }
+
+  function ensureClassicScreeningTaskBucket(recordId) {
+    const id = recordId != null ? String(recordId) : "";
+    if (!id) return null;
+    if (!state.classicScreeningTaskDoneByRecordId[id]) {
+      state.classicScreeningTaskDoneByRecordId[id] = { qualified: [], booked: [], screened: [] };
+    }
+    const b = state.classicScreeningTaskDoneByRecordId[id];
+    for (const st of SCREENING_TABLE_TASK_STAGES) {
+      const n = stageChecklistLabelCount(st);
+      if (!Array.isArray(b[st])) b[st] = [];
+      while (b[st].length < n) b[st].push(false);
+      if (b[st].length > n) b[st] = b[st].slice(0, n);
+    }
+    return b;
+  }
+
+  function classicScreeningTaskProgressForRecord(record) {
+    const id = record?.id != null ? String(record.id) : "";
+    if (!id) return { done: 0, total: 0, stage: "qualified" };
+    const stage = classicScreeningRecordTaskStage(record);
+    ensureClassicScreeningTaskBucket(id);
+    const labels = stageChecklistLabelsForRecord(stage);
+    const arr = state.classicScreeningTaskDoneByRecordId[id][stage];
+    const total = labels.length;
+    const done = total ? arr.filter(Boolean).length : 0;
+    return { done, total, stage };
+  }
+
+  /** Update modal + table checklist UI without full renderApp (avoids flicker on each checkbox toggle). */
+  function patchClassicScreeningTaskChecklistDom(recordId, checkboxInput) {
+    const rid = recordId != null ? String(recordId) : "";
+    if (!rid || !(checkboxInput instanceof HTMLInputElement)) return;
+    const row = checkboxInput.closest(".detail-task-row");
+    if (row) row.classList.toggle("is-done", checkboxInput.checked);
+    const raw = getClassicScreeningMergedRawById(rid);
+    const norm = raw ? normalizeClassicScreeningRecord(raw) : null;
+    if (!norm) return;
+    const prog = classicScreeningTaskProgressForRecord(norm);
+    const modal = document.getElementById("classic-screening-tasks-modal");
+    if (modal) {
+      const cnt = modal.querySelector(".detail-overview-task-count");
+      if (cnt) cnt.textContent = `${prog.done} / ${prog.total} completed`;
+    }
+    const tr = Array.from(document.querySelectorAll("tr[data-classic-screening-row]")).find(
+      (r) => r.getAttribute("data-classic-screening-row") === rid
+    );
+    if (tr) {
+      const wrap = tr.querySelector(".screening-records-checklist");
+      const meter = tr.querySelector(".screening-records-checklist__meter");
+      if (meter) {
+        meter.textContent = prog.total ? `${prog.done}/${prog.total}` : "—";
+        const stagePretty = prog.stage.charAt(0).toUpperCase() + prog.stage.slice(1);
+        meter.setAttribute("title", `Tasks completed for current status (${stagePretty})`);
+      }
+      if (wrap) {
+        const complete = prog.total > 0 && prog.done === prog.total;
+        wrap.classList.toggle("screening-records-checklist--complete", complete);
+      }
+    }
+  }
+
+  function renderClassicScreeningTasksModal() {
+    const sid = state.classicScreeningTasksModalId;
+    if (!sid) return "";
+    const record = getClassicScreeningMergedRawById(sid);
+    if (!record) return "";
+    const norm = normalizeClassicScreeningRecord(record);
+    if (!norm) return "";
+    const e = escapeAttr;
+    const stage = classicScreeningRecordTaskStage(norm);
+    ensureClassicScreeningTaskBucket(sid);
+    const labels = stageChecklistLabelsForRecord(stage);
+    const doneArr = state.classicScreeningTaskDoneByRecordId[sid][stage];
+    const stagePretty = stage.charAt(0).toUpperCase() + stage.slice(1);
+    const doneCount = labels.length ? doneArr.filter(Boolean).length : 0;
+    const totalCount = labels.length;
+    const listHtml =
+      labels.length === 0
+        ? `<p class="placeholder-block" style="margin:0">Task checklist is unavailable (load detail-panels.js for stage labels).</p>`
+        : `<ul class="detail-task-list">${labels
+            .map((lbl, i) => {
+              const done = !!doneArr[i];
+              const ck = done ? " checked" : "";
+              const tid = `cst-${String(sid).replace(/[^a-zA-Z0-9_-]/g, "_")}-${stage}-${i}`;
+              return `<li class="detail-task-row detail-task-row--checklist${done ? " is-done" : ""}">
+            <input type="checkbox" class="detail-task-check" id="${e(tid)}" data-classic-screening-task="" data-cst-record="${e(
+                sid
+              )}" data-cst-stage="${e(stage)}" data-cst-index="${e(String(i))}"${ck} />
+            <label class="detail-task-text" for="${e(tid)}">${e(lbl)}</label>
+          </li>`;
+            })
+            .join("")}</ul>`;
+    return `
+      <div class="ui-dialog-overlay" id="classic-screening-tasks-modal" role="presentation">
+        <div class="ui-dialog ui-dialog--screening-tasks" role="dialog" aria-modal="true" aria-labelledby="classic-screening-tasks-title">
+          <div class="ui-dialog__close">
+            <button type="button" class="ui-btn ui-btn--ghost ui-btn--icon" data-classic-screening-tasks-dismiss aria-label="Close">${icons.x}</button>
+          </div>
+          <div class="ui-dialog__body screening-tasks-modal__body">
+            <section class="detail-card detail-card--tasks screening-tasks-modal__checklist">
+              <div class="panel-section__head">
+                <h3 class="detail-card__heading-primary" id="classic-screening-tasks-title">${e(stagePretty)} — tasks</h3>
+                <span class="detail-overview-task-count">${e(String(doneCount))} / ${e(String(totalCount))} completed</span>
+              </div>
+              ${listHtml}
+            </section>
+          </div>
+          <div class="ui-dialog__footer">
+            <div class="ui-dialog__footer-actions">
+              <button type="button" class="ui-btn ui-btn--default ui-btn--sm" data-classic-screening-tasks-dismiss>Done</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  /** Listing-style `table-card` + `data-table`, with toolbar filters and collapsible detail rows (no extra detail-card shell). */
+  function renderClassicScreeningRecordsPanel(esc) {
+    const records = getClassicScreeningRecordsCatalog();
+    const counts = classicScreeningTypeCounts(records);
+    const filterKey = classicScreeningFilterKey();
+    const visible = filterKey === "all" ? records : records.filter((r) => r.type?.key === filterKey);
+    const exp = state.classicScreeningExpandedId;
+
+    const tbody =
+      visible.length === 0
+        ? `<tr><td colspan="10"><p class="placeholder-block" style="margin:0">No screening records found.</p></td></tr>`
+        : visible
+            .map((r) => {
+              const open = exp === r.id;
+              const appt = r.appointment
+                ? `<div class="cell-stack"><span>${esc(r.appointment.date)}</span><span class="cell-muted">${esc(
+                    r.appointment.time
+                  )}</span></div>`
+                : `<span class="screening-records-appt__empty">— No appointment yet</span>`;
+              const venue = r.venue && r.venue !== "—" ? esc(r.venue) : `<span class="screening-records-appt__empty">—</span>`;
+              const attendance = esc(classicScreeningAttendanceDisplay(r));
+              const prog = classicScreeningTaskProgressForRecord(r);
+              const progText = prog.total ? `${prog.done}/${prog.total}` : "—";
+              const progComplete = prog.total > 0 && prog.done === prog.total;
+              const checklistCell = `<div class="screening-records-checklist${progComplete ? " screening-records-checklist--complete" : ""}"><span class="screening-records-checklist__meter" title="Tasks completed for current status (${esc(
+                prog.stage
+              )})">${esc(progText)}</span></div>`;
+              const tasksBtn = `<button type="button" class="screening-records-btn screening-records-btn--outline" data-table-row-stop data-classic-screening-tasks="${esc(
+                r.id
+              )}">Tasks</button>`;
+              const updateBtn = `<button type="button" class="screening-records-btn screening-records-btn--outline" data-table-row-stop data-classic-screening-update="${esc(
+                r.id
+              )}">Update</button>`;
+              const actionCell = `<div class="screening-records-actions">${tasksBtn}${updateBtn}</div>`;
+              const typeClass = screeningRecordTypeClass(r.type?.tone);
+              const detailGrid = (r.expandedDetails || [])
+                .map(
+                  ([k, v]) =>
+                    `<div class="data-table__detail-kv"><div class="data-table__detail-k">${esc(String(k))}</div><div class="data-table__detail-v">${esc(
+                      String(v)
+                    )}</div></div>`
+                )
+                .join("");
+              return `
+              <tr class="data-table__row--expandable ${open ? "is-open" : ""}" data-classic-screening-row="${esc(r.id)}" tabindex="0">
+                <td class="data-table__td--narrow" aria-hidden="true"><span class="data-table__expand-chevron-wrap" aria-hidden="true">${open ? icons.rowExpandOpen : icons.rowExpandClosed}</span></td>
+                <td>${esc(r.submitted)}</td>
+                <td><span class="screening-records-type ${typeClass}">${esc(r.type.label)}</span></td>
+                <td>${screeningRecordStatusPill(esc, r.status?.key, r.status?.label || "—")}</td>
+                <td>${appt}</td>
+                <td>${venue}</td>
+                <td>${esc(classicScreeningAppointmentTypeDisplay(r))}</td>
+                <td>${attendance}</td>
+                <td class="data-table__td--checklist">${checklistCell}</td>
+                <td class="data-table__td--actions" data-table-row-stop>${actionCell}</td>
+              </tr>
+              <tr class="data-table__row--detail ${open ? "is-open" : ""}" aria-hidden="${open ? "false" : "true"}">
+                <td colspan="10">
+                  <div class="data-table__detail-inner">
+                    <div class="data-table__detail-grid">${detailGrid}</div>
+                  </div>
+                </td>
+              </tr>`;
+            })
+            .join("");
+
+    return `<div class="table-card table-card--screening-records">
+          <div class="screening-records-toolbar">
+            <div class="ui-chip-group" role="group" aria-label="Screening type filters">
+              <button type="button" class="ui-chip ${filterKey === "all" ? "is-selected" : ""}" data-classic-screening-filter="all" aria-pressed="${filterKey === "all"}">All (${counts.all})</button>
+              <button type="button" class="ui-chip ${filterKey === "MMG" ? "is-selected" : ""}" data-classic-screening-filter="MMG" aria-pressed="${filterKey === "MMG"}">Mammogram (${counts.MMG})</button>
+              <button type="button" class="ui-chip ${filterKey === "FIT" ? "is-selected" : ""}" data-classic-screening-filter="FIT" aria-pressed="${filterKey === "FIT"}">FIT Kit (${counts.FIT})</button>
+              <button type="button" class="ui-chip ${filterKey === "PAP" ? "is-selected" : ""}" data-classic-screening-filter="PAP" aria-pressed="${filterKey === "PAP"}">HPV/PAP (${counts.PAP})</button>
+            </div>
+          </div>
+          <table class="data-table data-table--screening-records" aria-label="Screening records">
+            <thead>
+              <tr>
+                <th scope="col" class="data-table__th--narrow" aria-hidden="true"></th>
+                <th scope="col">Submitted</th>
+                <th scope="col">Type</th>
+                <th scope="col">Status</th>
+                <th scope="col">Appointment</th>
+                <th scope="col">Venue</th>
+                <th scope="col">Appointment Type</th>
+                <th scope="col">Attendance</th>
+                <th scope="col" class="data-table__th--checklist">Checklist</th>
+                <th scope="col" class="data-table__th--actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody>${tbody}</tbody>
+          </table>
+        </div>`;
+  }
+
+  window.WD_renderClassicScreeningRecordsPanel = renderClassicScreeningRecordsPanel;
 
   function listFilterCategoryCount() {
     const f = state.listFilters;
@@ -964,6 +1617,11 @@
           break;
         case "status":
           cmp = PIPELINE_KEYS.indexOf(normStatus(a)) - PIPELINE_KEYS.indexOf(normStatus(b));
+          break;
+        case "attendance":
+          cmp = classicScreeningAttendanceDisplay({ attendance: a.attendance }).localeCompare(
+            classicScreeningAttendanceDisplay({ attendance: b.attendance })
+          );
           break;
         case "source":
           cmp = a.sourceDetail.localeCompare(b.sourceDetail);
@@ -1066,15 +1724,33 @@
       </header>
     `;
     }
+    const prospectContext =
+      state.route === "detail" || state.route === "screening" || state.route === "prospectv3";
+    const rid = state.detail?.rowKey ? encodeURIComponent(state.detail.rowKey) : encodeURIComponent(DETAIL_DEFAULT.rowKey);
+    const switcher = prospectContext
+      ? `
+        <div class="app-header__switcher" role="group" aria-label="Prospect view switcher">
+          <a class="ui-btn ui-btn--${state.route === "detail" ? "default" : "outline"} ui-btn--sm" href="#/prospect/${escapeAttr(
+            rid
+          )}">classic</a>
+          <a class="ui-btn ui-btn--${state.route === "prospectv3" ? "default" : "outline"} ui-btn--sm" href="#/prospectv3/${escapeAttr(
+            rid
+          )}">v1</a>
+        </div>
+      `
+      : "";
     return `
       <header class="app-header">
         <div class="app-header__brand">
           ${renderScsLogo()}
         </div>
         <div class="app-header__actions">
+          ${switcher}
           <button type="button" class="user-chip" aria-label="User menu">
-            <span class="user-chip__avatar">TH</span>
-            <span><span class="user-name">Thong Han</span><span class="sep">|</span><span class="user-role">Super Admin</span></span>
+            <span class="user-chip__avatar">${escapeAttr(portalCurrentUserInitials())}</span>
+            <span><span class="user-name">${escapeAttr(PORTAL_CURRENT_USER.name)}</span><span class="sep">|</span><span class="user-role">${escapeAttr(
+              PORTAL_CURRENT_USER.role
+            )}</span></span>
             ${icons.chevronDown}
           </button>
           <button type="button" class="btn btn--outline btn--sm">Need Help?</button>
@@ -1100,6 +1776,126 @@
         </div>
       </div>
     `;
+  }
+
+  function normListPipelineStatus(r) {
+    return PIPELINE_KEYS.includes(r.status) ? r.status : "qualified";
+  }
+
+  /** KPI row on prospect listing — counts respect program, search, and list filters. */
+  function computeProspectListSummary(rows) {
+    let qualified = 0;
+    let booked = 0;
+    let screened = 0;
+    let followUp = 0;
+    for (const r of rows) {
+      const st = normListPipelineStatus(r);
+      if (st === "qualified") qualified++;
+      else if (st === "booked") booked++;
+      else if (st === "screened") screened++;
+      const a = String(r.attendance || "").trim().toLowerCase();
+      if (a === "no show") followUp++;
+    }
+    return { total: rows.length, qualified, booked, screened, followUp };
+  }
+
+  /** All `PROSPECTS` enrolment rows for the current prospect (same person, multiple programmes). */
+  function prospectEnrolmentRowsForDetail(d) {
+    if (!d) return [];
+    if (d.id != null) {
+      const id = String(d.id);
+      const rows = PROSPECTS.filter((x) => String(x.id) === id);
+      if (rows.length) return rows;
+    }
+    if (d.rowKey) {
+      const hit = PROSPECTS.find((x) => x.rowKey === d.rowKey);
+      return hit ? [hit] : [];
+    }
+    return [];
+  }
+
+  /** Decorative trend deltas (no historical API in prototype); scales loosely with totals. */
+  function prospectListSummaryTrendDeltas(s) {
+    return {
+      total: s.total === 0 ? 0 : Math.max(1, Math.round(s.total * 0.081)),
+      qualified: s.qualified === 0 ? 0 : Math.max(1, Math.round(s.qualified * 0.11)),
+      booked: s.booked === 0 ? 0 : Math.max(1, Math.round(s.booked * 0.148)),
+      screened: s.screened === 0 ? 0 : Math.max(1, Math.round(s.screened * 0.066)),
+      followUp: s.followUp,
+    };
+  }
+
+  /**
+   * KPI cards (listing + V1 overview): same markup and logic as the main prospect list strip.
+   * @param {object[]} rows Enrolment rows with `status` + `attendance` (e.g. `PROSPECTS` slice).
+   * @param {{ ariaLabel?: string, sectionClass?: string, gridOnly?: boolean }} [options] `gridOnly` = no outer `<section>`, only the five `<article>` cards in a grid.
+   */
+  function renderProspectSummarySection(rows, options) {
+    options = options || {};
+    const gridOnly = !!options.gridOnly;
+    const ariaLabel = options.ariaLabel != null ? String(options.ariaLabel) : "Prospect summary";
+    const sectionExtra = options.sectionClass != null ? String(options.sectionClass).trim() : "";
+    const s = computeProspectListSummary(rows);
+    const d = prospectListSummaryTrendDeltas(s);
+    const esc = escapeAttr;
+    const trendPositive = (delta, hint) => {
+      if (delta <= 0) {
+        return `<div class="prospect-summary-card__trend prospect-summary-card__trend--muted"><span class="prospect-summary-card__hint">${esc(hint)}</span></div>`;
+      }
+      return `<div class="prospect-summary-card__trend prospect-summary-card__trend--positive">
+        <span class="prospect-summary-card__trend-icon">${icons.trendUp}</span>
+        <span class="prospect-summary-card__delta">${esc(String(delta))}</span>
+        <span class="prospect-summary-card__hint">${esc(hint)}</span>
+      </div>`;
+    };
+    const trendFollowUp = () => {
+      if (s.followUp === 0) {
+        return `<div class="prospect-summary-card__trend prospect-summary-card__trend--muted"><span class="prospect-summary-card__hint">${esc(
+          "No new no-shows"
+        )}</span></div>`;
+      }
+      return `<div class="prospect-summary-card__trend prospect-summary-card__trend--alert">
+        <span class="prospect-summary-card__trend-icon">${icons.trendUp}</span>
+        <span class="prospect-summary-card__delta">${esc(String(d.followUp))}</span>
+        <span class="prospect-summary-card__hint">${esc("new no-shows")}</span>
+      </div>`;
+    };
+    const gridAttrs = gridOnly
+      ? ` class="prospect-summary__grid v1-overview-kpi-grid" role="group" aria-label="${esc(ariaLabel)}"`
+      : ` class="prospect-summary__grid"`;
+    const gridHtml = `
+        <div${gridAttrs}>
+          <article class="prospect-summary-card prospect-summary-card--total">
+            <h3 class="prospect-summary-card__label">Total cases</h3>
+            <p class="prospect-summary-card__value">${esc(String(s.total))}</p>
+            ${trendPositive(d.total, "from last month")}
+          </article>
+          <article class="prospect-summary-card prospect-summary-card--qualified">
+            <h3 class="prospect-summary-card__label">Qualified</h3>
+            <p class="prospect-summary-card__value">${esc(String(s.qualified))}</p>
+            ${trendPositive(d.qualified, "new intakes")}
+          </article>
+          <article class="prospect-summary-card prospect-summary-card--booked">
+            <h3 class="prospect-summary-card__label">Booked</h3>
+            <p class="prospect-summary-card__value">${esc(String(s.booked))}</p>
+            ${trendPositive(d.booked, "new appointments")}
+          </article>
+          <article class="prospect-summary-card prospect-summary-card--screened">
+            <h3 class="prospect-summary-card__label">Screened</h3>
+            <p class="prospect-summary-card__value">${esc(String(s.screened))}</p>
+            ${trendPositive(d.screened, "this week")}
+          </article>
+          <article class="prospect-summary-card prospect-summary-card--followup">
+            <h3 class="prospect-summary-card__label">Follow-up needed</h3>
+            <p class="prospect-summary-card__value">${esc(String(s.followUp))}</p>
+            ${trendFollowUp()}
+          </article>
+        </div>`;
+    if (gridOnly) return gridHtml;
+    const sectionClasses = ["prospect-summary", sectionExtra].filter(Boolean).join(" ");
+    return `
+      <section class="${esc(sectionClasses)}" aria-label="${esc(ariaLabel)}">${gridHtml}
+      </section>`;
   }
 
   function renderListToolbar() {
@@ -1132,7 +1928,7 @@
             ${icons.plus} Add Prospect
           </button>
           <div class="title-dropdown__panel" role="menu">
-            <a href="#/register/mammobus" class="title-dropdown__option" role="menuitem">Community Mammobus Programme</a>
+            <a href="#/register/mammobus" class="title-dropdown__option" role="menuitem">Mammogram Screening Registration</a>
             <a href="#/register/hpv" class="title-dropdown__option" role="menuitem">HPV Screening Programme</a>
             <a href="#/register/fit" class="title-dropdown__option" role="menuitem">FIT Screening Programme</a>
           </div>
@@ -1186,6 +1982,7 @@
               ${renderSortableTh("Date registered", "dateRegistered")}
               ${renderSortableTh("Contact", "contact")}
               ${renderSortableTh("Status", "status")}
+              ${renderSortableTh("Attendance", "attendance")}
               ${renderSortableTh("Source", "source")}
               ${renderSortableTh("Next review", "nextReview")}
               ${renderSortableTh("Risk", "risk")}
@@ -1198,7 +1995,7 @@
                 (r) => `
               <tr tabindex="0" data-nav-prospect="${escapeAttr(r.rowKey)}">
                 ${renderProspectNameCell(r)}
-                <td>${escapeAttr(r.program)}</td>
+                <td>${escapeAttr(programDisplayLabel(r.program))}</td>
                 <td>${escapeAttr(formatDateRegisteredDisplay(r.dateRegistered))}</td>
                 <td>
                   <div class="cell-stack">
@@ -1207,6 +2004,7 @@
                   </div>
                 </td>
                 <td>${statusPill(r.status)}</td>
+                <td>${escapeAttr(classicScreeningAttendanceDisplay({ attendance: r.attendance }))}</td>
                 <td>
                   <div class="cell-stack">
                     <span>${escapeAttr(r.sourceType)}</span>
@@ -1262,12 +2060,17 @@
         const cards = inCol
           .map((r) => {
             const { tasks, pct } = kanbanCardProgress(r);
+            const attendance = classicScreeningAttendanceDisplay({ attendance: r.attendance });
             return `
         <article class="kanban-card" tabindex="0" data-kanban-card data-kanban-prospect="${escapeAttr(r.rowKey)}">
-          <div class="kanban-card__program"><span class="pill">${escapeAttr(r.program)}</span></div>
+          <div class="kanban-card__program"><span class="pill">${escapeAttr(programDisplayLabel(r.program))}</span></div>
           <h2 class="kanban-card__name">${escapeAttr(r.name)}</h2>
           <div class="kanban-card__risk">${riskLevelIndicator(r.risk)}</div>
           <p class="kanban-card__meta">${escapeAttr(kanbanCardDemographics(r))}</p>
+          <div class="kanban-card__attendance">
+            <span>Attendance</span>
+            <span class="kanban-card__attendance-value">${escapeAttr(attendance)}</span>
+          </div>
           <div class="kanban-card__tasks">
             <span>Tasks</span>
             <span>${escapeAttr(tasks)}</span>
@@ -1292,19 +2095,22 @@
   }
 
   function renderListPage() {
+    const filtered = getFilteredProspects();
+    const summary = renderProspectSummarySection(filtered, { ariaLabel: "Prospect summary" });
     const toolbar = renderListToolbar();
     const body =
       state.view === "kanban"
         ? `<div class="kanban">${renderKanbanFromProspects()}</div>`
         : renderTable(getListTableRows());
-    return `${toolbar}${body}`;
+    return `${summary}${toolbar}${body}`;
   }
 
   function normalizeDetailTab() {
     const legacy = { medical: "medical-history", other: "other-details" };
     if (typeof state.detailTab === "string") state.detailTab = state.detailTab.trim();
     if (legacy[state.detailTab]) state.detailTab = legacy[state.detailTab];
-    if (!DETAIL_TAB_IDS.includes(state.detailTab)) state.detailTab = "overview";
+    if (state.detailTab === "overview") state.detailTab = "details";
+    if (!DETAIL_TAB_IDS.includes(state.detailTab)) state.detailTab = "details";
   }
 
   function pipelineStageLabel() {
@@ -1327,12 +2133,35 @@
     return fn(state.detailTab, ctx);
   }
 
+  function renderActivityTimelineDrawer() {
+    if (state.route !== "detail") return "";
+    const d = state.detail;
+    const feed = buildDetailActivityFeed(d.rowKey, d);
+    const inner =
+      typeof window.WD_renderActivityTimelineSection === "function"
+        ? window.WD_renderActivityTimelineSection(escapeAttr, feed, { forDrawer: true })
+        : `<p class="placeholder-block" style="margin:0">Activity timeline unavailable.</p>`;
+    const open = state.activityTimelineDrawerOpen;
+    return `
+    <div class="activity-timeline-drawer${open ? " activity-timeline-drawer--open" : ""}" id="activity-timeline-drawer" aria-hidden="${open ? "false" : "true"}">
+      <div class="activity-timeline-drawer__backdrop" data-activity-timeline-drawer-dismiss role="presentation"></div>
+      <aside class="activity-timeline-drawer__panel" role="dialog" aria-modal="true" aria-labelledby="activity-timeline-drawer-title">
+        <div class="activity-timeline-drawer__head">
+          <h2 class="activity-timeline-drawer__title" id="activity-timeline-drawer-title">Activity timeline</h2>
+          <button type="button" class="ui-btn ui-btn--ghost ui-btn--icon activity-timeline-drawer__close" data-activity-timeline-drawer-dismiss aria-label="Close">${icons.x}</button>
+        </div>
+        <div class="activity-timeline-drawer__body">
+          ${inner}
+        </div>
+      </aside>
+    </div>`;
+  }
+
   function renderDetailPage() {
     normalizeDetailTab();
     const d = state.detail;
     const programTagsHtml = detailProgramTagsHtml(d.programTags);
     const tabs = [
-      ["overview", "Overview"],
       ["details", "Personal Details"],
       ["medical-history", "Medical History"],
       ["other-details", "Other Details"],
@@ -1356,27 +2185,13 @@
             <h1 class="registration__title">${escapeAttr(d.name)}</h1>
             <p class="registration__subtitle">${escapeAttr(d.subtitle)}</p>
           </div>
-          <div class="registration__toolbar-actions">${riskLevelIndicator(d.risk)}</div>
+          <div class="registration__toolbar-actions">
+            <button type="button" class="btn btn--outline" data-detail-activity-timeline>Activity timeline</button>
+          </div>
         </div>
-        ${programTagsHtml.trim() ? `<div class="detail-hero__meta detail-hero__meta--tags">${programTagsHtml}</div>` : ""}
-      </div>
-      <div class="pipeline pipeline--stepper">
-        <div class="pipeline__stages pipeline__stages--chevron" role="group" aria-label="Pipeline stage">
-          ${PIPELINE_KEYS.map((s) => {
-            const cur = pipelineStageIndex(state.pipeline);
-            const idx = pipelineStageIndex(s);
-            const label = s.charAt(0).toUpperCase() + s.slice(1);
-            let stateMod = "pipeline__stage--upcoming";
-            if (idx < cur) stateMod = "pipeline__stage--complete";
-            else if (idx === cur) stateMod = "pipeline__stage--current";
-            const showCheck = idx <= cur;
-            const inner = showCheck
-              ? `<span class="pipeline__stage__inner">${icons.checkStep}<span class="pipeline__stage__label">${label}</span></span>`
-              : `<span class="pipeline__stage__inner pipeline__stage__inner--text-only"><span class="pipeline__stage__label">${label}</span></span>`;
-            const ariaCur = state.pipeline === s ? ' aria-current="step"' : "";
-            return `
-            <button type="button" class="pipeline__stage ${stateMod}" data-pipeline="${s}"${ariaCur} aria-pressed="${state.pipeline === s}">${inner}</button>`;
-          }).join("")}
+        <div class="detail-hero__meta detail-hero__meta--tags">
+          ${programTagsHtml.trim() ? programTagsHtml : ""}
+          <span class="detail-hero__risk-inline">${riskLevelIndicator(d.risk)}</span>
         </div>
       </div>
       <div class="detail-sticky-chrome detail-sticky-chrome--primary-bundle">
@@ -1393,6 +2208,1239 @@
       </div>
       <div class="detail-panels">
         ${renderDetailPanel()}
+      </div>
+      ${renderActivityTimelineDrawer()}
+    `;
+  }
+
+  function v3BiodataChasDotHex(raw) {
+    const t = String(raw || "").toLowerCase();
+    if (t.includes("orange")) return "#F97316";
+    if (t.includes("blue")) return "#3B82F6";
+    if (t.includes("green")) return "#10B981";
+    return "#CBD5E1";
+  }
+
+  /** First / last name for v3 biodata: prefer stored keys, else split list `d.name`. */
+  function v3BiodataNameParts(d, details) {
+    const parts = String(d.name || "")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    const fbLast = parts.length ? parts[parts.length - 1] : "";
+    const fbFirst = parts.length > 1 ? parts.slice(0, -1).join(" ") : parts[0] || "";
+    const first =
+      details.firstName != null && String(details.firstName).trim() !== "" ? String(details.firstName).trim() : fbFirst;
+    const last =
+      details.lastName != null && String(details.lastName).trim() !== "" ? String(details.lastName).trim() : fbLast;
+    return { firstName: first, lastName: last };
+  }
+
+  function v3BiodataPreferredLangString(details) {
+    if (Array.isArray(details.preferredLanguages)) return details.preferredLanguages.filter(Boolean).join(", ");
+    if (details.preferredLanguages != null && String(details.preferredLanguages).trim())
+      return String(details.preferredLanguages).trim();
+    return String(details.preferredLanguage || "").trim();
+  }
+
+  function v3BiodataAddressLine(details) {
+    if (details.address != null && String(details.address).trim()) return String(details.address).trim();
+    const bits = [details.block, details.street, details.floor, details.unit].filter(
+      (x) => x != null && String(x).trim() !== ""
+    );
+    return bits.length ? bits.join(", ") : "";
+  }
+
+  function v3BiodataHealthierSgLabel(stored) {
+    const c = healthierSgCanonicalStored(stored);
+    const pair = V3_BIODATA_OPTIONS.healthierSg.find(([k]) => k === c);
+    return pair ? pair[1] : stored != null && String(stored).trim() ? String(stored).trim() : "—";
+  }
+
+  function v3BiodataControlWrap(innerHtml) {
+    return `<span class="bio-v bio-v--control">${innerHtml}</span>`;
+  }
+
+  function v3BiodataSelectSimple(e, field, current, optionStrings, placeholderLabel) {
+    const val = current != null ? String(current) : "";
+    const opts = (optionStrings || [])
+      .map((opt) => `<option value="${e(opt)}"${val === opt ? " selected" : ""}>${e(opt)}</option>`)
+      .join("");
+    return v3BiodataControlWrap(
+      `<select class="bio-select" data-v3-biodata-field="${e(field)}"><option value="">${e(
+        placeholderLabel
+      )}</option>${opts}</select>`
+    );
+  }
+
+  function v3BiodataSelectValueLabel(e, field, current, pairs, placeholderLabel) {
+    const val = String(current || "").trim().toLowerCase();
+    const opts = (pairs || [])
+      .map(([v, lbl]) => `<option value="${e(v)}"${val === String(v).toLowerCase() ? " selected" : ""}>${e(lbl)}</option>`)
+      .join("");
+    return v3BiodataControlWrap(
+      `<select class="bio-select" data-v3-biodata-field="${e(field)}"><option value="">${e(
+        placeholderLabel
+      )}</option>${opts}</select>`
+    );
+  }
+
+  function v3BiodataTextInput(e, field, raw, opts) {
+    opts = opts || {};
+    const type = opts.type || "text";
+    const ph = opts.placeholder != null ? ` placeholder="${e(String(opts.placeholder))}"` : "";
+    const extra = opts.extra || "";
+    const cls = opts.mono ? " bio-input--mono" : "";
+    const val = raw != null ? String(raw) : "";
+    return v3BiodataControlWrap(
+      `<input type="${e(type)}" class="bio-input${cls}" data-v3-biodata-field="${e(field)}" value="${e(val)}"${ph}${extra} />`
+    );
+  }
+
+  function v3BiodataTextarea(e, field, raw, rows) {
+    const r = rows != null ? Number(rows) : 4;
+    const val = raw != null ? String(raw) : "";
+    return v3BiodataControlWrap(`<textarea class="bio-textarea" data-v3-biodata-field="${e(field)}" rows="${r}">${e(val)}</textarea>`);
+  }
+
+  function v3BiodataPhoneRow(e, raw) {
+    const val = raw != null ? String(raw) : "";
+    return v3BiodataControlWrap(`<div class="bio-phone-inline">
+      <input type="text" class="bio-input bio-input--prefix" value="+65" disabled aria-label="Country code" />
+      <input type="tel" class="bio-input bio-input--phone" data-v3-biodata-field="contact" value="${e(
+        val
+      )}" placeholder="E.g. 8123 4567" />
+    </div>`);
+  }
+
+  function v3BiodataPreferredLangMulti(e, details) {
+    const selected = new Set(
+      v3BiodataPreferredLangString(details)
+        .split(/[,;]+/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+    );
+    const boxes = V3_BIODATA_OPTIONS.preferredLanguages.map((opt) => {
+      const sid = `v3bio-lang-${String(opt).replace(/[^a-zA-Z0-9_-]/g, "")}`;
+      const ck = selected.has(opt) ? " checked" : "";
+      return `<label class="v1-bio2__check-label" for="${e(sid)}"><input type="checkbox" id="${e(sid)}" value="${e(
+        opt
+      )}"${ck} /> ${e(opt)}</label>`;
+    }).join("");
+    return v3BiodataControlWrap(
+      `<div class="v1-bio2__lang-multi" role="group" aria-label="Preferred languages" data-v3-biodata-multi="preferredLanguages">${boxes}</div>`
+    );
+  }
+
+  function v3BiodataDobEdit(e, details) {
+    const raw = details.dob || details.dateOfBirth || "";
+    const displayVal =
+      typeof window.WD_normalizeDateDisplay === "function" ? window.WD_normalizeDateDisplay(String(raw)) : String(raw);
+    return v3BiodataControlWrap(`<div class="bio-field-date field__date">
+      <input class="field__date-text bio-input bio-input--in-date" type="text" data-v3-biodata-field="dob" value="${e(
+        displayVal
+      )}" placeholder="DD-MM-YYYY" inputmode="numeric" autocomplete="off" maxlength="10" />
+      <button type="button" class="field__date-btn" aria-label="Choose date" title="Choose date"></button>
+      <input type="date" class="field__date-native" tabindex="-1" aria-hidden="true" />
+    </div>`);
+  }
+
+  function v3BiodataChasEditBlock(e, details) {
+    const cur = details.chasCardType != null ? String(details.chasCardType) : "";
+    const chasDot = v3BiodataChasDotHex(cur);
+    const opts = V3_BIODATA_OPTIONS.chasCardType.map(
+      (opt) => `<option value="${e(opt)}"${cur === opt ? " selected" : ""}>${e(opt)}</option>`
+    ).join("");
+    return `<span class="bio-v bio-v--chas bio-v--control"><span class="bio-chas-dot" style="background:${e(
+      chasDot
+    )}" aria-hidden="true"></span><select class="bio-select bio-select--chas" data-v3-biodata-field="chasCardType"><option value="">${e(
+      "Select CHAS Card Type"
+    )}</option>${opts}</select></span>`;
+  }
+
+  /** Checkbox stack for modal (classic `fieldCheckboxMulti` options). */
+  function v3BiodataLangCheckboxesModal(e, details) {
+    const selected = new Set(
+      v3BiodataPreferredLangString(details)
+        .split(/[,;]+/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+    );
+    const boxes = V3_BIODATA_OPTIONS.preferredLanguages.map((opt) => {
+      const sid = `v3bio-mod-lang-${String(opt).replace(/[^a-zA-Z0-9_-]/g, "")}`;
+      const ck = selected.has(opt) ? " checked" : "";
+      return `<label class="registration__check-label" for="${e(sid)}"><input type="checkbox" id="${e(
+        sid
+      )}" value="${e(opt)}"${ck} /> ${e(opt)}</label>`;
+    }).join("");
+    return `<div class="registration__checkbox-stack" data-v3-biodata-multi="preferredLanguages">${boxes}</div>`;
+  }
+
+  /** Same masking as `detail-panels.js` `maskNricForProfileDisplay` (classic prospect profile). */
+  function v3MaskNricForProfileDisplay(raw) {
+    const s = String(raw || "").trim();
+    if (!s) return "—";
+    if (s.length <= 5) return `${s.charAt(0)}****`;
+    return `${s.charAt(0)}****${s.slice(-4)}`;
+  }
+
+  function v3BiodataModalFormHtml(e, d, details) {
+    const { firstName, lastName } = v3BiodataNameParts(d, details);
+    const postalRaw =
+      details.postalCode != null && String(details.postalCode).trim() !== ""
+        ? String(details.postalCode).trim()
+        : String(details.postal || "").trim();
+    const dobRaw = details.dob || details.dateOfBirth || "";
+    const dobDisplay =
+      typeof window.WD_normalizeDateDisplay === "function" ? window.WD_normalizeDateDisplay(String(dobRaw)) : String(dobRaw);
+    const hsgVal = healthierSgCanonicalStored(details.healthierSg);
+    const optSel = (opts, cur) =>
+      (opts || []).map((opt) => `<option value="${e(opt)}"${String(cur) === opt ? " selected" : ""}>${e(opt)}</option>`).join("");
+    const optPairs = (pairs, cur) =>
+      (pairs || [])
+        .map(([v, lbl]) => `<option value="${e(v)}"${cur === String(v).toLowerCase() ? " selected" : ""}>${e(lbl)}</option>`)
+        .join("");
+    const chasCur = details.chasCardType != null ? String(details.chasCardType) : "";
+    const nricRaw = details.nric != null ? String(details.nric) : "";
+    const yesNo = (raw) => {
+      const v = v3NormalizeYesNo(raw);
+      return v;
+    };
+    const ynOpts = (raw) => {
+      const cur = yesNo(raw);
+      return `
+        <option value="">—</option>
+        <option value="yes"${cur === "yes" ? " selected" : ""}>Yes</option>
+        <option value="no"${cur === "no" ? " selected" : ""}>No</option>
+      `;
+    };
+
+    return `
+      <div class="v3-biodata-modal__locked-fields" aria-hidden="true">
+        <input type="hidden" data-v3-biodata-field="firstName" value="${e(firstName)}" />
+        <input type="hidden" data-v3-biodata-field="lastName" value="${e(lastName)}" />
+        <input type="hidden" data-v3-biodata-field="nric" value="${e(nricRaw)}" />
+      </div>
+      <h3 class="v3-biodata-modal__heading">Identity</h3>
+      <div class="v3-biodata-modal__grid">
+        <div class="field">
+          <label for="v3bio-dob">Date of birth</label>
+          <div class="field__date">
+            <input class="field__date-text" id="v3bio-dob" type="text" data-v3-biodata-field="dob" value="${e(
+              dobDisplay
+            )}" placeholder="DD-MM-YYYY" inputmode="numeric" autocomplete="bday" maxlength="10" />
+            <button type="button" class="field__date-btn" aria-label="Choose date" title="Choose date"></button>
+            <input type="date" class="field__date-native" tabindex="-1" aria-hidden="true" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="v3bio-age">Age</label>
+          <input id="v3bio-age" type="text" data-v3-biodata-field="age" value="${e(details.age != null ? String(details.age) : "")}" placeholder="Years" inputmode="numeric" />
+        </div>
+        <div class="field">
+          <label for="v3bio-gender">Gender</label>
+          <select id="v3bio-gender" data-v3-biodata-field="gender">
+            <option value="">Select Gender</option>
+            ${optSel(V3_BIODATA_OPTIONS.gender, String(details.gender || ""))}
+          </select>
+        </div>
+        <div class="field">
+          <label for="v3bio-race">Race</label>
+          <select id="v3bio-race" data-v3-biodata-field="race">
+            <option value="">Select Race</option>
+            ${optSel(V3_BIODATA_OPTIONS.race, String(details.race || ""))}
+          </select>
+        </div>
+        <div class="field">
+          <label for="v3bio-religion">Religion</label>
+          <select id="v3bio-religion" data-v3-biodata-field="religion">
+            <option value="">Select Religion</option>
+            ${optSel(V3_BIODATA_OPTIONS.religion, String(details.religion || ""))}
+          </select>
+        </div>
+        <div class="field field--full">
+          <label for="v3bio-res">Residential status</label>
+          <select id="v3bio-res" data-v3-biodata-field="residentialStatus">
+            <option value="">Select Residential Status</option>
+            ${optSel(V3_BIODATA_OPTIONS.residentialStatus, String(details.residentialStatus || ""))}
+          </select>
+        </div>
+      </div>
+
+      <h3 class="v3-biodata-modal__heading">Contact &amp; address</h3>
+      <div class="v3-biodata-modal__grid">
+        <div class="field field--full">
+          <label for="v3bio-email">Email</label>
+          <input id="v3bio-email" type="email" data-v3-biodata-field="email" value="${e(
+            details.email != null ? String(details.email) : ""
+          )}" placeholder="Enter your email" autocomplete="email" />
+        </div>
+        <div class="field field--full">
+          <label for="v3bio-contact">Contact number</label>
+          <div class="field__inline">
+            <input type="text" class="field__prefix" value="+65" disabled aria-label="Country code" />
+            <input id="v3bio-contact" type="tel" data-v3-biodata-field="contact" value="${e(
+              details.contact || details.mobile || ""
+            )}" placeholder="E.g. 8123 4567" autocomplete="tel-national" />
+          </div>
+        </div>
+        <div class="field field--full">
+          <span class="field__static-label">Preferred language</span>
+          ${v3BiodataLangCheckboxesModal(e, details)}
+        </div>
+        <div class="field field--full">
+          <span class="field__static-label">Residential address</span>
+        </div>
+        <div class="field">
+          <label for="v3bio-block">Block</label>
+          <input id="v3bio-block" type="text" data-v3-biodata-field="block" value="${e(
+            details.block != null ? String(details.block) : ""
+          )}" placeholder="E.g. 202" autocomplete="address-line1" />
+        </div>
+        <div class="field">
+          <label for="v3bio-street">Street Name</label>
+          <input id="v3bio-street" type="text" data-v3-biodata-field="street" value="${e(
+            details.street != null ? String(details.street) : ""
+          )}" placeholder="E.g. Pasir Drive" autocomplete="address-line2" />
+        </div>
+        <div class="field">
+          <label for="v3bio-floor">Floor</label>
+          <input id="v3bio-floor" type="text" data-v3-biodata-field="floor" value="${e(
+            details.floor != null ? String(details.floor) : ""
+          )}" placeholder="E.g. 50" />
+        </div>
+        <div class="field">
+          <label for="v3bio-unit">Unit No</label>
+          <input id="v3bio-unit" type="text" data-v3-biodata-field="unit" value="${e(
+            details.unit != null ? String(details.unit) : ""
+          )}" placeholder="E.g. 101 or 345" />
+        </div>
+        <div class="field">
+          <label for="v3bio-postal">Postal Code</label>
+          <input id="v3bio-postal" type="text" data-v3-biodata-field="postal" value="${e(postalRaw)}" placeholder="E.g. 123456" inputmode="numeric" maxlength="6" autocomplete="postal-code" />
+        </div>
+        <div class="field">
+          <label for="v3bio-country">Country</label>
+          <select id="v3bio-country" data-v3-biodata-field="country" aria-label="Country">
+            <option value="">Select Country</option>
+            ${optSel(V3_BIODATA_OPTIONS.addressCountry, String(details.country || ""))}
+          </select>
+        </div>
+      </div>
+
+      <h3 class="v3-biodata-modal__heading">Healthier SG &amp; subsidies</h3>
+      <div class="v3-biodata-modal__grid">
+        <div class="field field--full">
+          <label for="v3bio-chas">CHAS card type</label>
+          <select id="v3bio-chas" data-v3-biodata-field="chasCardType">
+            <option value="">Select CHAS Card Type</option>
+            ${optSel(V3_BIODATA_OPTIONS.chasCardType, chasCur)}
+          </select>
+        </div>
+        <div class="field field--full">
+          <label for="v3bio-hsg">Healthier SG enrolment</label>
+          <select id="v3bio-hsg" data-v3-biodata-field="healthierSg">
+            <option value="">Select Enrolment Status</option>
+            ${optPairs(V3_BIODATA_OPTIONS.healthierSg, hsgVal)}
+          </select>
+        </div>
+        <div class="field field--full">
+          <label for="v3bio-firstmm">First-time mammogram screening</label>
+          <select id="v3bio-firstmm" data-v3-biodata-field="firstMammogramScreening">
+            <option value="">—</option>
+            <option value="yes"${String(details.firstMammogramScreening || "").toLowerCase() === "yes" ? " selected" : ""}>Yes</option>
+            <option value="no"${String(details.firstMammogramScreening || "").toLowerCase() === "no" ? " selected" : ""}>No</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="v3bio-yr">Year of last screening</label>
+          <input id="v3bio-yr" type="text" data-v3-biodata-field="lastScreeningYear" value="${e(
+            details.lastScreeningYear != null ? String(details.lastScreeningYear) : ""
+          )}" placeholder="Enter year" />
+        </div>
+      </div>
+
+      <h3 class="v3-biodata-modal__heading">Risk assessment</h3>
+      <div class="v3-biodata-modal__grid">
+        <div class="field field--full">
+          <label for="v3bio-phx">Personal history of cancer</label>
+          <textarea id="v3bio-phx" data-v3-biodata-field="personalCancerHistory" rows="4" placeholder="Enter details">${e(
+            details.personalCancerHistory != null ? String(details.personalCancerHistory) : ""
+          )}</textarea>
+        </div>
+        <div class="field field--full">
+          <label for="v3bio-pre">Pre-existing conditions</label>
+          <textarea id="v3bio-pre" data-v3-biodata-field="preExistingConditions" rows="4" placeholder="Enter details">${e(
+            details.preExistingConditions != null ? String(details.preExistingConditions) : ""
+          )}</textarea>
+        </div>
+        <div class="field field--full">
+          <label for="v3bio-fam">Family history of cancer</label>
+          <textarea id="v3bio-fam" data-v3-biodata-field="familyHistory" rows="4" placeholder="Enter details">${e(
+            details.familyHistory != null ? String(details.familyHistory) : ""
+          )}</textarea>
+        </div>
+      </div>
+
+      <h3 class="v3-biodata-modal__heading">Engagement &amp; consent</h3>
+      <div class="v3-biodata-modal__grid">
+        <div class="field field--full">
+          <label for="v3bio-source-type">How did you hear about us?</label>
+          <input id="v3bio-source-type" type="text" data-v3-biodata-field="sourceType" value="${e(
+            details.sourceType != null ? String(details.sourceType) : ""
+          )}" placeholder="E.g. Walk-in registration" autocomplete="off" />
+        </div>
+        <div class="field field--full">
+          <label for="v3bio-source-name">Campaign / event name</label>
+          <input id="v3bio-source-name" type="text" data-v3-biodata-field="sourceName" value="${e(
+            details.sourceName != null ? String(details.sourceName) : ""
+          )}" placeholder="E.g. Community outreach 2026" autocomplete="off" />
+        </div>
+        <div class="field field--full">
+          <label for="v3bio-pdpa">PDPA consent</label>
+          <select id="v3bio-pdpa" data-v3-biodata-field="pdpaConsent">
+            ${ynOpts(details.pdpaConsent)}
+          </select>
+        </div>
+        <div class="field field--full">
+          <label for="v3bio-edm">eDM subscription</label>
+          <select id="v3bio-edm" data-v3-biodata-field="edmSubscription">
+            ${ynOpts(details.edmSubscription)}
+          </select>
+        </div>
+        <div class="field field--full">
+          <label for="v3bio-consent-contact">Consent for SCS to contact</label>
+          <select id="v3bio-consent-contact" data-v3-biodata-field="consentContact">
+            ${ynOpts(details.consentContact)}
+          </select>
+        </div>
+      </div>
+    `;
+  }
+
+  function persistV3BiodataFormFromRoot(root) {
+    const det = state.detailFormValues?.details;
+    if (!root || !det) return false;
+    root.querySelectorAll("[data-v3-biodata-field]").forEach((inp) => {
+      const k = inp.getAttribute("data-v3-biodata-field");
+      if (!k) return;
+      det[k] = inp.value.trim();
+    });
+    root.querySelectorAll("[data-v3-biodata-multi]").forEach((group) => {
+      const k = group.getAttribute("data-v3-biodata-multi");
+      if (!k) return;
+      const parts = [];
+      group.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+        if (cb.checked) parts.push(cb.value);
+      });
+      det[k] = parts.join(", ");
+    });
+    if (det.preferredLanguages != null) {
+      det.preferredLanguage = String(det.preferredLanguages).trim();
+    }
+    const fullName = `${det.firstName || ""} ${det.lastName || ""}`.trim();
+    if (fullName) {
+      det.fullName = fullName;
+      state.detail.name = fullName;
+      const prow = PROSPECTS.find((x) => x.rowKey === state.detail.rowKey);
+      if (prow) prow.name = fullName;
+    }
+    const pc = det.postal;
+    if (pc != null && String(pc).trim() !== "") {
+      const pz = String(pc).trim();
+      det.postal = pz;
+      det.postalCode = pz;
+    }
+    /** Structured address is authoritative; drop legacy freeform `address` to match screening form + biodata display. */
+    det.address = "";
+    const prow2 = PROSPECTS.find((x) => x.rowKey === state.detail.rowKey);
+    if (prow2) {
+      if (det.contact) prow2.phone = det.contact;
+      if (det.email) prow2.email = det.email;
+    }
+    return true;
+  }
+
+  function renderProspectV3BiodataModal() {
+    if (!state.prospectV3BiodataModalOpen || state.route !== "prospectv3" || state.prospectV3Tab !== "biodata") return "";
+    const d = state.detail;
+    const details = state.detailFormValues?.details || {};
+    const e = escapeAttr;
+    const body = v3BiodataModalFormHtml(e, d, details);
+    return `
+      <div class="ui-dialog-overlay" id="prospect-v3-biodata-modal" role="presentation">
+        <div class="ui-dialog ui-dialog--v3-biodata" role="dialog" aria-modal="true" aria-labelledby="v3-biodata-modal-title">
+          <div class="ui-dialog__close">
+            <button type="button" class="ui-btn ui-btn--ghost ui-btn--icon" data-v3-biodata-modal-dismiss aria-label="Close">${icons.x}</button>
+          </div>
+          <div class="ui-dialog__header">
+            <h2 class="ui-dialog__title" id="v3-biodata-modal-title">Edit personal information</h2>
+          </div>
+          <div class="ui-dialog__body" data-v3-biodata-modal-root>${body}</div>
+          <div class="ui-dialog__footer">
+            <div class="ui-dialog__footer-actions">
+              <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-v3-biodata-modal-dismiss>Cancel</button>
+              <button type="button" class="ui-btn ui-btn--default ui-btn--sm" data-v3-biodata-modal-save>Save changes</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderClassicScreeningUpdateModal() {
+    if (!state.classicScreeningUpdateModalId) return "";
+    const record = getClassicScreeningMergedRawById(state.classicScreeningUpdateModalId);
+    if (!record) return "";
+    const e = escapeAttr;
+    const isMmg = record.type?.key === "MMG";
+    const st = record.status?.key && CLASSIC_SCREENING_STATUS_BY_KEY[record.status.key] ? record.status.key : "qualified";
+    const appt = record.appointment;
+    const apptDate = appt && appt.date != null ? String(appt.date) : "";
+    const apptTime = appt && appt.time != null ? String(appt.time) : "";
+    const venueVal = record.venue != null ? String(record.venue) : "";
+    const attVal = record.attendance != null ? String(record.attendance).trim() : "";
+    const atVal = String(record.appointmentType || "").trim().toLowerCase();
+    const resultVal = record.result != null ? String(record.result) : "";
+    const nrpVal = record.nextReviewPeriod != null ? String(record.nextReviewPeriod) : "";
+    const nrdVal = record.nextReviewDate != null ? String(record.nextReviewDate) : "";
+    const statusChips = Object.keys(CLASSIC_SCREENING_STATUS_BY_KEY)
+      .map((k) => {
+        const L = CLASSIC_SCREENING_STATUS_BY_KEY[k];
+        const sel = st === k;
+        return `<button type="button" class="ui-chip${sel ? " is-selected" : ""}" data-csu-status="${e(
+          k
+        )}" aria-pressed="${sel}">${e(L.label)}</button>`;
+      })
+      .join("");
+
+    const atOpts = Object.entries(CLASSIC_MAMMOGRAM_APPOINTMENT_TYPE_LABELS)
+      .map(([val, lbl]) => `<option value="${e(val)}"${atVal === val ? " selected" : ""}>${e(lbl)}</option>`)
+      .join("");
+
+    const apptTypeBlock = isMmg
+      ? `<div class="field field--full">
+          <label for="csu-appointment-type">Appointment type</label>
+          <select id="csu-appointment-type">
+            ${atOpts}
+          </select>
+        </div>`
+      : "";
+
+    const attOpts = [`<option value=""${attVal ? "" : " selected"}>—</option>`]
+      .concat(
+        CLASSIC_SCREENING_ATTENDANCE_OPTIONS.map(
+          (v) => `<option value="${e(v)}"${attVal && attVal.toLowerCase() === v.toLowerCase() ? " selected" : ""}>${e(v)}</option>`
+        )
+      )
+      .join("");
+
+    const body = `
+      <div data-classic-screening-update-root>
+        <div class="v3-biodata-modal__grid">
+          <div class="field field--full">
+            <label for="csu-submitted">Submitted</label>
+            <input id="csu-submitted" type="text" value="${e(record.submitted != null ? String(record.submitted) : "")}" placeholder="e.g. 12 Apr 2026" autocomplete="off" />
+          </div>
+          <div class="field field--full">
+            <span class="field__static-label" id="csu-status-label">Status</span>
+            <input type="hidden" id="csu-status-value" value="${e(st)}" autocomplete="off" />
+            <div class="ui-chip-group" role="group" aria-labelledby="csu-status-label">
+              ${statusChips}
+            </div>
+          </div>
+          <div class="field">
+            <label for="csu-appt-date">Appointment date</label>
+            <input id="csu-appt-date" type="text" value="${e(apptDate)}" placeholder="e.g. 19 Aug 2026" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label for="csu-appt-time">Appointment time</label>
+            <input id="csu-appt-time" type="text" value="${e(apptTime)}" placeholder="e.g. 10:30am" autocomplete="off" />
+          </div>
+          <div class="field field--full">
+            <label for="csu-venue">Venue</label>
+            <input id="csu-venue" type="text" value="${e(venueVal)}" placeholder="Venue" autocomplete="off" />
+          </div>
+          <div class="field field--full">
+            <label for="csu-attendance">Attendance</label>
+            <select id="csu-attendance">
+              ${attOpts}
+            </select>
+          </div>
+          ${apptTypeBlock}
+        </div>
+        <h3 class="v3-biodata-modal__heading">Review &amp; outcome</h3>
+        <div class="v3-biodata-modal__grid">
+          <div class="field field--full">
+            <label for="csu-result">Result</label>
+            <input id="csu-result" type="text" value="${e(resultVal)}" placeholder="—" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label for="csu-next-review-period">Next review period</label>
+            <input id="csu-next-review-period" type="text" value="${e(nrpVal)}" placeholder="e.g. 12 months" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label for="csu-next-review-date">Next review date</label>
+            <input id="csu-next-review-date" type="text" value="${e(nrdVal)}" placeholder="e.g. Jan 2025" autocomplete="off" />
+          </div>
+        </div>
+      </div>
+    `;
+
+    return `
+      <div class="ui-dialog-overlay" id="classic-screening-update-modal" role="presentation">
+        <div class="ui-dialog ui-dialog--classic-screening-update" role="dialog" aria-modal="true" aria-labelledby="classic-screening-update-title">
+          <div class="ui-dialog__close">
+            <button type="button" class="ui-btn ui-btn--ghost ui-btn--icon" data-classic-screening-update-dismiss aria-label="Close">${icons.x}</button>
+          </div>
+          <div class="ui-dialog__header">
+            <h2 class="ui-dialog__title" id="classic-screening-update-title">Update screening record</h2>
+            <p class="ui-dialog__meta">${e(record.type?.label || "—")}</p>
+          </div>
+          <div class="ui-dialog__body">${body}</div>
+          <div class="ui-dialog__footer">
+            <div class="ui-dialog__footer-actions">
+              <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-classic-screening-update-dismiss>Cancel</button>
+              <button type="button" class="ui-btn ui-btn--default ui-btn--sm" data-classic-screening-update-save>Save changes</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function v3NormalizeYesNo(raw) {
+    const s = String(raw || "").trim().toLowerCase();
+    if (s === "yes" || s === "y" || s === "true" || s === "1") return "yes";
+    if (s === "no" || s === "n" || s === "false" || s === "0") return "no";
+    return "";
+  }
+
+  function v3EligibilityAnswerPill(e, yn) {
+    const v = v3NormalizeYesNo(yn);
+    const label = v === "yes" ? "Yes" : v === "no" ? "No" : "—";
+    const mod = v === "yes" ? "v3-elig-ans--yes" : v === "no" ? "v3-elig-ans--no" : "v3-elig-ans--empty";
+    return `<span class="v3-elig-ans ${mod}">${e(label)}</span>`;
+  }
+
+  function v3MammogramEligibilityModel(details) {
+    const qs = [
+      {
+        key: "covid19VaccineSoon",
+        kicker: "Q1 OF 6",
+        text: "Are you currently taking or planning to take the COVID-19 vaccine soon?",
+      },
+      {
+        key: "mammogramPast12or24Months",
+        kicker: "Q2 OF 6",
+        text: "Have you done a mammogram in the past 12 months (if aged 40–49) or 24 months (if aged 50 and above)?",
+      },
+      {
+        key: "breastfeedingPast6Months",
+        kicker: "Q3 OF 6",
+        text: "Have you been breastfeeding in the past 6 months?",
+      },
+      {
+        key: "breastSymptoms",
+        kicker: "Q4 OF 6",
+        text: "Do you have any symptoms (lumps, pain, or nipple discharge) in your breast?",
+      },
+      {
+        key: "breastImplants",
+        kicker: "Q5 OF 6",
+        text: "Do you have any breast implants?",
+      },
+      {
+        key: "everHadBreastCancer",
+        kicker: "Q6 OF 6",
+        text: "Have you ever had breast cancer?",
+      },
+    ];
+
+    const answers = qs.map((q) => v3NormalizeYesNo(details?.[q.key]));
+    const answered = answers.filter((a) => a === "yes" || a === "no").length;
+    const anyYes = answers.some((a) => a === "yes");
+    const allNo = answered === qs.length && answers.every((a) => a === "no");
+
+    let statusKey = "incomplete";
+    let statusLabel = "Incomplete";
+    if (answered === qs.length) {
+      if (allNo) {
+        statusKey = "eligible";
+        statusLabel = "Eligible";
+      } else if (anyYes) {
+        statusKey = "not-eligible";
+        statusLabel = "Not eligible";
+      }
+    }
+
+    return { qs, answered, total: qs.length, statusKey, statusLabel, allNo, anyYes };
+  }
+
+  function renderProspectV3MammogramEligibilityPanel(e, details, listRow) {
+    const m = v3MammogramEligibilityModel(details);
+    const submitted = formatDateRegisteredDisplay(listRow?.dateRegistered);
+
+    const statusPill =
+      m.statusKey === "eligible"
+        ? `<span class="v3-elig-pill v3-elig-pill--eligible"><span class="v3-elig-pill__dot" aria-hidden="true"></span>${e(m.statusLabel)}</span>`
+        : m.statusKey === "not-eligible"
+          ? `<span class="v3-elig-pill v3-elig-pill--ineligible"><span class="v3-elig-pill__dot" aria-hidden="true"></span>${e(m.statusLabel)}</span>`
+          : `<span class="v3-elig-pill v3-elig-pill--incomplete"><span class="v3-elig-pill__dot" aria-hidden="true"></span>${e(
+              m.statusLabel
+            )}</span>`;
+
+    const summaryText =
+      m.statusKey === "eligible"
+        ? `${m.answered} of ${m.total} questions answered — Client passed all screening criteria.`
+        : m.statusKey === "not-eligible"
+          ? `${m.answered} of ${m.total} questions answered — Client did not meet all screening criteria.`
+          : `${m.answered} of ${m.total} questions answered — Complete all questions to determine eligibility.`;
+
+    const rows = m.qs
+      .map(
+        (q) => `<div class="v3-elig-q">
+          <div class="v3-elig-q__main">
+            <div class="v3-elig-q__kicker">${e(q.kicker)}</div>
+            <div class="v3-elig-q__text">${e(q.text)}</div>
+          </div>
+          <div class="v3-elig-q__ans">${v3EligibilityAnswerPill(e, details?.[q.key])}</div>
+        </div>`
+      )
+      .join("");
+
+    return `
+      <div class="v3-elig">
+        <div class="v3-elig__head">
+          <div class="v3-elig__title">
+            <div class="v3-elig__title-text">Screening Eligibility</div>
+          </div>
+          <div class="v3-elig__meta">${e("Mammogram")} <span aria-hidden="true">•</span> Submitted ${e(submitted)}</div>
+        </div>
+
+        <div class="v3-elig__summary">
+          <div class="v3-elig__summary-text">${e(summaryText)}</div>
+          ${statusPill}
+        </div>
+
+        <div class="v3-elig__list" role="list" aria-label="Mammogram screening eligibility questions">
+          ${rows}
+        </div>
+
+        <div class="v3-elig__foot" role="note">
+          <span class="v3-elig__info" aria-hidden="true">i</span>
+          <div>Eligibility responses are tied to each individual screening submission and are not overwritten.</div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderProspectDetailV3Page() {
+    const d = state.detail;
+    const details = state.detailFormValues?.details || {};
+    const rid = encodeURIComponent(d.rowKey);
+    const tab = PROSPECT_V3_TAB_IDS.includes(state.prospectV3Tab) ? state.prospectV3Tab : "overview";
+
+    const mkTabHref = (t) => (t === "overview" ? `#/prospectv3/${rid}` : `#/prospectv3/${rid}/${encodeURIComponent(t)}`);
+
+    const classicScreeningRecords = getClassicScreeningRecordsCatalog();
+    const notesForV1Tab = detailNotesForRender(d.rowKey);
+    const documentsForV1Tab = detailDocumentsForRender(d.rowKey);
+
+    const listRow =
+      PROSPECTS.find((x) => x.rowKey === d.rowKey) || PROSPECTS.find((x) => x.id === d.id) || null;
+    const maskedNric = v3MaskNricForProfileDisplay(details.nric);
+    const v1ActiveScreeningLabel = v1ClientActiveScreeningLabel(d.activeListProgram);
+    const v1DemoGender = v1ProspectDisplayGender(details, listRow);
+    const v1DemoAge = v1ProspectDisplayAge(details, listRow);
+    const v1DemoLine = `${escapeAttr(v1DemoGender)} · ${v1DemoAge !== "—" ? `${escapeAttr(v1DemoAge)} y/o` : escapeAttr("—")}`;
+
+    const v1Header = `
+      <div class="v1-profile-header">
+        <div class="detail-hero v1-profile-header__hero">
+          <div class="registration__toolbar-row detail-hero__toolbar-row">
+            <a href="#/list" class="detail-hero__back" aria-label="Back to list">${icons.back}</a>
+            <div class="registration__toolbar-titles">
+              <h1 class="registration__title">${escapeAttr(d.name || "—")}</h1>
+              <p class="registration__subtitle v1-profile-header__sub">
+                <span class="v1-profile-header__sub-demographics">${v1DemoLine}</span>
+                <span class="v1-profile-header__sub-sep" aria-hidden="true">·</span>
+                <span class="v1-profile-header__active-screening">${escapeAttr(v1ActiveScreeningLabel)}</span>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="v1-strip" role="list" aria-label="Key info">
+          <div class="v1-strip__item" role="listitem">
+            <div class="v1-strip__label">NRIC</div>
+            <div class="v1-strip__value v1-mono">${escapeAttr(maskedNric)}</div>
+          </div>
+          <div class="v1-strip__item" role="listitem">
+            <div class="v1-strip__label">Contact</div>
+            <div class="v1-strip__value">${escapeAttr(details.contact || details.mobile || "—")}</div>
+          </div>
+          <div class="v1-strip__item" role="listitem">
+            <div class="v1-strip__label">CHAS Card</div>
+            <div class="v1-strip__value">${escapeAttr(details.chasCardType || "—")}</div>
+          </div>
+          <div class="v1-strip__item" role="listitem">
+            <div class="v1-strip__label">HealthierSG</div>
+            <div class="v1-strip__value">${escapeAttr(v3BiodataHealthierSgLabel(details.healthierSg))}</div>
+          </div>
+          <div class="v1-strip__item" role="listitem">
+            <div class="v1-strip__label">Risk level</div>
+            <div class="v1-strip__value v1-strip__value--stack">
+              ${riskLevelIndicator(d.risk)}
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-tabs v1-profile-header__tabs" role="tablist" aria-label="Prospect v1 tabs">
+          ${[
+            ["overview", `Overview`],
+            ["screenings", `Screenings <span class="tab-badge">${escapeAttr(String(classicScreeningRecords.length))}</span>`],
+            ["biodata", "Biodata"],
+            ["eligibility", "Eligibility"],
+            ["documents", `Documents <span class="tab-badge">${escapeAttr(String(documentsForV1Tab.length))}</span>`],
+            ["notes", `Notes <span class="tab-badge">${escapeAttr(String(notesForV1Tab.length))}</span>`],
+          ]
+            .map(([id, labelHtml]) => {
+              const active = tab === id;
+              return `<button type="button" class="${active ? "is-active" : ""}" data-prospectv3-tab="${escapeAttr(
+                id
+              )}" data-prospectv3-tab-href="${escapeAttr(mkTabHref(id))}" role="tab" aria-selected="${active}">${labelHtml}</button>`;
+            })
+            .join("")}
+        </div>
+      </div>
+    `;
+
+    let panel = "";
+    if (tab === "overview") {
+      const detailActivityFeed = buildDetailActivityFeed(d.rowKey, d);
+      const activityTimelineSection =
+        typeof window.WD_renderActivityTimelineSection === "function"
+          ? window.WD_renderActivityTimelineSection(escapeAttr, detailActivityFeed)
+          : `<section class="detail-card detail-card--overview-col"><div class="detail-card__body"><p class="placeholder-block">Activity timeline unavailable.</p></div></section>`;
+      const enrolmentRows = prospectEnrolmentRowsForDetail(d);
+      const overviewKpiGrid = renderProspectSummarySection(enrolmentRows, {
+        ariaLabel: "Enrolment summary",
+        gridOnly: true,
+      });
+      panel = `
+        <div class="v1-overview-stack">
+          ${overviewKpiGrid}
+          ${activityTimelineSection}
+        </div>
+      `;
+    } else if (tab === "screenings") {
+      panel = renderClassicScreeningRecordsPanel(escapeAttr);
+    } else if (tab === "biodata") {
+      const val = (v) => (v != null && String(v).trim() ? String(v) : "—");
+      const { firstName, lastName } = v3BiodataNameParts(d, details);
+      const postalRaw =
+        details.postalCode != null && String(details.postalCode).trim() !== ""
+          ? String(details.postalCode).trim()
+          : String(details.postal || "").trim();
+      const chasDot = v3BiodataChasDotHex(details.chasCardType);
+      const langs = Array.isArray(details.preferredLanguages)
+        ? details.preferredLanguages.map((x) => String(x).trim()).filter(Boolean)
+        : details.preferredLanguages != null && String(details.preferredLanguages).trim()
+          ? String(details.preferredLanguages)
+              .split(/[,;]+/)
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : typeof details.preferredLanguage === "string" && details.preferredLanguage.trim()
+            ? details.preferredLanguage.split(",").map((s) => s.trim()).filter(Boolean)
+            : [];
+      const languagesHtml = langs.length
+        ? `<div class="lp-wrap">${langs.map((l) => `<span class="lp">${escapeAttr(l)}</span>`).join("")}</div>`
+        : escapeAttr(val(details.preferredLanguage));
+
+      const txtRo = (raw) => `<span class="bio-v">${escapeAttr(val(raw))}</span>`;
+      const monoRo = (raw) => `<span class="bio-v mono">${escapeAttr(val(raw))}</span>`;
+
+      const chasRo = `<span class="bio-v bio-v--chas"><span class="bio-chas-dot" style="background:${escapeAttr(
+        chasDot
+      )}" aria-hidden="true"></span>${escapeAttr(val(details.chasCardType))}</span>`;
+
+      const hsgRo = `<span class="bio-v bio-v--success">${escapeAttr(v3BiodataHealthierSgLabel(details.healthierSg))}</span>`;
+
+      const ynLabel = (raw) => {
+        const s = String(raw || "").trim().toLowerCase();
+        if (s === "yes" || s === "true" || s === "on" || s === "1") return "Yes";
+        if (s === "no" || s === "false" || s === "off" || s === "0") return "No";
+        return val(raw);
+      };
+      const fullNameRo = (() => {
+        const fn =
+          (details.fullName != null && String(details.fullName).trim()) ||
+          `${firstName} ${lastName}`.trim() ||
+          (d.name != null && String(d.name).trim()) ||
+          "";
+        return txtRo(fn);
+      })();
+      const riskLevelRo = (() => {
+        const fromForm = details.riskLevel != null && String(details.riskLevel).trim();
+        const lbl = fromForm ? String(details.riskLevel).trim() : riskLevelFormLabelFromSlug(d.risk);
+        return txtRo(lbl || "—");
+      })();
+
+      panel = `
+        <div class="detail-card detail-card--flush v1-bio2">
+          <div class="ph">
+            <div class="pt">Personal Information</div>
+            <button type="button" class="pa" data-v3-biodata-edit="">Edit</button>
+          </div>
+
+          <div class="bio-wrap">
+            <div class="bio-sec">
+              <div class="bio-sec-t">Identity</div>
+              <div class="bio-row"><span class="bio-l">Full Name (as per NRIC)</span>${fullNameRo}</div>
+              <div class="bio-row"><span class="bio-l">First Name</span><span class="bio-v">${escapeAttr(val(firstName))}</span></div>
+              <div class="bio-row"><span class="bio-l">Last Name</span><span class="bio-v">${escapeAttr(val(lastName))}</span></div>
+              <div class="bio-row"><span class="bio-l">NRIC</span><span class="bio-v mono">${escapeAttr(maskedNric)}</span></div>
+              <div class="bio-row"><span class="bio-l">Date of Birth</span>${txtRo(details.dob || details.dateOfBirth)}</div>
+              <div class="bio-row"><span class="bio-l">Age</span>${txtRo(details.age)}</div>
+              <div class="bio-row"><span class="bio-l">Gender</span>${txtRo(details.gender)}</div>
+              <div class="bio-row"><span class="bio-l">Race</span>${txtRo(details.race)}</div>
+              <div class="bio-row"><span class="bio-l">Religion</span>${txtRo(details.religion)}</div>
+              <div class="bio-row"><span class="bio-l">Residential Status</span>${txtRo(details.residentialStatus)}</div>
+            </div>
+
+            <div class="bio-sec">
+              <div class="bio-sec-t">Contact &amp; Address</div>
+              <div class="bio-row"><span class="bio-l">Email</span>${txtRo(details.email)}</div>
+              <div class="bio-row"><span class="bio-l">Contact No.</span>${monoRo(details.contact || details.mobile)}</div>
+              <div class="bio-row"><span class="bio-l">Preferred Language</span><span class="bio-v">${languagesHtml}</span></div>
+              <div class="bio-row"><span class="bio-l">Block</span>${txtRo(details.block)}</div>
+              <div class="bio-row"><span class="bio-l">Street Name</span>${txtRo(details.street)}</div>
+              <div class="bio-row"><span class="bio-l">Floor</span>${txtRo(details.floor)}</div>
+              <div class="bio-row"><span class="bio-l">Unit No</span>${txtRo(details.unit)}</div>
+              <div class="bio-row"><span class="bio-l">Postal Code</span>${monoRo(postalRaw)}</div>
+              <div class="bio-row"><span class="bio-l">Country</span>${txtRo(details.country)}</div>
+              ${
+                details.address != null && String(details.address).trim()
+                  ? `<div class="bio-row"><span class="bio-l">Address (full)</span>${txtRo(details.address)}</div>`
+                  : ""
+              }
+            </div>
+
+            <div class="bio-sec">
+              <div class="bio-sec-t">Healthier SG &amp; Subsidies</div>
+              <div class="bio-row"><span class="bio-l">CHAS Card Type</span>${chasRo}</div>
+              <div class="bio-row"><span class="bio-l">HealthierSG Status</span>${hsgRo}</div>
+              <div class="bio-row"><span class="bio-l">First-time mammogram screening</span>${txtRo(ynLabel(details.firstMammogramScreening))}</div>
+              <div class="bio-row"><span class="bio-l">Year of Last Screening</span>${txtRo(details.lastScreeningYear)}</div>
+            </div>
+
+            <div class="bio-sec">
+              <div class="bio-sec-t">Risk Assessment</div>
+              <div class="bio-row"><span class="bio-l">Risk Level</span>${riskLevelRo}</div>
+              <div class="bio-row"><span class="bio-l">Cancer Screening Eligibility Check</span>${txtRo(ynLabel(details.cancerScreeningEligibilityCheck))}</div>
+              <div class="bio-row"><span class="bio-l">Personal Hx of Cancer</span>${txtRo(details.personalCancerHistory)}</div>
+              <div class="bio-row"><span class="bio-l">Pre-existing Conditions</span>${txtRo(details.preExistingConditions)}</div>
+              <div class="bio-row"><span class="bio-l">Family Hx of Cancer</span>${txtRo(details.familyHistory)}</div>
+            </div>
+
+            <div class="bio-sec">
+              <div class="bio-sec-t">Engagement &amp; Consent</div>
+              <div class="bio-row"><span class="bio-l">How did you hear about us?</span>${txtRo(details.sourceType)}</div>
+              <div class="bio-row"><span class="bio-l">Campaign / Event Name</span>${txtRo(details.sourceName)}</div>
+              <div class="bio-row"><span class="bio-l">PDPA Consent</span>${txtRo(ynLabel(details.pdpaConsent))}</div>
+              <div class="bio-row"><span class="bio-l">eDM Subscription</span>${txtRo(ynLabel(details.edmSubscription))}</div>
+              <div class="bio-row"><span class="bio-l">Consent for SCS to Contact</span>${txtRo(ynLabel(details.consentContact))}</div>
+            </div>
+
+            <div class="bio-sec v1-bio2__data-source" aria-readonly="true">
+              <div class="bio-sec-t">Data Source</div>
+              <div class="bio-row"><span class="bio-l">Retrieved via</span>
+                <span class="bio-v bio-v--myinfo-source">
+                  <span class="v1-bio2__singpass">Singpass</span><span>MyInfo</span>
+                </span>
+              </div>
+              <div class="bio-row"><span class="bio-l">Last Updated</span><span class="bio-v">${escapeAttr(val(details.lastUpdated || details.updatedAt))}</span></div>
+              <div class="bio-row"><span class="bio-l">Updated By</span><span class="bio-v">${escapeAttr(val(details.updatedBy))}</span></div>
+            </div>
+          </div>
+        </div>
+      `;
+    } else if (tab === "eligibility") {
+      const listRow = PROSPECTS.find((x) => x.rowKey === d.rowKey || x.id === d.rowKey) || null;
+      panel = `
+        <div class="detail-card detail-card--flush v3-elig-card">
+          <div class="detail-card__body" style="padding:0">
+            ${renderProspectV3MammogramEligibilityPanel(escapeAttr, details, listRow)}
+          </div>
+        </div>
+      `;
+    } else if (tab === "documents" || tab === "notes") {
+      const renderPanel = typeof window.WD_renderDetailPanel === "function" ? window.WD_renderDetailPanel : null;
+      const v1DetailCtx = {
+        d: state.detail,
+        state,
+        icons,
+        escapeAttr,
+        pipelineLabel: pipelineStageLabel(),
+        detailFormEdit: state.detailFormEdit,
+        detailNavSection: state.detailNavSection,
+        formValues: state.detailFormValues,
+        detailDocuments: detailDocumentsForRender(state.detail.rowKey),
+        detailNotes: detailNotesForRender(state.detail.rowKey),
+        detailActivityFeed: buildDetailActivityFeed(state.detail.rowKey, state.detail),
+      };
+      panel = renderPanel
+        ? renderPanel(tab, v1DetailCtx)
+        : `<div class="detail-panel"><p class="placeholder-block">detail-panels.js failed to load.</p></div>`;
+    }
+
+    return `
+      ${v1Header}
+      <div class="detail-panels">
+        <section class="detail-panel detail-panel--stack client360-panel" role="tabpanel">
+          ${panel}
+        </section>
+      </div>
+    `;
+  }
+
+  function renderScreeningDetailsPage() {
+    const d = state.detail;
+    const details = state.detailFormValues?.details || {};
+    const tab = state.screeningTab || "details";
+    const rid = encodeURIComponent(d.rowKey);
+    const mkTabHref = (t) => (t === "details" ? `#/screening/${rid}` : `#/screening/${rid}/${encodeURIComponent(t)}`);
+
+    const tasks = Array.isArray(d.tasks) ? d.tasks : [];
+    const done = tasks.filter((t) => t && t.done).length;
+    const eligibilityItems = [
+      ["Cancer Screening Eligibility Check", details.cancerScreeningEligibilityCheck],
+      ["First-time screener", details.firstMammogramScreening],
+      ["Last screening year", details.lastScreeningYear],
+      ["CHAS Card", details.chasCardType],
+      ["HealthierSG", v3BiodataHealthierSgLabel(details.healthierSg)],
+      ["Risk factors", details.riskFactors],
+    ].filter(([, v]) => v != null && String(v).trim() !== "");
+    const eligibilityCount = eligibilityItems.length;
+    const program = (d.programTags && d.programTags[0]) || "Screening";
+    const registered = "—";
+    const bookingRef = "—";
+
+    const left = `
+      <div class="client360-left">
+        <div class="client360-left__head">
+          <div class="client360-left__avatar">${escapeAttr((d.name || "—").split(" ").slice(0,2).map(x=>x[0]||"").join("").toUpperCase() || "—")}</div>
+          <div class="client360-left__who">
+            <div class="client360-left__name">${escapeAttr(d.name || "—")}</div>
+            <div class="client360-left__sub">${escapeAttr(d.subtitle || "—")}</div>
+          </div>
+        </div>
+        <div class="client360-left__badges">
+          ${riskLevelIndicator(d.risk)}
+          <span class="pill pill--high">High Priority</span>
+        </div>
+        <div class="client360-left__section">
+          <div class="client360-left__section-title">Patient Details</div>
+          <div class="client360-left__kv">
+            <div class="client360-left__kv-row"><span>ID</span><strong>${escapeAttr(d.id || "—")}</strong></div>
+            <div class="client360-left__kv-row"><span>NRIC</span><strong>${escapeAttr(details.nric || "—")}</strong></div>
+            <div class="client360-left__kv-row"><span>Contact</span><strong>${escapeAttr(details.contact || "—")}</strong></div>
+            <div class="client360-left__kv-row"><span>CHAS</span><strong>${escapeAttr(details.chasCardType || "—")}</strong></div>
+            <div class="client360-left__kv-row"><span>HealthierSG</span><strong>${escapeAttr(
+              v3BiodataHealthierSgLabel(details.healthierSg)
+            )}</strong></div>
+          </div>
+        </div>
+
+        <div class="client360-left__section">
+          <div class="client360-left__section-title">Risk Profile</div>
+          <div class="client360-left__kv">
+            <div class="client360-left__kv-row"><span>Personal Cancer Hx</span><strong>${escapeAttr(details.personalCancerHistory || "—")}</strong></div>
+            <div class="client360-left__kv-row"><span>Family Cancer Hx</span><strong>${escapeAttr(details.familyHistory || "—")}</strong></div>
+            <div class="client360-left__kv-row"><span>Pre-existing</span><strong>${escapeAttr(details.preExistingConditions || "—")}</strong></div>
+            <div class="client360-left__kv-row"><span>Prior Screening</span><strong>${escapeAttr(details.screeningEligible || "—")}</strong></div>
+            <div class="client360-left__kv-row"><span>Last Screened</span><strong>${escapeAttr(details.lastScreeningYear || "—")}</strong></div>
+          </div>
+        </div>
+
+        <div class="client360-left__section">
+          <div class="client360-left__section-title">Quick Actions</div>
+          <div class="client360-left__actions">
+            <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-detail-toast="SMS sent (prototype).">Send SMS</button>
+            <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-detail-toast="Add note (prototype).">Add Note</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const centerHeader = `
+      <div class="screening-card">
+        <div class="screening-card__head">
+          <div class="screening-card__icon" aria-hidden="true">🩻</div>
+          <div class="screening-card__titles">
+            <div class="screening-card__title-row">
+              <div class="screening-card__title">${escapeAttr(program)}</div>
+              <span class="pill">${escapeAttr(pipelineStageLabel())}</span>
+              <span class="screening-card__meta">· ${escapeAttr(program)}</span>
+            </div>
+            <div class="screening-card__sub">Registered ${escapeAttr(registered)} <span class="screening-card__code">#${escapeAttr(bookingRef)}</span></div>
+          </div>
+        </div>
+
+        <div class="screening-card__pipeline" aria-hidden="true">
+          <div class="screening-pipe">
+            <div class="screening-pipe__step is-done"><span class="screening-pipe__dot"></span><span class="screening-pipe__lbl">Qualified</span><span class="screening-pipe__sub">Form submitted</span></div>
+            <div class="screening-pipe__bar"></div>
+            <div class="screening-pipe__step is-current"><span class="screening-pipe__dot"></span><span class="screening-pipe__lbl">Booked</span><span class="screening-pipe__sub">Appt confirmed</span></div>
+            <div class="screening-pipe__bar"></div>
+            <div class="screening-pipe__step"><span class="screening-pipe__dot"></span><span class="screening-pipe__lbl">Screened</span><span class="screening-pipe__sub">Client attended</span></div>
+          </div>
+        </div>
+
+        <div class="screening-card__tabs" role="tablist" aria-label="Screening record tabs">
+          ${[
+            { key: "details", label: "Details" },
+            { key: "tasks", label: "Tasks", badge: `${done}/${tasks.length}` },
+            { key: "eligibility", label: "Eligibility", badge: String(eligibilityCount) },
+          ]
+            .map(
+              (t) =>
+                `<button type="button" class="${tab === t.key ? "is-active" : ""}" data-screening-tab="${escapeAttr(
+                  t.key
+                )}" role="tab" aria-selected="${tab === t.key}" data-screening-tab-href="${escapeAttr(mkTabHref(t.key))}">${escapeAttr(
+                  t.label
+                )}${t.badge != null ? `<span class="screening-card__tab-badge">${escapeAttr(t.badge)}</span>` : ""}</button>`
+            )
+            .join("")}
+        </div>
+      </div>
+    `;
+
+    let centerBody = "";
+    if (tab === "tasks") {
+      centerBody = `
+        <div class="detail-card">
+          <div class="detail-card__title">Tasks</div>
+          <div class="detail-task-list">
+            ${tasks
+              .map(
+                (t) => `
+              <label class="detail-task-row ${t.done ? "is-done" : ""}">
+                <input type="checkbox" data-task id="${escapeAttr(t.id)}" ${t.done ? "checked" : ""}/>
+                <span>${escapeAttr(t.label)}</span>
+              </label>`
+              )
+              .join("")}
+          </div>
+        </div>
+      `;
+    } else if (tab === "eligibility") {
+      centerBody = `
+        <div class="detail-card">
+          <div class="detail-card__title">Eligibility</div>
+          <div class="detail-card__body">
+            <div class="client360-kv">
+              ${eligibilityItems
+                .map(
+                  ([k, v]) =>
+                    `<div class="client360-kv__row"><span>${escapeAttr(k)}</span><strong>${escapeAttr(
+                      v || "—"
+                    )}</strong></div>`
+                )
+                .join("")}
+            </div>
+            ${eligibilityItems.length ? "" : `<p class="placeholder-block" style="margin:0">No eligibility data available.</p>`}
+          </div>
+        </div>
+      `;
+    } else {
+      centerBody = `
+        <div class="screening-two-col">
+          <div class="detail-card">
+            <div class="detail-card__title">Client Preference</div>
+            <div class="client360-kv">
+              <div class="client360-kv__row"><span>Programme</span><strong>${escapeAttr(details.preferredScreeningDate ? program : "—")}</strong></div>
+              <div class="client360-kv__row"><span>Preferred Slot</span><strong>${escapeAttr(details.screeningLocationEvent || details.preferredScreeningDate || "—")}</strong></div>
+              <div class="client360-kv__row"><span>Time</span><strong>${escapeAttr(details.preferredTimeSlot || "—")}</strong></div>
+              <div class="client360-kv__row"><span>Notes</span><strong>${escapeAttr(details.followUpNotes || "—")}</strong></div>
+            </div>
+            <div class="screening-note">Read-only — locked at form submission</div>
+          </div>
+
+          <div class="detail-card">
+            <div class="detail-card__title">Confirmed Appointment</div>
+            <div class="detail-card__body">
+              <div class="placeholder-block" style="margin:0">No appointment confirmed yet — placeholder.</div>
+            </div>
+          </div>
+
+          <div class="detail-card">
+            <div class="detail-card__title">Review Schedule</div>
+            <div class="client360-kv">
+              <div class="client360-kv__row"><span>Next Review Date</span><strong>${escapeAttr(details.nextReviewDate || d.subtitle || "—")}</strong></div>
+              <div class="client360-kv__row"><span>Review Period</span><strong>${escapeAttr(details.reviewPeriod || "—")}</strong></div>
+            </div>
+          </div>
+
+          <div class="detail-card">
+            <div class="detail-card__title">Result</div>
+            <div class="detail-card__body">
+              <div class="placeholder-block" style="margin:0">Result will be recorded when screening is completed.</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    const right = `
+      <div class="detail-card">
+        <div class="detail-card__title">Activity</div>
+        <div class="timeline-scroll">
+          ${(d.timeline || [])
+            .map(
+              (it) => `
+            <div class="timeline-item">
+              <div class="timeline-item__title">${escapeAttr(it.title || "Update")}</div>
+              <div class="timeline-item__meta">${escapeAttr(it.dateTime || "—")} · ${escapeAttr(it.by || "—")}</div>
+              <div class="timeline-item__body">${escapeAttr(it.body || "")}</div>
+            </div>`
+            )
+            .join("")}
+          ${(d.timeline || []).length ? "" : `<div class="placeholder-block">No activity yet.</div>`}
+        </div>
+      </div>
+      <div class="detail-card">
+        <div class="detail-card__title">Related Screenings</div>
+        <div class="client360-list">
+          ${(d.programTags || [])
+            .map(
+              (t) =>
+                `<div class="client360-list__item"><span class="client360-dot" aria-hidden="true"></span><div class="client360-list__body"><div class="client360-list__title">${escapeAttr(
+                  t
+                )}</div><div class="client360-list__sub">Review: ${escapeAttr(details.nextReviewDate || "—")}</div></div></div>`
+            )
+            .join("")}
+        </div>
+      </div>
+    `;
+
+    return `
+      ${renderAppBreadcrumb(
+        [
+          { label: "Prospect Management", href: "#/list" },
+          { label: (d.name && String(d.name).trim()) || d.id },
+          { label: "Screening details" },
+        ],
+        "registration"
+      )}
+      <div class="screening-layout-v2">
+        <aside class="screening-layout-v2__left">${left}</aside>
+        <section class="screening-layout-v2__main">
+          ${centerHeader}
+          <div class="detail-panel detail-panel--stack">${centerBody}</div>
+        </section>
+        <aside class="screening-layout-v2__right">${right}</aside>
       </div>
     `;
   }
@@ -1471,9 +3519,47 @@
     return true;
   }
 
+  function updateDetailNote(rowKey, id, body) {
+    const text = String(body || "").trim();
+    if (!text) return false;
+    const iso = new Date().toISOString();
+    const list = ensureDetailNotesList(rowKey);
+    const existing = list.find((x) => x.id === id);
+    if (existing) {
+      existing.body = text;
+      existing.submittedAt = iso;
+      return true;
+    }
+    if (DETAIL_NOTES_SEED.some((s) => s.id === id)) {
+      if (!state.detailNoteEdits[rowKey]) state.detailNoteEdits[rowKey] = Object.create(null);
+      state.detailNoteEdits[rowKey][id] = { body: text, submittedAt: iso };
+      return true;
+    }
+    return false;
+  }
+
+  function deleteDetailNote(rowKey, id) {
+    const list = ensureDetailNotesList(rowKey);
+    const idx = list.findIndex((n) => n.id === id);
+    if (idx >= 0) {
+      list.splice(idx, 1);
+    } else if (DETAIL_NOTES_SEED.some((s) => s.id === id)) {
+      if (!state.detailNoteDeletedIds[rowKey]) state.detailNoteDeletedIds[rowKey] = [];
+      if (state.detailNoteDeletedIds[rowKey].indexOf(id) === -1) state.detailNoteDeletedIds[rowKey].push(id);
+    }
+    if (state.detailNoteEdits[rowKey]) delete state.detailNoteEdits[rowKey][id];
+  }
+
   function detailNotesForRender(rowKey) {
     const added = Array.isArray(state.detailNotesByProspect[rowKey]) ? state.detailNotesByProspect[rowKey] : [];
-    const merged = [...DETAIL_NOTES_SEED, ...added];
+    const deleted = new Set(state.detailNoteDeletedIds[rowKey] || []);
+    const edits = state.detailNoteEdits[rowKey] || {};
+    const seeds = DETAIL_NOTES_SEED.filter((n) => !deleted.has(n.id)).map((n) => {
+      const ed = edits[n.id];
+      return ed ? { ...n, body: ed.body, submittedAt: ed.submittedAt } : n;
+    });
+    const addedFiltered = added.filter((n) => !deleted.has(n.id));
+    const merged = [...seeds, ...addedFiltered];
     merged.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
     return merged;
   }
@@ -1649,9 +3735,9 @@
   const REG_NAV_ITEMS = [
     ["reg-eligibility", "Screening Eligibility"],
     ["reg-personal", "Personal Information"],
-    ["reg-emergency", "Emergency Contact"],
     ["reg-address", "Residential Address"],
     ["reg-subsidies", "Healthier SG & Subsidies"],
+    ["reg-appointment-type", "Appointment Type"],
     ["reg-appointment", "Appointment Preferences"],
     ["reg-screening", "Screening Questions"],
     ["reg-engagement", "Engagement"],
@@ -1713,7 +3799,7 @@
   function registerProgramLandingTitle() {
     if (state.registerProgram === "hpv") return "HPV Test / PAP Test Screening";
     if (state.registerProgram === "fit") return "FIT Screening Programme";
-    return "Community Mammobus Programme";
+    return "Mammogram Screening Registration";
   }
 
   function renderRegisterSelfServiceLandingPage() {
@@ -1733,8 +3819,9 @@
           <div class="reg-landing__card">
             <h1 class="reg-landing__title">${title}</h1>
             <p class="reg-landing__subtitle">Select a registration method</p>
-            <button type="button" id="reg-landing-singpass" class="reg-landing__singpass">
-              Retrieve Myinfo with <span class="reg-landing__singpass-brand" lang="en">singpass</span>
+            <button type="button" id="reg-landing-singpass" class="reg-landing__singpass" aria-label="Retrieve Myinfo with Singpass">
+              <span class="reg-landing__singpass-label">Retrieve Myinfo with</span>
+              <img src="assets/branding/singpass-white.svg" alt="Singpass" class="reg-landing__singpass-logo" width="93" height="32" />
             </button>
             <p class="reg-landing__singpass-note">Singpass enables you to retrieve your personal data from participating Government sources and pre-fill the registration form.</p>
             <div class="reg-landing__or"><span>or</span></div>
@@ -1847,7 +3934,7 @@
       <div class="registration__toolbar registration__toolbar--self-service">
         <div class="registration__toolbar-row registration__toolbar-row--self-service-main">
           <div class="registration__toolbar-titles">
-            <h1 class="registration__title">Community Mammobus Programme</h1>
+            <h1 class="registration__title">Mammogram Screening Registration</h1>
             <p class="registration__subtitle">Screening Registration Form</p>
           </div>
           <button type="button" class="registration__nav-hamburger" id="registration-nav-toggle" aria-label="Skip to section menu" aria-expanded="${state.registrationMobileNavOpen}" aria-controls="registration-nav-drawer">${icons.menuHamburger}</button>
@@ -1860,14 +3947,14 @@
     }
     return `
       ${renderAppBreadcrumb(
-        [{ label: "Prospect Management", href: "#/list" }, { label: "Community Mammobus Programme" }],
+        [{ label: "Prospect Management", href: "#/list" }, { label: "Mammogram Screening Registration" }],
         "registration"
       )}
       <div class="registration__toolbar">
         <div class="registration__toolbar-row">
           <a href="#/list" class="detail-hero__back" aria-label="Back to list">${icons.back}</a>
           <div class="registration__toolbar-titles">
-            <h1 class="registration__title">Community Mammobus Programme</h1>
+            <h1 class="registration__title">Mammogram Screening Registration</h1>
             <p class="registration__subtitle">Screening Registration Form</p>
           </div>
           <div class="registration__toolbar-actions">
@@ -2203,35 +4290,6 @@
                 </div>
               </section>
 
-              <section id="reg-emergency" class="registration-card" tabindex="-1">
-                <h2 class="registration__section-label">Emergency Contact</h2>
-                <div class="form-grid form-grid--reg">
-                  <div class="field field--full">
-                    <label for="emergencyName">Emergency Contact Name<span class="field__req" aria-hidden="true">*</span></label>
-                    <input id="emergencyName" name="emergencyName" required placeholder="Enter emergency contact name" />
-                  </div>
-                  <div class="field">
-                    <label for="emergencyRel">Relationship<span class="field__req" aria-hidden="true">*</span></label>
-                    <select id="emergencyRel" name="emergencyRel" required>
-                      <option value="">Select Relationship</option>
-                      <option value="Spouse">Spouse</option>
-                      <option value="Parent">Parent</option>
-                      <option value="Child">Child</option>
-                      <option value="Sibling">Sibling</option>
-                      <option value="Friend">Friend</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-                  <div class="field">
-                    <label for="emergencyPhone">Emergency Contact Number<span class="field__req" aria-hidden="true">*</span></label>
-                    <div class="field__inline">
-                      <input type="text" class="field__prefix" value="+65" disabled aria-label="Country code" />
-                      <input id="emergencyPhone" name="emergencyPhone" type="tel" required placeholder="E.g. 8123 4567" />
-                    </div>
-                  </div>
-                </div>
-              </section>
-
               <section id="reg-address" class="registration-card" tabindex="-1">
                 <h2 class="registration__section-label">Residential Address</h2>
                 <div class="form-grid form-grid--reg form-grid--address">
@@ -2286,6 +4344,84 @@
                   <div class="field">
                     <label for="lastScreeningYear">Year of Last Screening</label>
                     <input id="lastScreeningYear" name="lastScreeningYear" type="text" inputmode="numeric" maxlength="4" placeholder="Enter Year of Last Screening" autocomplete="off" />
+                  </div>
+                </div>
+              </section>
+
+              <section id="reg-appointment-type" class="registration-card" tabindex="-1">
+                <h2 class="registration__section-label">Appointment Type</h2>
+                <p class="registration__appointment-type-lead">
+                  There are several avenues where you can sign up for a mammogram. Please select one of the options below.
+                </p>
+                <div class="registration__appointment-type" role="radiogroup" aria-label="Appointment Type">
+                  <label class="registration__option-card registration__option-card--selected" data-option-card>
+                    <input class="registration__option-card-input" type="radio" name="appointmentType" value="mammobus" checked />
+                    <div class="registration__option-card-body">
+                      <div class="registration__option-card-title-row">
+                        <div class="registration__option-card-title">Community Mammobus Programme</div>
+                        <span class="registration__option-card-ring" aria-hidden="true"></span>
+                      </div>
+                      <div class="registration__option-card-desc">
+                        An initiative by SCS, BCF, and NHGD to bring subsidised mammogram screenings to different neighbourhoods across Singapore.
+                      </div>
+                      <div class="registration__option-card-note"><em>Note: The Mammobus is not wheelchair-accessible.</em></div>
+                      <div class="registration__option-card-tag">Available to all eligible clients</div>
+                    </div>
+                  </label>
+
+                  <label class="registration__option-card" data-option-card>
+                    <input class="registration__option-card-input" type="radio" name="appointmentType" value="scs-clinic" />
+                    <div class="registration__option-card-body">
+                      <div class="registration__option-card-title-row">
+                        <div class="registration__option-card-title">SCS Clinic @ Bishan</div>
+                        <span class="registration__option-card-ring" aria-hidden="true"></span>
+                      </div>
+                      <div class="registration__option-card-desc">
+                        Located at 9 Bishan Place, Junction 8 Office Tower, #06-05. Offers mammograms at no cost for eligible individuals with a Blue or Orange CHAS card, aged 50 and above.
+                      </div>
+                      <div class="registration__option-card-tag">You are eligible for this option</div>
+                    </div>
+                  </label>
+
+                  <label class="registration__option-card" data-option-card>
+                    <input class="registration__option-card-input" type="radio" name="appointmentType" value="healthier-sg" />
+                    <div class="registration__option-card-body">
+                      <div class="registration__option-card-title-row">
+                        <div class="registration__option-card-title">Healthier SG Programme</div>
+                        <span class="registration__option-card-ring" aria-hidden="true"></span>
+                      </div>
+                      <div class="registration__option-card-desc">
+                        The national health screening programme under Health Promotion Board. Book an appointment for any recommended subsidised screening test on HealthHub.
+                      </div>
+                      <div class="registration__option-card-tag">Available to Singapore Citizens</div>
+                    </div>
+                  </label>
+                </div>
+              </section>
+
+              <section id="reg-healthier-sg" class="registration-card registration__healthier-sg-extra" tabindex="-1" hidden>
+                <h2 class="registration__section-label">Healthier SG Programme</h2>
+
+                <div class="registration__question-card">
+                  <div class="registration__question-kicker">QUESTION 1 OF 2</div>
+                  <div class="registration__question-title">Have you booked your Healthier SG mammogram screening yet?</div>
+                  <div class="registration__yesno" role="radiogroup" aria-label="Healthier SG booking status">
+                    <label class="registration__yesno-btn" data-yesno>
+                      <input class="registration__yesno-input" type="radio" name="healthierSgBooked" value="no" />
+                      <span>No</span>
+                    </label>
+                    <label class="registration__yesno-btn" data-yesno>
+                      <input class="registration__yesno-input" type="radio" name="healthierSgBooked" value="yes" />
+                      <span>Yes</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="registration__question-card">
+                  <div class="registration__question-kicker">QUESTION 2 OF 2</div>
+                  <div class="registration__question-title">When is the date of your screening?</div>
+                  <div class="field field--full">
+                    <input id="healthierSgScreeningDate" name="healthierSgScreeningDate" type="text" placeholder="DD/MM/YYYY" autocomplete="off" />
                   </div>
                 </div>
               </section>
@@ -2978,7 +5114,17 @@
   }
 
   function renderDetailAddNoteModal() {
-    if (!state.detailAddNoteModalOpen || state.route !== "detail") return "";
+    if (!state.detailAddNoteModalOpen || (state.route !== "detail" && state.route !== "prospectv3")) return "";
+    const rowKey = state.detail.rowKey;
+    const editId = state.detailNoteEditId;
+    let initial = "";
+    if (editId) {
+      const n = detailNotesForRender(rowKey).find((x) => x.id === editId);
+      if (n) initial = n.body || "";
+    }
+    const isEdit = Boolean(editId);
+    const title = isEdit ? "Edit note" : "Add note";
+    const submitLabel = isEdit ? "Save" : "Add";
     return `
       <div class="ui-dialog-overlay" id="detail-add-note-modal" role="presentation">
         <div class="ui-dialog ui-dialog--add-note" role="dialog" aria-modal="true" aria-labelledby="detail-add-note-title">
@@ -2986,18 +5132,40 @@
             <button type="button" class="ui-btn ui-btn--ghost ui-btn--icon" data-detail-add-note-dismiss aria-label="Close">${icons.x}</button>
           </div>
           <div class="ui-dialog__header">
-            <h2 class="ui-dialog__title" id="detail-add-note-title">Add note</h2>
+            <h2 class="ui-dialog__title" id="detail-add-note-title">${escapeAttr(title)}</h2>
           </div>
           <div class="ui-dialog__body">
             <div class="field field--full">
               <label for="detail-add-note-text">Note</label>
-              <textarea id="detail-add-note-text" class="detail-add-note-textarea" rows="7" placeholder="Enter your note…" autocomplete="off"></textarea>
+              <textarea id="detail-add-note-text" class="detail-add-note-textarea" rows="10" placeholder="Enter your note..." autocomplete="off">${escapeAttr(initial)}</textarea>
             </div>
           </div>
           <div class="ui-dialog__footer">
             <div class="ui-dialog__footer-actions">
               <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-detail-add-note-dismiss>Cancel</button>
-              <button type="button" class="ui-btn ui-btn--default ui-btn--sm" data-detail-add-note-submit>Add</button>
+              <button type="button" class="ui-btn ui-btn--default ui-btn--sm" data-detail-add-note-submit>${escapeAttr(submitLabel)}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderDetailDeleteNoteModal() {
+    if (!state.detailDeleteNoteId || (state.route !== "detail" && state.route !== "prospectv3")) return "";
+    return `
+      <div class="ui-dialog-overlay" id="detail-delete-note-modal" role="presentation">
+        <div class="ui-dialog ui-dialog--delete-note" role="alertdialog" aria-modal="true" aria-labelledby="detail-delete-note-title">
+          <div class="ui-dialog__header">
+            <h2 class="ui-dialog__title" id="detail-delete-note-title">Delete note?</h2>
+          </div>
+          <div class="ui-dialog__body">
+            <p class="ui-dialog__lede">This will permanently remove this note. This action cannot be undone.</p>
+          </div>
+          <div class="ui-dialog__footer">
+            <div class="ui-dialog__footer-actions">
+              <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-detail-delete-note-cancel>Cancel</button>
+              <button type="button" class="ui-btn ui-btn--danger ui-btn--sm" data-detail-delete-note-confirm>Delete</button>
             </div>
           </div>
         </div>
@@ -3006,7 +5174,14 @@
   }
 
   function renderModal() {
-    return renderFilterModal() + renderDetailAddNoteModal();
+    return (
+      renderFilterModal() +
+      renderDetailAddNoteModal() +
+      renderDetailDeleteNoteModal() +
+      renderProspectV3BiodataModal() +
+      renderClassicScreeningUpdateModal() +
+      renderClassicScreeningTasksModal()
+    );
   }
 
   /** file:// and some browsers can leave location.hash empty on first paint while href still has #/route */
@@ -3018,45 +5193,7 @@
     return i >= 0 ? u.slice(i) : "";
   }
 
-  function parseRoute() {
-    const raw = getRouteHash().replace(/^#\/?/, "");
-    const parts = raw
-      .split("/")
-      .map((s) => s.replace(/^\ufeff/, "").trim())
-      .filter(Boolean);
-    const head = (parts[0] || "").toLowerCase();
-    if (parts.length === 0) {
-      state.route = "list";
-      state.routeId = null;
-      state.view = "list";
-    } else if (head === "list") {
-      state.route = "list";
-      state.routeId = null;
-      state.view = "list";
-    } else if (head === "kanban") {
-      state.route = "list";
-      state.view = "kanban";
-      state.routeId = null;
-    } else if (head === "prospect") {
-      state.route = "detail";
-      state.routeId = parts[1] ? decodeURIComponent(parts[1]) : DETAIL_DEFAULT.rowKey;
-      if (parts[2]) {
-        const tab = decodeURIComponent(parts[2]).trim().toLowerCase();
-        state.detailTab = DETAIL_TAB_IDS.includes(tab) ? tab : "overview";
-      } else {
-        state.detailTab = "overview";
-      }
-    } else if (head === "register") {
-      state.route = "register";
-      state.routeId = null;
-      const sub = (parts[1] || "").toLowerCase();
-      if (sub === "hpv") state.registerProgram = "hpv";
-      else if (sub === "fit") state.registerProgram = "fit";
-      else state.registerProgram = "mammobus";
-    } else {
-      state.route = "list";
-      state.routeId = null;
-    }
+  function applyDerivedRouteState() {
     if (state.route !== "register") {
       state.regNavSection = null;
       state.registrationMobileNavOpen = false;
@@ -3089,9 +5226,121 @@
       lastDetailTabForForm = state.detailTab;
     }
 
-    if (state.route !== "detail" || state.detailTab !== "notes") {
+    const onClassicNotes = state.route === "detail" && state.detailTab === "notes";
+    const onV1Notes = state.route === "prospectv3" && state.prospectV3Tab === "notes";
+    if (!onClassicNotes && !onV1Notes) {
       state.detailAddNoteModalOpen = false;
+      state.detailNoteEditId = null;
+      state.detailDeleteNoteId = null;
     }
+
+    const onClassicScreenings =
+      (state.route === "detail" && state.detailTab === "screening") ||
+      (state.route === "prospectv3" && state.prospectV3Tab === "screenings");
+    if (!onClassicScreenings) {
+      state.classicScreeningUpdateModalId = null;
+    }
+  }
+
+  function parseRoute() {
+    const raw = getRouteHash().replace(/^#\/?/, "");
+    const parts = raw
+      .split("/")
+      .map((s) => s.replace(/^\ufeff/, "").trim())
+      .filter(Boolean);
+    const head = (parts[0] || "").toLowerCase();
+    if (parts.length === 0) {
+      state.route = "list";
+      state.routeId = null;
+      state.view = "list";
+    } else if (head === "list") {
+      state.route = "list";
+      state.routeId = null;
+      state.view = "list";
+    } else if (head === "kanban") {
+      state.route = "list";
+      state.view = "kanban";
+      state.routeId = null;
+    } else if (head === "screening") {
+      state.route = "screening";
+      state.routeId = parts[1] ? decodeURIComponent(parts[1]) : DETAIL_DEFAULT.rowKey;
+      if (parts[2]) {
+        const tab = decodeURIComponent(parts[2]).trim().toLowerCase();
+        state.screeningTab = SCREENING_TAB_IDS.includes(tab) ? tab : "details";
+      } else {
+        state.screeningTab = "details";
+      }
+    } else if (head === "screeningv4") {
+      const ridDecoded = parts[1] ? decodeURIComponent(parts[1]) : DETAIL_DEFAULT.rowKey;
+      let tab = "details";
+      if (parts[2]) {
+        const t = decodeURIComponent(parts[2]).trim().toLowerCase();
+        if (SCREENING_TAB_IDS.includes(t)) tab = t;
+        else if (t === "timeline") tab = "details";
+      }
+      state.route = "screening";
+      state.routeId = ridDecoded;
+      state.screeningTab = tab;
+      const tabPath = tab === "details" ? "" : `/${encodeURIComponent(tab)}`;
+      const nextHash = `#/screening/${encodeURIComponent(ridDecoded)}${tabPath}`;
+      if (getRouteHash() !== nextHash) location.replace(nextHash);
+      applyDerivedRouteState();
+      return;
+    } else if (head === "client360") {
+      const ridRaw = parts[1] ? parts[1] : DETAIL_DEFAULT.rowKey;
+      const ridDecoded = decodeURIComponent(ridRaw);
+      let tab = "overview";
+      if (parts[2]) {
+        const t = decodeURIComponent(parts[2]).trim().toLowerCase();
+        if (t === "screenings" || t === "biodata" || t === "notes") tab = t;
+      }
+      state.route = "prospectv3";
+      state.routeId = ridDecoded;
+      state.prospectV3Tab = tab;
+      if (state.prospectV3Tab !== "biodata") {
+        state.prospectV3BiodataModalOpen = false;
+        state.prospectV3BiodataDraft = null;
+      }
+      const tabPath = tab === "overview" ? "" : `/${encodeURIComponent(tab)}`;
+      const nextHash = `#/prospectv3/${encodeURIComponent(ridDecoded)}${tabPath}`;
+      if (getRouteHash() !== nextHash) location.replace(nextHash);
+      applyDerivedRouteState();
+      return;
+    } else if (head === "prospect") {
+      state.route = "detail";
+      state.routeId = parts[1] ? decodeURIComponent(parts[1]) : DETAIL_DEFAULT.rowKey;
+      if (parts[2]) {
+        let tab = decodeURIComponent(parts[2]).trim().toLowerCase();
+        if (tab === "overview") tab = "details";
+        state.detailTab = DETAIL_TAB_IDS.includes(tab) ? tab : "details";
+      } else {
+        state.detailTab = "details";
+      }
+    } else if (head === "prospectv3") {
+      state.route = "prospectv3";
+      state.routeId = parts[1] ? decodeURIComponent(parts[1]) : DETAIL_DEFAULT.rowKey;
+      if (parts[2]) {
+        const tab = decodeURIComponent(parts[2]).trim().toLowerCase();
+        state.prospectV3Tab = PROSPECT_V3_TAB_IDS.includes(tab) ? tab : "overview";
+      } else {
+        state.prospectV3Tab = "overview";
+      }
+      if (state.prospectV3Tab !== "biodata") {
+        state.prospectV3BiodataModalOpen = false;
+        state.prospectV3BiodataDraft = null;
+      }
+    } else if (head === "register") {
+      state.route = "register";
+      state.routeId = null;
+      const sub = (parts[1] || "").toLowerCase();
+      if (sub === "hpv") state.registerProgram = "hpv";
+      else if (sub === "fit") state.registerProgram = "fit";
+      else state.registerProgram = "mammobus";
+    } else {
+      state.route = "list";
+      state.routeId = null;
+    }
+    applyDerivedRouteState();
   }
 
   let registrationScrollCleanup = null;
@@ -3267,6 +5516,15 @@
     const shell = el.closest(".field__nric");
     const edit = shell?.querySelector?.(".field__nric-edit");
     if (edit instanceof HTMLInputElement) edit.disabled = true;
+    const toggle = shell?.querySelector?.("[data-nric-toggle]");
+    if (toggle instanceof HTMLButtonElement) toggle.disabled = true;
+
+    // Date text input: disable calendar button too so it picks up disabled styling.
+    if (el.classList?.contains?.("field__date-text")) {
+      const wrap = el.closest(".field__date");
+      const btn = wrap?.querySelector?.(".field__date-btn");
+      if (btn instanceof HTMLButtonElement) btn.disabled = true;
+    }
   }
 
   function lockSingpassSelect(id, value) {
@@ -3344,6 +5602,7 @@
 
   function renderApp() {
     parseRoute();
+    if (state.route !== "detail") state.activityTimelineDrawerOpen = false;
     const isRegisterSelfService = state.route === "register" && state.registerSelfService;
     if (state.route === "register" && !state.registerSelfService) {
       state.registerSelfServiceEntry = "form";
@@ -3355,6 +5614,7 @@
     lastRenderWasRegisterSelfService = isRegisterSelfService;
 
     syncDetailFromRoute();
+    applyClassicScreeningRowExpandFromNavigation();
     teardownRegistrationScrollSpy();
     teardownDetailSectionScrollSpy();
     if (state.route !== "list") state.programMenuOpen = false;
@@ -3362,6 +5622,8 @@
     const app = document.getElementById("app");
     let main = "";
     if (state.route === "detail") main = renderDetailPage();
+    else if (state.route === "screening") main = renderScreeningDetailsPage();
+    else if (state.route === "prospectv3") main = renderProspectDetailV3Page();
     else if (state.route !== "register") main = renderListPage();
 
     if (state.route === "register" && state.registerSelfService && state.registerSelfServiceEntry === "landing") {
@@ -3460,6 +5722,24 @@
           setupDetailSectionScrollSpy();
         });
       }
+      return;
+    }
+
+    if (state.route === "screening" || state.route === "prospectv3") {
+      const mainCls = state.route === "prospectv3" ? "app-main app-main--detail-page app-main--v1" : "app-main app-main--detail-page";
+      app.innerHTML = `
+      <div class="app-shell app-shell--detail-flow">
+        <div id="detail-flow-scroll-root" class="detail-flow-scroll-root">
+          ${renderHeader()}
+          <div class="app-content app-content--detail-flow">
+            <main class="${mainCls}">${main}</main>
+            ${renderAppFooter()}
+          </div>
+        </div>
+      </div>
+      ${renderModal()}
+    `;
+      bindEvents();
       return;
     }
 
@@ -3669,6 +5949,35 @@
       });
     });
 
+    // Classic screening records table: type filter + row expand (Client 360 + Prospect V3)
+    document.querySelectorAll("[data-classic-screening-filter]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.classicScreeningFilter = btn.getAttribute("data-classic-screening-filter") || "all";
+        state.classicScreeningExpandedId = null;
+        renderApp();
+      });
+    });
+
+    document.querySelectorAll("[data-classic-screening-row]").forEach((row) => {
+      const toggle = () => {
+        const id = row.getAttribute("data-classic-screening-row");
+        if (!id) return;
+        state.classicScreeningExpandedId = state.classicScreeningExpandedId === id ? null : id;
+        renderApp();
+      };
+      row.addEventListener("click", (e) => {
+        const stop = e.target?.closest?.("[data-table-row-stop]");
+        if (stop) return;
+        toggle();
+      });
+      row.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          toggle();
+        }
+      });
+    });
+
     const search = document.getElementById("prospect-search");
     if (search) {
       search.addEventListener("input", () => {
@@ -3750,30 +6059,7 @@
     document.querySelectorAll("[data-kanban-card]").forEach((card) => {
       card.addEventListener("click", () => {
         const rk = card.getAttribute("data-kanban-prospect");
-        if (rk) location.hash = `#/prospect/${encodeURIComponent(rk)}`;
-      });
-    });
-
-    document.querySelectorAll("[data-pipeline]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const pipe = btn.getAttribute("data-pipeline");
-        if (!PIPELINE_KEYS.includes(pipe)) return;
-        if (pipe === state.pipeline) return;
-        const prev = state.pipeline;
-        persistProspectChecklistsFromDetail();
-        state.pipeline = pipe;
-        state.detail.pipeline = pipe;
-        if (state.route === "detail") {
-          appendDetailActivity(state.detail.rowKey, {
-            title: "Pipeline stage changed",
-            body: `Stage moved from ${pipelineStagePretty(prev)} to ${pipelineStagePretty(pipe)}.`,
-            by: PORTAL_CURRENT_USER.name,
-            stage: pipe,
-          });
-        }
-        const p = PROSPECTS.find((x) => x.rowKey === state.detail.rowKey);
-        if (p) p.status = pipe;
-        renderApp();
+        if (rk) location.hash = `#/prospect/${encodeURIComponent(rk)}/screening`;
       });
     });
 
@@ -3824,12 +6110,142 @@
         }
         window.__regNavProgrammaticScroll = true;
         setRegNavActive(id);
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        const root = document.getElementById("registration-scroll-root");
+        if (root) {
+          const rootRect = root.getBoundingClientRect();
+          const elRect = el.getBoundingClientRect();
+          const delta = elRect.top - rootRect.top;
+          const targetTop = Math.max(0, root.scrollTop + delta - 12);
+          root.scrollTo({ top: targetTop, behavior: "smooth" });
+        } else {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
         window.setTimeout(() => {
           window.__regNavProgrammaticScroll = false;
         }, 900);
       });
     });
+
+    // Appointment type: keep single-select + sync card highlight (avoid relying on :has()).
+    // Use delegated click handling so selecting a card is always safe and cannot crash the page.
+    const regRoot = document.getElementById("registration-scroll-root");
+    if (regRoot) {
+      const syncAppointmentTypeCards = () => {
+        try {
+          const cards = Array.from(regRoot.querySelectorAll("[data-option-card]"));
+          cards.forEach((card) => {
+            const input = card.querySelector('input[type="radio"][name="appointmentType"]');
+            const selected = input instanceof HTMLInputElement && input.checked;
+            card.classList.toggle("registration__option-card--selected", Boolean(selected));
+          });
+        } catch (_) {
+          // Prototype-only: never let UI interaction blank the page.
+        }
+      };
+
+      const syncHealthierSgExtra = () => {
+        const extra = regRoot.querySelector("#reg-healthier-sg");
+        if (!(extra instanceof HTMLElement)) return;
+        const selected = regRoot.querySelector('input[type="radio"][name="appointmentType"][value="healthier-sg"]');
+        const show = selected instanceof HTMLInputElement && selected.checked;
+        extra.hidden = !show;
+        // Disable inputs when hidden so they don't participate in form submission/validation.
+        extra.querySelectorAll("input, select, textarea").forEach((el) => {
+          if (el instanceof HTMLInputElement || el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement) {
+            el.disabled = !show;
+          }
+        });
+
+        // Hide Appointment Preferences when Healthier SG is selected.
+        const apptPref = regRoot.querySelector("#reg-appointment");
+        if (apptPref instanceof HTMLElement) {
+          apptPref.hidden = show;
+          apptPref.querySelectorAll("input, select, textarea").forEach((el) => {
+            if (el instanceof HTMLInputElement || el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement) {
+              el.disabled = show;
+            }
+          });
+        }
+        // Hide TOC entry too, so user can't navigate to a hidden section.
+        document.querySelectorAll('[data-reg-nav="reg-appointment"]').forEach((btn) => {
+          if (btn instanceof HTMLElement) btn.style.display = show ? "none" : "";
+        });
+
+        // Question 2: disable date unless Question 1 = "yes"
+        const bookedYes = regRoot.querySelector('input[type="radio"][name="healthierSgBooked"][value="yes"]');
+        const bookedNo = regRoot.querySelector('input[type="radio"][name="healthierSgBooked"][value="no"]');
+        const isYes = bookedYes instanceof HTMLInputElement && bookedYes.checked;
+        const isNo = bookedNo instanceof HTMLInputElement && bookedNo.checked;
+        const dateInput = regRoot.querySelector("#healthierSgScreeningDate");
+        if (dateInput instanceof HTMLInputElement) {
+          dateInput.disabled = !show || isNo || !isYes;
+          if (show && isNo) dateInput.value = "";
+        }
+      };
+
+      const syncYesNoButtons = () => {
+        const btns = Array.from(regRoot.querySelectorAll("[data-yesno]"));
+        btns.forEach((btn) => {
+          const input = btn.querySelector('input[type="radio"]');
+          const selected = input instanceof HTMLInputElement && input.checked;
+          btn.classList.toggle("is-selected", Boolean(selected));
+        });
+      };
+
+      // Run once after render (ensures initial checked state is reflected)
+      syncAppointmentTypeCards();
+      syncHealthierSgExtra();
+      syncYesNoButtons();
+
+      // Click on card → check radio + sync highlight.
+      regRoot.addEventListener("click", (e) => {
+        const raw = e.target;
+        const el = raw instanceof Element ? raw : raw?.parentElement;
+        const card = el?.closest?.("[data-option-card]");
+        if (!(card instanceof HTMLElement)) return;
+        const input = card.querySelector('input[type="radio"][name="appointmentType"]');
+        if (!(input instanceof HTMLInputElement)) return;
+        if (!input.checked) {
+          input.checked = true;
+          input.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+        syncAppointmentTypeCards();
+        syncHealthierSgExtra();
+        e.preventDefault();
+        e.stopPropagation();
+      });
+
+      // Also sync on direct radio changes (keyboard navigation / accessibility)
+      regRoot.addEventListener("change", (e) => {
+        const t = e.target;
+        if (!(t instanceof HTMLInputElement)) return;
+        if (t.type === "radio" && t.name === "appointmentType") {
+          syncAppointmentTypeCards();
+          syncHealthierSgExtra();
+          return;
+        }
+        if (t.type === "radio" && t.name === "healthierSgBooked") {
+          syncYesNoButtons();
+        }
+      });
+
+      // Click yes/no button → ensure selected styling updates immediately
+      regRoot.addEventListener("click", (e) => {
+        const raw = e.target;
+        const el = raw instanceof Element ? raw : raw?.parentElement;
+        const btn = el?.closest?.("[data-yesno]");
+        if (!(btn instanceof HTMLElement)) return;
+        const input = btn.querySelector('input[type="radio"][name="healthierSgBooked"]');
+        if (!(input instanceof HTMLInputElement)) return;
+        if (!input.checked) {
+          input.checked = true;
+          input.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+        syncYesNoButtons();
+        e.preventDefault();
+        e.stopPropagation();
+      });
+    }
 
     document.getElementById("registration-nav-toggle")?.addEventListener("click", (e) => {
       e.preventDefault();
@@ -3861,6 +6277,14 @@
   document.getElementById("app").addEventListener("click", (e) => {
     const raw = e.target;
     const el = raw instanceof Element ? raw : raw?.parentElement;
+
+    const atDrawerDismiss = el?.closest("[data-activity-timeline-drawer-dismiss]");
+    if (atDrawerDismiss && state.route === "detail" && state.activityTimelineDrawerOpen) {
+      e.preventDefault();
+      state.activityTimelineDrawerOpen = false;
+      renderApp();
+      return;
+    }
 
     const formAction = el?.closest("[data-detail-form-action]");
     if (formAction && state.route === "detail") {
@@ -3957,7 +6381,7 @@
       }
     }
 
-    if (state.route === "detail") {
+    if (state.route === "detail" || state.route === "prospectv3") {
       const dlBtn = el?.closest("[data-detail-doc-download]");
       if (dlBtn) {
         e.preventDefault();
@@ -3982,13 +6406,68 @@
         document.getElementById("detail-documents-input")?.click();
         return;
       }
+    }
+
+    if (state.route === "detail" || state.route === "prospectv3") {
       if (el?.closest("[data-detail-add-note-open]")) {
         e.preventDefault();
+        state.detailNoteEditId = null;
         state.detailAddNoteModalOpen = true;
         renderApp();
         requestAnimationFrame(() => {
-          document.getElementById("detail-add-note-text")?.focus();
+          const ta = document.getElementById("detail-add-note-text");
+          ta?.focus();
         });
+        return;
+      }
+      const noteEditBtn = el?.closest("[data-detail-note-edit]");
+      if (noteEditBtn) {
+        e.preventDefault();
+        const nid = noteEditBtn.getAttribute("data-detail-note-edit");
+        if (!nid) return;
+        state.detailNoteEditId = nid;
+        state.detailAddNoteModalOpen = true;
+        renderApp();
+        requestAnimationFrame(() => {
+          const ta = document.getElementById("detail-add-note-text");
+          if (ta instanceof HTMLTextAreaElement) {
+            ta.focus();
+            ta.setSelectionRange(ta.value.length, ta.value.length);
+          }
+        });
+        return;
+      }
+      const noteDelBtn = el?.closest("[data-detail-note-delete]");
+      if (noteDelBtn) {
+        e.preventDefault();
+        const nid = noteDelBtn.getAttribute("data-detail-note-delete");
+        if (!nid) return;
+        state.detailDeleteNoteId = nid;
+        renderApp();
+        return;
+      }
+    }
+
+    if (state.detailDeleteNoteId && (state.route === "detail" || state.route === "prospectv3")) {
+      if (el?.id === "detail-delete-note-modal") {
+        state.detailDeleteNoteId = null;
+        renderApp();
+        return;
+      }
+      if (el?.closest("[data-detail-delete-note-cancel]")) {
+        e.preventDefault();
+        state.detailDeleteNoteId = null;
+        renderApp();
+        return;
+      }
+      if (el?.closest("[data-detail-delete-note-confirm]")) {
+        e.preventDefault();
+        const nid = state.detailDeleteNoteId;
+        if (nid) deleteDetailNote(state.detail.rowKey, nid);
+        state.detailDeleteNoteId = null;
+        state.detailScrollPreservePending = true;
+        renderApp();
+        showToast("Note deleted.");
         return;
       }
     }
@@ -3996,12 +6475,14 @@
     if (state.detailAddNoteModalOpen) {
       if (el?.id === "detail-add-note-modal") {
         state.detailAddNoteModalOpen = false;
+        state.detailNoteEditId = null;
         renderApp();
         return;
       }
       if (el?.closest("[data-detail-add-note-dismiss]")) {
         e.preventDefault();
         state.detailAddNoteModalOpen = false;
+        state.detailNoteEditId = null;
         renderApp();
         return;
       }
@@ -4013,11 +6494,19 @@
           showToast("Please enter a note.");
           return;
         }
-        addDetailNote(state.detail.rowKey, text);
+        const rk = state.detail.rowKey;
+        const eid = state.detailNoteEditId;
+        if (eid) {
+          updateDetailNote(rk, eid, text);
+          showToast("Note updated.");
+        } else {
+          addDetailNote(rk, text);
+          showToast("Note added.");
+        }
         state.detailAddNoteModalOpen = false;
+        state.detailNoteEditId = null;
         state.detailScrollPreservePending = true;
         renderApp();
-        showToast("Note added.");
         return;
       }
     }
@@ -4037,19 +6526,175 @@
       return;
     }
 
+    const prospectV3TabBtn = el?.closest("[data-prospectv3-tab]");
+    if (prospectV3TabBtn && state.route === "prospectv3") {
+      const href = prospectV3TabBtn.getAttribute("data-prospectv3-tab-href");
+      if (href) {
+        if (location.hash === href) renderApp();
+        else location.hash = href;
+      }
+      return;
+    }
+
+    if (el?.closest("[data-v3-biodata-edit]") && state.route === "prospectv3" && state.prospectV3Tab === "biodata") {
+      e.preventDefault();
+      state.prospectV3BiodataDraft = JSON.stringify(state.detailFormValues?.details || {});
+      state.prospectV3BiodataModalOpen = true;
+      renderApp();
+      requestAnimationFrame(() => {
+        const modalBody = document.querySelector("[data-v3-biodata-modal-root]");
+        if (typeof window.WD_initDateInputs === "function") {
+          window.WD_initDateInputs(modalBody || document.getElementById("app"));
+        }
+        document.getElementById("v3bio-dob")?.focus();
+      });
+      return;
+    }
+
+    if (state.prospectV3BiodataModalOpen && state.route === "prospectv3" && state.prospectV3Tab === "biodata") {
+      const restoreV3BiodataDraft = () => {
+        if (state.prospectV3BiodataDraft != null) {
+          try {
+            state.detailFormValues.details = JSON.parse(state.prospectV3BiodataDraft);
+          } catch (_) {
+            /* keep current */
+          }
+        }
+        state.prospectV3BiodataDraft = null;
+        state.prospectV3BiodataModalOpen = false;
+      };
+      if (el?.id === "prospect-v3-biodata-modal") {
+        restoreV3BiodataDraft();
+        renderApp();
+        return;
+      }
+      if (el?.closest("[data-v3-biodata-modal-dismiss]")) {
+        e.preventDefault();
+        restoreV3BiodataDraft();
+        renderApp();
+        return;
+      }
+      if (el?.closest("[data-v3-biodata-modal-save]")) {
+        e.preventDefault();
+        const root = document.querySelector("[data-v3-biodata-modal-root]");
+        if (!persistV3BiodataFormFromRoot(root)) return;
+        state.prospectV3BiodataDraft = null;
+        state.prospectV3BiodataModalOpen = false;
+        showToast("Biodata saved.");
+        renderApp();
+        return;
+      }
+    }
+
+    const classicScrTable =
+      (state.route === "detail" && state.detailTab === "screening") ||
+      (state.route === "prospectv3" && state.prospectV3Tab === "screenings");
+    const classicUpdBtn = el?.closest("[data-classic-screening-update]");
+    if (classicUpdBtn && classicScrTable && (state.route === "detail" || state.route === "prospectv3")) {
+      e.preventDefault();
+      const sid = classicUpdBtn.getAttribute("data-classic-screening-update");
+      if (!sid) return;
+      state.classicScreeningTasksModalId = null;
+      state.classicScreeningUpdateModalId = sid;
+      renderApp();
+      requestAnimationFrame(() => document.getElementById("csu-submitted")?.focus());
+      return;
+    }
+
+    const classicTasksBtn = el?.closest("[data-classic-screening-tasks]");
+    if (classicTasksBtn && classicScrTable && (state.route === "detail" || state.route === "prospectv3")) {
+      e.preventDefault();
+      const sid = classicTasksBtn.getAttribute("data-classic-screening-tasks");
+      if (!sid) return;
+      state.classicScreeningUpdateModalId = null;
+      state.classicScreeningTasksModalId = sid;
+      ensureClassicScreeningTaskBucket(sid);
+      renderApp();
+      return;
+    }
+
+    if (state.classicScreeningTasksModalId) {
+      if (el?.id === "classic-screening-tasks-modal") {
+        state.classicScreeningTasksModalId = null;
+        renderApp();
+        return;
+      }
+      if (el?.closest("[data-classic-screening-tasks-dismiss]")) {
+        e.preventDefault();
+        state.classicScreeningTasksModalId = null;
+        renderApp();
+        return;
+      }
+    }
+
+    if (state.classicScreeningUpdateModalId) {
+      const csuStatusChip = el?.closest("[data-csu-status]");
+      if (csuStatusChip) {
+        e.preventDefault();
+        const v = csuStatusChip.getAttribute("data-csu-status");
+        if (!v || !CLASSIC_SCREENING_STATUS_BY_KEY[v]) return;
+        const hidden = document.getElementById("csu-status-value");
+        if (hidden) hidden.value = v;
+        const group = csuStatusChip.closest(".ui-chip-group");
+        group?.querySelectorAll("[data-csu-status]").forEach((btn) => {
+          const on = btn.getAttribute("data-csu-status") === v;
+          btn.classList.toggle("is-selected", on);
+          btn.setAttribute("aria-pressed", on ? "true" : "false");
+        });
+        return;
+      }
+      if (el?.id === "classic-screening-update-modal") {
+        state.classicScreeningUpdateModalId = null;
+        renderApp();
+        return;
+      }
+      if (el?.closest("[data-classic-screening-update-dismiss]")) {
+        e.preventDefault();
+        state.classicScreeningUpdateModalId = null;
+        renderApp();
+        return;
+      }
+      if (el?.closest("[data-classic-screening-update-save]")) {
+        e.preventDefault();
+        if (persistClassicScreeningUpdateFromForm()) {
+          state.classicScreeningUpdateModalId = null;
+          showToast("Screening record updated.");
+          renderApp();
+        }
+        return;
+      }
+    }
+
+    const detailActivityTimelineBtn = el?.closest("[data-detail-activity-timeline]");
+    if (detailActivityTimelineBtn && state.route === "detail") {
+      e.preventDefault();
+      state.activityTimelineDrawerOpen = !state.activityTimelineDrawerOpen;
+      renderApp();
+      return;
+    }
+
     const detailTabBtn = el?.closest("[data-detail-tab]");
     if (detailTabBtn) {
       const tid = detailTabBtn.getAttribute("data-detail-tab");
       if (!tid || !DETAIL_TAB_IDS.includes(tid)) return;
       const rid = state.routeId || DETAIL_DEFAULT.rowKey;
       const nextHash =
-        tid === "overview"
+        tid === "details"
           ? `#/prospect/${encodeURIComponent(rid)}`
           : `#/prospect/${encodeURIComponent(rid)}/${encodeURIComponent(tid)}`;
       if (location.hash === nextHash) {
         renderApp();
       } else {
         location.hash = nextHash;
+      }
+      return;
+    }
+    const screeningTabBtn = el?.closest("[data-screening-tab]");
+    if (screeningTabBtn && state.route === "screening") {
+      const href = screeningTabBtn.getAttribute("data-screening-tab-href");
+      if (href) {
+        if (location.hash === href) renderApp();
+        else location.hash = href;
       }
       return;
     }
@@ -4068,7 +6713,7 @@
     const row = el?.closest("tr[data-nav-prospect]");
     if (row && !el.closest("button") && !el.closest("a")) {
       const id = row.getAttribute("data-nav-prospect");
-      location.hash = `#/prospect/${encodeURIComponent(id)}`;
+      location.hash = `#/prospect/${encodeURIComponent(id)}/screening`;
     }
   });
 
@@ -4076,8 +6721,21 @@
     const t = e.target;
     if (!(t instanceof HTMLInputElement)) return;
 
+    if (t.hasAttribute("data-classic-screening-task")) {
+      const rid = t.getAttribute("data-cst-record");
+      const stage = t.getAttribute("data-cst-stage");
+      const idx = parseInt(t.getAttribute("data-cst-index") || "0", 10);
+      if (!rid || !stage || !SCREENING_TABLE_TASK_STAGES.includes(stage)) return;
+      ensureClassicScreeningTaskBucket(rid);
+      const arr = state.classicScreeningTaskDoneByRecordId[rid][stage];
+      if (!Array.isArray(arr) || idx < 0 || idx >= arr.length) return;
+      arr[idx] = t.checked;
+      patchClassicScreeningTaskChecklistDom(rid, t);
+      return;
+    }
+
     if (t.hasAttribute("data-task")) {
-      if (state.route !== "detail") return;
+      if (state.route !== "detail" && state.route !== "screening") return;
       const task = state.detail.tasks.find((x) => x.id === t.id);
       if (!task) return;
       const wasDone = task.done;
@@ -4125,7 +6783,7 @@
     }
 
     if (t.classList.contains("detail-documents-file-input")) {
-      if (state.route !== "detail") return;
+      if (state.route !== "detail" && state.route !== "prospectv3") return;
       const files = t.files;
       if (!files?.length) {
         t.value = "";
@@ -4159,7 +6817,7 @@
     const row = el?.closest("tr[data-nav-prospect]");
     if (row) {
       const id = row.getAttribute("data-nav-prospect");
-      location.hash = `#/prospect/${encodeURIComponent(id)}`;
+      location.hash = `#/prospect/${encodeURIComponent(id)}/screening`;
     }
   });
 
@@ -4208,8 +6866,24 @@
 
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
+    if (state.detailDeleteNoteId) {
+      state.detailDeleteNoteId = null;
+      renderApp();
+      return;
+    }
     if (state.detailAddNoteModalOpen) {
       state.detailAddNoteModalOpen = false;
+      state.detailNoteEditId = null;
+      renderApp();
+      return;
+    }
+    if (state.classicScreeningTasksModalId) {
+      state.classicScreeningTasksModalId = null;
+      renderApp();
+      return;
+    }
+    if (state.route === "detail" && state.activityTimelineDrawerOpen) {
+      state.activityTimelineDrawerOpen = false;
       renderApp();
       return;
     }

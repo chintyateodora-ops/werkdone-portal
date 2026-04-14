@@ -89,7 +89,7 @@ export function ScreeningPrograms({ onNavigate }: ScreeningProgramsProps) {
   };
 
   const menuItems = [
-    { id: 'mammobus' as ProgramType, label: 'Mammobus', count: mammobusProspects.length },
+    { id: 'mammobus' as ProgramType, label: 'Mammogram', count: mammobusProspects.length },
     { id: 'hpv' as ProgramType, label: 'HPV Screening', count: hpvProspects.length },
     { id: 'fit' as ProgramType, label: 'FIT (Fecal Immunochemical Test)', count: fitProspects.length }
   ];

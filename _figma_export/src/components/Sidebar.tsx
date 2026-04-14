@@ -54,7 +54,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
       onToggle: () => setProspectOpen(!prospectOpen),
       submenu: [
         { id: 'all-prospects' as Page, label: 'All Prospects', onClick: () => onNavigate('all-prospects') },
-        { id: 'mammobus-prospects' as Page, label: 'Mammobus Prospects', onClick: () => onNavigate('mammobus-prospects') },
+        { id: 'mammobus-prospects' as Page, label: 'Mammogram Prospects', onClick: () => onNavigate('mammobus-prospects') },
         { id: 'hpv-prospects' as Page, label: 'HPV Prospects', onClick: () => onNavigate('hpv-prospects') },
         { id: 'fit-prospects' as Page, label: 'FIT Prospects', onClick: () => onNavigate('fit-prospects') },
       ]

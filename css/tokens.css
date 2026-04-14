@@ -31,6 +31,8 @@
   --color-neutral-3: #e9ecef;
   --color-neutral-4: #dee2e6;
   --color-neutral-5: #ced4da;
+  /** Muted text (labels, meta) — between chrome neutrals and body grays */
+  --color-neutral-6: #868e96;
   --color-neutral-7: #6a7178;
   --color-neutral-8: #4f575e;
   --color-neutral-9: #272b30;

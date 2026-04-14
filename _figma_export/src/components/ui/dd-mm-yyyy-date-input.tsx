@@ -82,7 +82,10 @@ export function DdMmYyyyDateInput({
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="flex h-9 w-9 shrink-0 items-center justify-center border-l border-input bg-[var(--input-background)] text-muted-foreground hover:bg-muted/80 disabled:pointer-events-none"
+              className={cn(
+                'flex h-9 w-9 shrink-0 items-center justify-center border-l border-input bg-[var(--input-background)] text-muted-foreground hover:bg-muted/80 disabled:pointer-events-none',
+                disabled && 'bg-muted/60'
+              )}
               disabled={disabled}
               aria-label="Choose date"
               title="Choose date"

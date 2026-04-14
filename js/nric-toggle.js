@@ -33,6 +33,8 @@
     if (!store || !edit || !span || !btn) return;
 
     function setRevealed(on, skipFocus) {
+      // Disabled fields should always render masked for safety.
+      if (edit.disabled || edit.readOnly) on = false;
       if (on) {
         shell.classList.add("field__nric--revealed");
         shell.classList.remove("field__nric--masked");
@@ -65,8 +67,19 @@
     }
 
     updateMaskDisplay(shell);
-    /* Default: value visible; empty field shows no bullets. */
-    setRevealed(true, true);
+    /* Default: value visible unless disabled; empty field shows no bullets. */
+    setRevealed(!(edit.disabled || edit.readOnly), true);
+
+    function syncDisabled() {
+      var d = !!(edit.disabled || edit.readOnly);
+      btn.disabled = d;
+      btn.toggleAttribute("disabled", d);
+      if (d) setRevealed(false, true);
+    }
+    syncDisabled();
+    try {
+      new MutationObserver(syncDisabled).observe(edit, { attributes: true, attributeFilter: ["disabled", "readonly"] });
+    } catch (_) {}
 
     edit.addEventListener("input", function () {
       store.value = edit.value;
@@ -78,6 +91,7 @@
 
     btn.addEventListener("click", function (e) {
       e.preventDefault();
+      if (edit.disabled || edit.readOnly) return;
       var revealed = shell.classList.contains("field__nric--revealed");
       setRevealed(!revealed);
     });
@@ -94,7 +108,22 @@
     r.querySelectorAll(".field__nric").forEach(function (shell) {
       var store = shell.querySelector(".field__nric-store");
       var edit = shell.querySelector(".field__nric-edit");
+      var btn = shell.querySelector("[data-nric-toggle]");
       if (!store || !edit) return;
+      if (edit.disabled || edit.readOnly) {
+        shell.classList.add("field__nric--masked");
+        shell.classList.remove("field__nric--revealed");
+        updateMaskDisplay(shell);
+        if (btn) {
+          btn.disabled = true;
+          btn.toggleAttribute("disabled", true);
+        }
+        return;
+      }
+      if (btn) {
+        btn.disabled = false;
+        btn.toggleAttribute("disabled", false);
+      }
       if (shell.classList.contains("field__nric--revealed")) {
         edit.value = store.value || "";
       } else {

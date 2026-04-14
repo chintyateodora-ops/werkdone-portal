@@ -7,6 +7,7 @@ import {
   buildOtherDetailsFormDataForRow,
   detailsFormToProfilePatch,
 } from '../../data/prospectDetailSeed';
+import { HEALTHIER_SG_FORM_OPTIONS, healthierSgControlValue, labelHealthierSg } from '../../lib/healthierSgProfile';
 import { MOCK_PROSPECTS } from '../../data/mockProspectsList';
 import { useIndividualProfiles } from '../../context/IndividualProfileContext';
 import { Button } from '../ui/button';
@@ -19,6 +20,17 @@ import { CreateTaskDialog } from './CreateTaskDialog';
 import { AddContactLogDialog } from './AddContactLogDialog';
 import { AddNoteDialog } from './AddNoteDialog';
 import { ManualRouteDialog } from './ManualRouteDialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../ui/alert-dialog';
+import { ProspectScreeningRecordsCard } from './ProspectScreeningRecordsCard';
 import { AddTagDialog } from './AddTagDialog';
 import { EditableField, EditableTextArea, EditableSelect, FormFieldLabel } from './EditableField';
 import { PhonePrefixInput } from '../ui/phone-prefix-input';
@@ -26,6 +38,7 @@ import { NricRevealInput } from '../ui/nric-reveal-input';
 import { FORM_CARD_SECTION_TITLE_CLASS, FORM_CARD_SECTION_TITLE_TEXT_CLASS } from '../../lib/formCardSectionTitle';
 import { DETAIL_FIELD_VALUE_CLASS } from '../../lib/detailFieldDisplay';
 import { cn } from '../ui/utils';
+import { getStageChecklistLabels } from '../../lib/stageChecklist';
 import { combineDdMmYyyyAndTime } from '../../lib/dateDdMmYyyy';
 
 interface ProspectDetailProps {
@@ -72,21 +85,25 @@ const SCREENING_SOURCE_TYPE_OPTIONS = [
 const CHAS_CARD_TYPE_OPTIONS = ['Blue', 'Orange', 'Green', 'Not Applicable'] as const;
 
 // NoteCard Component with expandable content
-function NoteCard({ 
-  author, 
-  role, 
-  timestamp, 
-  content, 
-  fullContent 
-}: { 
-  author: string; 
-  role: string; 
-  timestamp: string; 
-  content: string; 
-  fullContent: string; 
+function NoteCard({
+  author,
+  role,
+  timestamp,
+  content,
+  fullContent,
+  onEdit,
+  onDelete,
+}: {
+  author: string;
+  role: string;
+  timestamp: string;
+  content: string;
+  fullContent: string;
+  onEdit: () => void;
+  onDelete: () => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  
+
   return (
     <div className="bg-white rounded-lg border p-4" style={{ borderColor: '#E9ECEF' }}>
       <div className="flex items-start justify-between mb-3">
@@ -104,10 +121,10 @@ function NoteCard({
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <button className="p-1 hover:bg-gray-100 rounded" title="Edit note">
+          <button type="button" className="p-1 hover:bg-gray-100 rounded" title="Edit note" onClick={onEdit}>
             <Edit2 className="w-4 h-4" style={{ color: '#6B7280' }} />
           </button>
-          <button className="p-1 hover:bg-gray-100 rounded" title="Delete note">
+          <button type="button" className="p-1 hover:bg-gray-100 rounded" title="Delete note" onClick={onDelete}>
             <Trash2 className="w-4 h-4" style={{ color: '#6B7280' }} />
           </button>
         </div>
@@ -147,60 +164,6 @@ function NoteCard({
   );
 }
 
-// Stage checklist labels
-function getStageChecklistLabels(stage: string) {
-  const labels: Record<string, string[]> = {
-    'Enquiring': [
-      'Full name and date of birth collected',
-      'NRIC / FIN number recorded',
-      'Residency status confirmed (SC / PR / Foreigner)',
-      'Mobile number and email captured',
-      'Age eligibility confirmed (40 years and above)',
-      'Not currently pregnant or breastfeeding',
-      'No active breast symptoms present',
-      'Date of last mammogram established',
-      'Healthier SG or CHAS enrolment checked',
-      'First-time screener status noted'
-    ],
-    'Qualified': [
-      'All eligibility criteria met and documented',
-      'Subsidy pathway confirmed (Healthier SG / CHAS / self-pay)',
-      'Preferred screening date and time captured',
-      'Mammobus location / event communicated',
-      'Pre-screening instructions shared (no deodorant etc.)',
-      'What to bring explained (NRIC, two-piece clothing)',
-      'COVID vaccination date noted if within 6 weeks',
-      'Family history of breast cancer documented',
-      'Any implants or prior surgery flagged for radiographer',
-      'Consent to data collection obtained (PDPA)'
-    ],
-    'Booked': [
-      'Appointment confirmation sent (SMS / email)',
-      'Reminder sent 1 week before appointment',
-      'Reminder sent 3 days before appointment',
-      'No-show deposit process explained',
-      'Transport or logistics support offered if needed',
-      'Emergency contact details collected',
-      'Day-of checklist shared with participant',
-      'Coordinator notified of any special requirements'
-    ],
-    'Screened': [
-      'Attendance confirmed on screening day',
-      'Screening completed without issues',
-      'Results communication timeline explained',
-      'Results sent / received by participant',
-      'Abnormal results — referral pathway activated',
-      'Normal results — next screening date communicated',
-      'Participant satisfaction / feedback collected',
-      'Peer referral ask made (refer a friend)',
-      'Re-engagement reminder set (12 or 24 months)',
-      'Record updated in system'
-    ]
-  };
-  
-  return labels[stage] || [];
-}
-
 export function ProspectDetail({ onNavigate, prospectRef }: ProspectDetailProps) {
   const { profilesByRecordId, updateProfile } = useIndividualProfiles();
   const row = useMemo(
@@ -216,7 +179,9 @@ export function ProspectDetail({ onNavigate, prospectRef }: ProspectDetailProps)
   const [activeOtherDetailsSection, setActiveOtherDetailsSection] = useState<string>('other-medical');
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   const [isAddContactLogOpen, setIsAddContactLogOpen] = useState(false);
-  const [isAddNoteOpen, setIsAddNoteOpen] = useState(false);
+  const [isNoteDialogOpen, setIsNoteDialogOpen] = useState(false);
+  const [noteDialogEditTarget, setNoteDialogEditTarget] = useState<{ id: string; content: string } | null>(null);
+  const [deleteNoteId, setDeleteNoteId] = useState<string | null>(null);
   const [isManualRouteOpen, setIsManualRouteOpen] = useState(false);
   const [isAddTagOpen, setIsAddTagOpen] = useState(false);
   const [selectedStage, setSelectedStage] = useState(row.status);
@@ -554,24 +519,38 @@ export function ProspectDetail({ onNavigate, prospectRef }: ProspectDetailProps)
     ]);
   }, [prospectRef]);
 
-  // Handle note creation
+  const formatNoteTimestamp = () =>
+    `${new Date().toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    })} at ${new Date().toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    })}`;
+
   const handleAddNote = (noteContent: string) => {
     const newNote = {
       id: Date.now().toString(),
       author: 'Jasmine Lim',
       role: 'Care Coordinator',
-      timestamp: new Date().toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric', 
-        year: 'numeric' 
-      }) + ' at ' + new Date().toLocaleTimeString('en-US', { 
-        hour: 'numeric', 
-        minute: '2-digit',
-        hour12: true 
-      }),
-      content: noteContent
+      timestamp: formatNoteTimestamp(),
+      content: noteContent,
     };
-    setNotes(prev => [newNote, ...prev]);
+    setNotes((prev) => [newNote, ...prev]);
+  };
+
+  const handleEditNote = (noteId: string, noteContent: string) => {
+    setNotes((prev) =>
+      prev.map((n) => (n.id === noteId ? { ...n, content: noteContent, timestamp: formatNoteTimestamp() } : n)),
+    );
+  };
+
+  const confirmDeleteNote = () => {
+    if (deleteNoteId == null) return;
+    setNotes((prev) => prev.filter((n) => n.id !== deleteNoteId));
+    setDeleteNoteId(null);
   };
 
   const tabs = [
@@ -1188,7 +1167,7 @@ export function ProspectDetail({ onNavigate, prospectRef }: ProspectDetailProps)
                         {isEditingDetails ? (
                           <select
                             id="prospect-healthier-sg"
-                            value={detailsFormData.healthierSg}
+                            value={healthierSgControlValue(detailsFormData.healthierSg)}
                             onChange={(e) =>
                               setDetailsFormData({ ...detailsFormData, healthierSg: e.target.value })
                             }
@@ -1196,20 +1175,14 @@ export function ProspectDetail({ onNavigate, prospectRef }: ProspectDetailProps)
                             style={{ color: 'var(--input-text)', borderColor: 'var(--input-border)' }}
                           >
                             <option value="">Select Enrolment Status</option>
-                            <option value="yes">Yes</option>
-                            <option value="no">No</option>
-                            <option value="unsure">Unsure / Prefer not to say</option>
+                            {HEALTHIER_SG_FORM_OPTIONS.map((o) => (
+                              <option key={o.value} value={o.value}>
+                                {o.label}
+                              </option>
+                            ))}
                           </select>
                         ) : (
-                          <p className={DETAIL_FIELD_VALUE_CLASS}>
-                            {detailsFormData.healthierSg === 'yes'
-                              ? 'Yes'
-                              : detailsFormData.healthierSg === 'no'
-                                ? 'No'
-                                : detailsFormData.healthierSg === 'unsure'
-                                  ? 'Unsure / Prefer not to say'
-                                  : '—'}
-                          </p>
+                          <p className={DETAIL_FIELD_VALUE_CLASS}>{labelHealthierSg(detailsFormData.healthierSg)}</p>
                         )}
                       </div>
 
@@ -1753,7 +1726,10 @@ export function ProspectDetail({ onNavigate, prospectRef }: ProspectDetailProps)
                 </div>
                 <Button
                   variant="outline"
-                  onClick={() => setIsAddNoteOpen(true)}
+                  onClick={() => {
+                    setNoteDialogEditTarget(null);
+                    setIsNoteDialogOpen(true);
+                  }}
                   style={{
                     borderColor: 'var(--primary)',
                     color: 'var(--primary)',
@@ -1779,6 +1755,11 @@ export function ProspectDetail({ onNavigate, prospectRef }: ProspectDetailProps)
                       timestamp={note.timestamp}
                       content={note.content}
                       fullContent={note.content}
+                      onEdit={() => {
+                        setNoteDialogEditTarget({ id: note.id, content: note.content });
+                        setIsNoteDialogOpen(true);
+                      }}
+                      onDelete={() => setDeleteNoteId(note.id)}
                     />
                   ))}
                 </div>
@@ -2599,12 +2580,36 @@ export function ProspectDetail({ onNavigate, prospectRef }: ProspectDetailProps)
         onAddContactLog={handleAddContactLog}
       />
 
-      {/* Add Note Dialog */}
       <AddNoteDialog
-        open={isAddNoteOpen}
-        onOpenChange={setIsAddNoteOpen}
-        onSaveNote={handleAddNote}
+        open={isNoteDialogOpen}
+        onOpenChange={(open) => {
+          setIsNoteDialogOpen(open);
+          if (!open) setNoteDialogEditTarget(null);
+        }}
+        editTarget={noteDialogEditTarget}
+        onAddNote={handleAddNote}
+        onEditNote={handleEditNote}
       />
+
+      <AlertDialog open={deleteNoteId !== null} onOpenChange={(open) => !open && setDeleteNoteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete note?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove this note. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteNote}
+              className="bg-destructive text-white hover:bg-destructive/90 focus:ring-destructive"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Manual Route Dialog */}
       <ManualRouteDialog

@@ -23,9 +23,81 @@
   </head>
   <body>
     <div id="app" aria-live="polite"></div>
-    <script src="js/detail-panels.js"></script>
-    <script src="js/date-input.js"></script>
-    <script src="js/nric-toggle.js"></script>
+    <!-- Classic collapsible "Screening Records" demo rows (Client 360 + Prospect V3). Parsed by js/app.js. -->
+    <script id="wd-classic-screening-records" type="application/json">
+[
+  {
+    "id": "s1",
+    "submitted": "12 Apr 2026",
+    "type": { "key": "MMG", "label": "Mammogram", "tone": "sr-type--mmg" },
+    "status": { "key": "booked", "label": "Booked", "tone": "sr-status--booked" },
+    "appointment": { "date": "19 Aug 2026", "time": "10:30am" },
+    "venue": "Bedok North Hawker Centre",
+    "appointmentType": "mammobus",
+    "action": { "label": "Reschedule", "tone": "ui-btn--outline", "kind": "reschedule" },
+    "result": "—",
+    "nextReviewPeriod": "—",
+    "nextReviewDate": "—",
+    "lastUpdatedBy": "Justin Paul"
+  },
+  {
+    "id": "s2",
+    "submitted": "5 Apr 2026",
+    "type": { "key": "MMG", "label": "Mammogram", "tone": "sr-type--mmg" },
+    "status": { "key": "qualified", "label": "Qualified", "tone": "sr-status--qualified" },
+    "appointment": null,
+    "venue": "—",
+    "appointmentType": "scs-clinic",
+    "action": { "label": "Book Appt", "tone": "ui-btn--default", "kind": "book" },
+    "result": "—",
+    "nextReviewPeriod": "—",
+    "nextReviewDate": "—",
+    "lastUpdatedBy": "Justin Paul"
+  },
+  {
+    "id": "s3",
+    "submitted": "14 Jan 2024",
+    "type": { "key": "FIT", "label": "FIT Kit", "tone": "sr-type--fit" },
+    "status": { "key": "screened", "label": "Screened", "tone": "sr-status--screened" },
+    "appointment": { "date": "20 Jan 2024", "time": "11:00am" },
+    "venue": "Bedok Polyclinic",
+    "action": null,
+    "result": "Negative",
+    "nextReviewPeriod": "12 months",
+    "nextReviewDate": "Jan 2025",
+    "lastUpdatedBy": "Dr. Sarah Lim"
+  },
+  {
+    "id": "s4",
+    "submitted": "2 Apr 2021",
+    "type": { "key": "PAP", "label": "HPV Test", "tone": "sr-type--hpv" },
+    "status": { "key": "screened", "label": "Screened", "tone": "sr-status--screened" },
+    "appointment": { "date": "2 Apr 2021", "time": "9:00am" },
+    "venue": "SingHealth Polyclinic",
+    "action": null,
+    "result": "Class I — Normal (HPV negative)",
+    "nextReviewPeriod": "3 years",
+    "nextReviewDate": "Apr 2024",
+    "lastUpdatedBy": "Nurse Chen Wei"
+  },
+  {
+    "id": "s5",
+    "submitted": "8 Mar 2018",
+    "type": { "key": "PAP", "label": "PAP Test", "tone": "sr-type--pap" },
+    "status": { "key": "screened", "label": "Screened", "tone": "sr-status--screened" },
+    "appointment": { "date": "8 Mar 2018", "time": "2:00pm" },
+    "venue": "NCC",
+    "action": null,
+    "result": "Negative",
+    "nextReviewPeriod": "3 years",
+    "nextReviewDate": "Mar 2021",
+    "lastUpdatedBy": "System import"
+  }
+]
+    </script>
+    <script src="js/detail-panels.js" defer></script>
+    <script src="js/date-input.js" defer></script>
+    <script src="js/nric-toggle.js" defer></script>
     <script src="js/app.js" defer></script>
   </body>
 </html>

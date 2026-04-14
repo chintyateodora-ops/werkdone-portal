@@ -73,7 +73,7 @@ export function AllProspects({ onNavigate, programFilter }: AllProspectsProps) {
   const stages = ['Enquiring', 'Qualified', 'Booked', 'Screened'];
 
   const formTypes = [
-    { value: 'mammobus' as const, label: 'Community Mammobus Programme' },
+    { value: 'mammobus' as const, label: 'Mammogram Screening Registration' },
     { value: 'hpv' as const, label: 'HPV Screening Programme' },
     { value: 'fit' as const, label: 'FIT Screening Programme' },
   ];
@@ -84,7 +84,7 @@ export function AllProspects({ onNavigate, programFilter }: AllProspectsProps) {
       case 'all':
         return 'All Prospects';
       case 'mammobus':
-        return 'Mammobus Prospects';
+        return 'Mammogram Prospects';
       case 'hpv':
         return 'HPV Prospects';
       case 'fit':
@@ -98,7 +98,7 @@ export function AllProspects({ onNavigate, programFilter }: AllProspectsProps) {
   const getProgramLabel = (program: string) => {
     switch (program) {
       case 'mammobus':
-        return 'Mammobus';
+        return 'Mammogram';
       case 'hpv':
         return 'HPV';
       case 'fit':
@@ -254,7 +254,7 @@ export function AllProspects({ onNavigate, programFilter }: AllProspectsProps) {
                       color: currentProgramFilter === 'mammobus' ? 'var(--primary)' : '#374151'
                     }}
                   >
-                    Mammobus Prospects
+                    Mammogram Prospects
                   </button>
                   <button
                     onClick={() => handleProgramChange('hpv')}
@@ -599,7 +599,7 @@ export function AllProspects({ onNavigate, programFilter }: AllProspectsProps) {
                                 <DropdownMenuItem onClick={(e) => {
                                   e.stopPropagation();
                                   onNavigate({
-                                    page: 'prospect-detail',
+                                      page: 'prospect-detail',
                                     prospectRef: encodeProspectRecordRef(prospect.recordId),
                                   });
                                 }}>

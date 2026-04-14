@@ -30,7 +30,9 @@ export function NricRevealInput({
   placeholder = 'Enter NRIC No.',
   className,
 }: NricRevealInputProps) {
+  // Disabled fields should always render masked for safety.
   const [revealed, setRevealed] = useState(false);
+  const isRevealed = !disabled && revealed;
 
   return (
     <div
@@ -42,7 +44,7 @@ export function NricRevealInput({
       )}
     >
       <div className="flex min-w-0 flex-1 items-center">
-        {revealed ? (
+        {isRevealed ? (
           <input
             id={id}
             type="text"
@@ -69,11 +71,12 @@ export function NricRevealInput({
         type="button"
         className={cn(
           'flex h-9 w-10 shrink-0 items-center justify-center border-0 border-l border-input bg-transparent text-muted-foreground hover:bg-muted/50',
+          disabled && 'bg-muted/60',
           'rounded-none outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 shadow-none',
           '[&::-moz-focus-inner]:border-0 [&::-moz-focus-inner]:p-0'
         )}
-        aria-label={revealed ? 'Hide NRIC' : 'Show NRIC'}
-        aria-pressed={revealed}
+        aria-label={isRevealed ? 'Hide NRIC' : 'Show NRIC'}
+        aria-pressed={isRevealed}
         disabled={disabled}
         onClick={() => setRevealed((r) => !r)}
       >
@@ -81,13 +84,13 @@ export function NricRevealInput({
           <i
             className={cn(
               'fi fi-rr-eye-crossed text-base leading-none text-[#64748b]',
-              revealed && 'hidden'
+              isRevealed && 'hidden'
             )}
           />
           <i
             className={cn(
               'fi fi-rr-eye text-base leading-none text-[#64748b]',
-              !revealed && 'hidden'
+              !isRevealed && 'hidden'
             )}
           />
         </span>

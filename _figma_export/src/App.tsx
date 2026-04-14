@@ -3,6 +3,7 @@ import { Header } from './components/Header';
 import { AllProspects } from './components/prospects/AllProspects';
 import { AddProspect } from './components/prospects/AddProspect';
 import { ProspectDetail } from './components/prospects/ProspectDetail';
+import { ProspectDetailV3 } from './components/prospects/ProspectDetailV3';
 import { Segments } from './components/prospects/Segments';
 import { SelfRegistration } from './components/prospects/SelfRegistration';
 import { ScreeningRequestEmail } from './components/emails/ScreeningRequestEmail';
@@ -23,6 +24,8 @@ import { ScreeningManagement } from './components/screening/ScreeningManagement'
 import { VisitDetails } from './components/screening/VisitDetails';
 import { VisitNotes } from './components/screening/VisitNotes';
 import { ScreeningPrograms } from './components/screening/ScreeningPrograms';
+import { ScreeningDetailsV2 } from './components/screening/ScreeningDetailsV2';
+import { ScreeningDetailsV4 } from './components/screening/ScreeningDetailsV4';
 import { ComingSoon } from './components/ComingSoon';
 import { Home } from './components/Home';
 import { Footer } from './components/Footer';
@@ -40,6 +43,10 @@ export type Page =
   | 'fit-prospects'
   | { page: 'add-prospect'; program: ScreeningProgramKey }
   | { page: 'prospect-detail'; prospectRef: string }
+  | { page: 'prospect-detail-v3'; prospectRef: string }
+  | { page: 'screening-details-v2'; prospectRef: string }
+  | { page: 'screening-details-v4'; prospectRef: string }
+  | { page: 'client-360-v2'; prospectRef: string }
   | { page: 'visit-details'; visitId: string; prospectRef: string }
   | { page: 'visit-notes'; visitId: string; prospectRef: string }
   | 'segments'
@@ -70,6 +77,18 @@ export default function App() {
   const renderPage = () => {
     if (typeof currentPage === 'object' && currentPage.page === 'prospect-detail') {
       return <ProspectDetail onNavigate={setCurrentPage} prospectRef={currentPage.prospectRef} />;
+    }
+    if (typeof currentPage === 'object' && currentPage.page === 'prospect-detail-v3') {
+      return <ProspectDetailV3 onNavigate={setCurrentPage} prospectRef={currentPage.prospectRef} />;
+    }
+    if (typeof currentPage === 'object' && currentPage.page === 'screening-details-v2') {
+      return <ScreeningDetailsV2 onNavigate={setCurrentPage} prospectRef={currentPage.prospectRef} />;
+    }
+    if (typeof currentPage === 'object' && currentPage.page === 'screening-details-v4') {
+      return <ScreeningDetailsV4 onNavigate={setCurrentPage} prospectRef={currentPage.prospectRef} />;
+    }
+    if (typeof currentPage === 'object' && currentPage.page === 'client-360-v2') {
+      return <Client360 onNavigate={setCurrentPage} prospectRef={currentPage.prospectRef} />;
     }
     if (typeof currentPage === 'object' && currentPage.page === 'visit-details') {
       return <VisitDetails onNavigate={setCurrentPage} visitId={currentPage.visitId} prospectRef={currentPage.prospectRef} />;
@@ -126,7 +145,7 @@ export default function App() {
       case 'accept-referral':
         return <ReferralAccepted onNavigate={setCurrentPage} />;
       case 'client-360':
-        return <Client360 />;
+        return <Client360 onNavigate={setCurrentPage} prospectRef={''} />;
       case 'screening-management':
         return <ScreeningManagement onNavigate={setCurrentPage} />;
       case 'screening-programs':
@@ -166,7 +185,7 @@ export default function App() {
         </div>
       ) : (
         <div className="flex flex-col h-screen bg-gray-50 min-h-0">
-          <Header />
+          <Header currentPage={currentPage} onNavigate={setCurrentPage} />
           <main className="flex-1 min-h-0 overflow-auto">{renderPage()}</main>
           <Footer />
           <Toaster />

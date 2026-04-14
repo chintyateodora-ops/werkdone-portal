@@ -56,7 +56,7 @@
       preferredLanguages: "English, Malay",
       residentialStatus: "Singapore Citizen",
       chasCardType: "Blue",
-      healthierSg: "yes",
+      healthierSg: "enrolled",
       firstMammogramScreening: "no",
       lastScreeningYear: "2023",
       riskLevel: "Medium",
@@ -85,6 +85,14 @@
       /** Screening tab — review cadence (values match `fieldSelectValueLabel` options) */
       reviewPeriod: "6months",
       nextReviewDate: "14/05/2026",
+
+      /** Mammogram screening registration questions (yes/no) — surfaced on Prospect v3 Eligibility tab */
+      covid19VaccineSoon: "no",
+      mammogramPast12or24Months: "no",
+      breastfeedingPast6Months: "no",
+      breastSymptoms: "no",
+      breastImplants: "no",
+      everHadBreastCancer: "no",
     },
     medicalHistory: {
       breastCancer: "Yes",
@@ -290,12 +298,24 @@
     return `<div class="detail-field"><span class="detail-field__label">${e(label)}${reqHtml}</span><span class="detail-field__value">${e(val)}</span></div>`;
   }
 
+  /** Normalize legacy Healthier SG values to current canonical keys. */
+  function canonicalHealthierSgStored(raw) {
+    const s = String(raw || "").trim().toLowerCase();
+    const compact = s.replace(/[^a-z0-9]/g, "");
+    if (compact === "yes" || compact === "enrolled") return "enrolled";
+    if (compact === "no" || compact === "notenrolled") return "not-enrolled";
+    if (compact === "unsure" || compact.startsWith("unsure") || compact.includes("prefernottosay")) return "unsure";
+    return String(raw || "").trim();
+  }
+
   /** Dropdown with distinct option `value` vs visible label (matches screening registration value attributes). */
   function fieldSelectValueLabel(e, label, key, tabKey, merged, editing, valueLabelPairs, opts) {
     opts = opts || {};
     const required = !!opts.required;
     const placeholderLabel = opts.placeholderLabel != null ? String(opts.placeholderLabel) : "Select";
-    const val = merged[key] != null ? String(merged[key]) : "";
+    const rawVal = merged[key] != null ? String(merged[key]) : "";
+    const normalize = typeof opts.valueNormalize === "function" ? opts.valueNormalize : null;
+    const val = normalize ? normalize(rawVal) : rawVal;
     const fid = `df-${tabKey}-${key}`;
     const reqHtml = required ? '<span class="field__req" aria-hidden="true">*</span>' : "";
     const pairs = valueLabelPairs || [];
@@ -479,27 +499,6 @@
       </article>`;
   }
 
-  function screeningDataRow(e, cells, statusHtml) {
-    return `<tr>${cells.map((c) => `<td>${e(c)}</td>`).join("")}<td>${statusHtml}</td></tr>`;
-  }
-
-  function padBoolArray(arr, len) {
-    const a = Array.isArray(arr) ? arr.slice() : [];
-    while (a.length < len) a.push(false);
-    return a.slice(0, len);
-  }
-
-  function countStageTasks(d, pipeline) {
-    const labels = STAGE_CHECKLISTS[pipeline] || STAGE_CHECKLISTS.qualified;
-    if (pipeline === "qualified") {
-      const done = d.tasks.filter((t) => t.done).length;
-      return { done, total: d.tasks.length };
-    }
-    const flags = padBoolArray(d.stageChecklistDone?.[pipeline], labels.length);
-    const done = flags.filter(Boolean).length;
-    return { done, total: labels.length };
-  }
-
   function fmtFileSize(bytes) {
     const n = Number(bytes);
     if (!Number.isFinite(n) || n < 0) return "—";
@@ -524,57 +523,23 @@
     }
   }
 
-  window.WD_renderDetailPanel = function (tab, ctx) {
-    const e = ctx.escapeAttr;
-    const d = ctx.d;
-    const state = ctx.state;
-    const icons = ctx.icons;
-    const pl = ctx.pipelineLabel;
+  /** Activity timeline card (classic overview); optional `opts.forDrawer` = right sidebar (no id, compact chrome). */
+  function renderActivityTimelineSection(e, detailActivityFeed, opts) {
+    opts = opts || {};
+    const forDrawer = !!opts.forDrawer;
+    const activity = Array.isArray(detailActivityFeed) ? detailActivityFeed : [];
+    const timelineMetaLine = (ev) => {
+      const when = ev.dateDisplay != null ? String(ev.dateDisplay) : "—";
+      const st = ev.stage != null && String(ev.stage).trim() !== "" ? String(ev.stage) : "";
+      const stagePretty = st ? st.charAt(0).toUpperCase() + st.slice(1) : "";
+      return stagePretty ? `${when} · ${stagePretty}` : when;
+    };
 
-    if (tab === "overview") {
-      const pipe = state.pipeline;
-      const labels = STAGE_CHECKLISTS[pipe] || STAGE_CHECKLISTS.qualified;
-      const { done: doneCount, total: totalCount } = countStageTasks(d, pipe);
-
-      let checklistHtml;
-      if (pipe === "qualified") {
-        checklistHtml = d.tasks
-          .map(
-            (t) => `
-          <li class="detail-task-row detail-task-row--checklist ${t.done ? "is-done" : ""}">
-            <input type="checkbox" class="detail-task-check" id="${e(t.id)}" data-task ${t.done ? "checked" : ""} />
-            <label class="detail-task-text" for="${e(t.id)}">${e(t.label)}</label>
-          </li>`
-          )
-          .join("");
-      } else {
-        const flags = padBoolArray(d.stageChecklistDone?.[pipe], labels.length);
-        checklistHtml = labels
-          .map((label, i) => {
-            const done = !!flags[i];
-            const tid = `st-${pipe}-${i}`;
-            return `
-          <li class="detail-task-row detail-task-row--checklist ${done ? "is-done" : ""}">
-            <input type="checkbox" class="detail-task-check" id="${e(tid)}" data-stage-checklist="${e(pipe)}" data-task-index="${i}" ${done ? "checked" : ""} />
-            <label class="detail-task-text" for="${e(tid)}">${e(label)}</label>
-          </li>`;
-          })
-          .join("");
-      }
-
-      const activity = Array.isArray(ctx.detailActivityFeed) ? ctx.detailActivityFeed : [];
-      const timelineMetaLine = (ev) => {
-        const when = ev.dateDisplay != null ? String(ev.dateDisplay) : "—";
-        const st = ev.stage != null && String(ev.stage).trim() !== "" ? String(ev.stage) : "";
-        const stagePretty = st ? st.charAt(0).toUpperCase() + st.slice(1) : "";
-        return stagePretty ? `${when} · ${stagePretty}` : when;
-      };
-
-      const timelineHtml =
-        activity.length > 0
-          ? activity
-              .map(
-                (ev) => `
+    const timelineHtml =
+      activity.length > 0
+        ? activity
+            .map(
+              (ev) => `
                   <li class="timeline__item">
                     <div class="timeline__track" aria-hidden="true">
                       <span class="timeline__dot"></span>
@@ -586,14 +551,23 @@
                       <p>By: ${e(ev.by)}</p>
                     </div>
                   </li>`
-              )
-              .join("")
-          : `<li class="timeline__item timeline__item--empty"><p class="timeline__empty-msg">No activity recorded for this prospect yet.</p></li>`;
+            )
+            .join("")
+        : `<li class="timeline__item timeline__item--empty"><p class="timeline__empty-msg">No activity recorded for this prospect yet.</p></li>`;
 
+    if (forDrawer) {
       return `
-        <div class="detail-panel detail-panel--overview" id="panel-overview">
-          <div class="detail-overview-columns">
-            <section class="detail-card detail-card--overview-col detail-card--overview-timeline">
+            <div class="activity-timeline-drawer__log">
+              <div class="timeline-scroll">
+                <ul class="timeline">
+                  ${timelineHtml}
+                </ul>
+              </div>
+            </div>`;
+    }
+
+    return `
+            <section class="detail-card detail-card--overview-col detail-card--overview-timeline" id="detail-activity-timeline">
               <div class="panel-section__head panel-section__head--timeline-only">
                 <h3>Activity Timeline</h3>
               </div>
@@ -602,17 +576,15 @@
                   ${timelineHtml}
                 </ul>
               </div>
-            </section>
-            <section class="detail-card detail-card--overview-col detail-card--tasks">
-              <div class="panel-section__head">
-                <h3 class="detail-card__heading-primary">${e(pl)} — tasks</h3>
-                <span class="detail-overview-task-count">${doneCount} / ${totalCount} completed</span>
-              </div>
-              <ul class="detail-task-list">${checklistHtml}</ul>
-            </section>
-          </div>
-        </div>`;
-    }
+            </section>`;
+  }
+
+  window.WD_renderDetailPanel = function (tab, ctx) {
+    const e = ctx.escapeAttr;
+    const d = ctx.d;
+    const state = ctx.state;
+    const icons = ctx.icons;
+    const pl = ctx.pipelineLabel;
 
     if (tab === "details") {
       const editing = ctx.detailFormEdit === "details";
@@ -774,11 +746,11 @@
                       merged,
                       editing,
                       [
-                        ["yes", "Yes"],
-                        ["no", "No"],
-                        ["unsure", "Unsure / Prefer not to say"],
+                        ["enrolled", "Enrolled"],
+                        ["not-enrolled", "Not Enrolled"],
+                        ["unsure", "Unsure"],
                       ],
-                      { required: false, placeholderLabel: "Select Enrolment Status" }
+                      { required: false, placeholderLabel: "Select Enrolment Status", valueNormalize: canonicalHealthierSgStored }
                     )}
                     ${fieldRadioYesNo(
                       e,
@@ -1024,80 +996,13 @@
     }
 
     if (tab === "screening") {
-      const merged = mergeDetailTab("details", ctx.formValues?.details);
-      const reviewSection = section(
-        e,
-        "REVIEW",
-        `<div class="detail-fields detail-fields--2">
-          ${fieldSelectValueLabel(
-            e,
-            "Review period",
-            "reviewPeriod",
-            "details",
-            merged,
-            true,
-            [
-              ["6months", "6 months"],
-              ["1year", "1 year"],
-              ["3years", "3 years"],
-              ["5years", "5 years"],
-            ],
-            { required: false, placeholderLabel: "-- Select --" }
-          )}
-          ${fieldReadonlyReviewDate(e, "Next review date", "nextReviewDate", "details", merged)}
-        </div>`
-      );
-      const statusOk =
-        '<span class="detail-screening-pill detail-screening-pill--ok">Completed</span>';
-      const statusFu =
-        '<span class="detail-screening-pill detail-screening-pill--warn">Follow-up Required</span>';
+      const screeningRecordsPanel =
+        typeof window.WD_renderClassicScreeningRecordsPanel === "function"
+          ? window.WD_renderClassicScreeningRecordsPanel(e)
+          : `<p class="placeholder-block">Screening records unavailable.</p>`;
       return `
         <div class="detail-panel detail-panel--stack" id="panel-screening">
-          ${reviewSection}
-          <div class="detail-card detail-card--flush">
-            <h2 class="detail-card__title">SCREENING HISTORY</h2>
-            <div class="table-card detail-screening-table-wrap">
-              <table class="data-table detail-screening-table">
-                <thead>
-                  <tr>
-                    <th>Visit No.</th>
-                    <th>Date of Visit</th>
-                    <th>Doctor Name</th>
-                    <th>Test Type</th>
-                    <th>Result Date PAP</th>
-                    <th>Pap Result Class</th>
-                    <th>HPV 16</th>
-                    <th>HPV 18</th>
-                    <th>Other High Risk</th>
-                    <th>Next Appointment In</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${screeningDataRow(
-                    e,
-                    ["V001", "15/11/2025", "Dr. Sarah Chen", "Pap Smear", "20/11/2025", "Negative", "Negative", "Negative", "Negative", "3 years"],
-                    statusOk
-                  )}
-                  ${screeningDataRow(
-                    e,
-                    ["V002", "20/05/2024", "Dr. Michael Tan", "Pap Smear + HPV Test", "28/05/2024", "Normal", "Negative", "Negative", "Negative", "1 year"],
-                    statusOk
-                  )}
-                  ${screeningDataRow(
-                    e,
-                    ["V003", "18/11/2023", "Dr. Sarah Chen", "Pap Smear", "25/11/2023", "Normal", "—", "—", "—", "6 months"],
-                    statusOk
-                  )}
-                  ${screeningDataRow(
-                    e,
-                    ["V004", "15/02/2023", "Dr. Linda Wong", "HPV Test", "22/02/2023", "—", "Negative", "Negative", "Positive", "3 months"],
-                    statusFu
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          ${screeningRecordsPanel}
         </div>`;
     }
 
@@ -1214,8 +1119,8 @@
                   <div class="note-card__time">${e(formatDocUploaded(note.submittedAt))}</div>
                 </div>
                 <div class="note-card__actions">
-                  <button type="button" class="btn btn--icon" aria-label="Edit note" data-detail-toast="Edit note (prototype).">${icons.edit}</button>
-                  <button type="button" class="btn btn--icon" aria-label="Delete note" data-detail-toast="Delete note (prototype).">${icons.trash}</button>
+                  <button type="button" class="btn btn--icon" aria-label="Edit note" data-detail-note-edit="${e(note.id)}">${icons.edit}</button>
+                  <button type="button" class="btn btn--icon" aria-label="Delete note" data-detail-note-delete="${e(note.id)}">${icons.trash}</button>
                 </div>
               </div>
               <p class="note-card__body note-card__body--multiline">${e(note.body)}</p>
@@ -1246,6 +1151,7 @@
 
   window.WD_STAGE_CHECKLISTS = STAGE_CHECKLISTS;
   window.WD_DETAIL_FORM_DEFAULTS = DETAIL_FORM_DEFAULTS;
+  window.WD_renderActivityTimelineSection = renderActivityTimelineSection;
 
   /** Full-width sticky toolbar (last updated + Edit/Save/Cancel) for prospect form tabs — rendered in app.js above .detail-panels */
   window.WD_renderDetailFormStickyToolbar = function (tab, ctx) {

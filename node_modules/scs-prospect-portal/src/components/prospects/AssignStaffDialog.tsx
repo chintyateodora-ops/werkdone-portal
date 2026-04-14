@@ -30,7 +30,7 @@ const staffMembers = [
   'Fan Wei Zhe',
   'Nurul Azizah',
   'Rachel Hou',
-  'Thong Han',
+  'Saphira Jane',
   'Sarah Chen',
   'Michael Wong'
 ];
