@@ -1064,8 +1064,8 @@
       uploadModalStage: null,
       uploadState: { preview: null, errors: null, parsedRows: null },
     },
-    /** Bishan Clinics — mammobus prospect pipeline board (session prototype; see `js/bishan-pipeline.js`). */
-    bishanPipeline: null,
+    /** Bishan Clinics — screening worklist + patient chart (see `js/bishan-screening-portal.js`). */
+    bishanScreening: null,
   };
 
   const PROSPECT_V3_TAB_IDS = ["overview", "screenings", "biodata", "eligibility", "documents", "notes"];
@@ -1183,8 +1183,6 @@
 
   const DETAIL_TAB_IDS = [
     "details",
-    "medical-history",
-    "other-details",
     "screening",
     "documents",
     "notes",
@@ -1192,7 +1190,7 @@
 
   const SCREENING_TAB_IDS = ["details", "tasks", "eligibility"];
 
-  const DETAIL_FORM_TAB_IDS = ["details", "medical-history", "other-details"];
+  const DETAIL_FORM_TAB_IDS = ["details"];
 
   /** Section ids for detail ToC scroll-spy (mirror detail-panels.js DETAILS_NAV / MEDICAL_NAV / OTHER_NAV). */
   const DETAIL_TAB_SECTION_IDS = {
@@ -1205,8 +1203,6 @@
       "detail-engagement",
       "detail-consent",
     ],
-    "medical-history": ["mh-family", "mh-history", "mh-treatment"],
-    "other-details": ["od-medical", "od-cervical", "od-info", "od-breast"],
   };
 
   const PIPELINE_KEYS = ["qualified", "booked", "screened"];
@@ -2440,20 +2436,20 @@
       </div>`;
   }
 
-  function ensureBishanPipelineState() {
-    if (state.bishanPipeline) return;
-    if (typeof window.WD_bishanPipeline === "undefined") return;
-    state.bishanPipeline = window.WD_bishanPipeline.createInitialState();
+  function ensureBishanScreeningState() {
+    if (state.bishanScreening) return;
+    if (typeof window.WD_bishanScreening === "undefined") return;
+    state.bishanScreening = window.WD_bishanScreening.createInitialState();
   }
 
   function renderBishanClinicsPage() {
-    ensureBishanPipelineState();
-    if (typeof window.WD_bishanPipeline !== "undefined" && state.bishanPipeline) {
-      return window.WD_bishanPipeline.renderMarkup(state.bishanPipeline);
+    ensureBishanScreeningState();
+    if (typeof window.WD_bishanScreening !== "undefined" && state.bishanScreening) {
+      return window.WD_bishanScreening.renderMarkup(state.bishanScreening);
     }
     return renderPortalPlaceholderPage(
       "Bishan Clinics",
-      "Pipeline tracker could not load. Ensure js/bishan-pipeline.js is included before app.js."
+      "Screening portal could not load. Ensure js/bishan-screening-portal.js is included before app.js."
     );
   }
 
@@ -4020,6 +4016,7 @@
     if (typeof state.detailTab === "string") state.detailTab = state.detailTab.trim();
     if (legacy[state.detailTab]) state.detailTab = legacy[state.detailTab];
     if (state.detailTab === "overview") state.detailTab = "details";
+    if (state.detailTab === "medical-history" || state.detailTab === "other-details") state.detailTab = "details";
     if (!DETAIL_TAB_IDS.includes(state.detailTab)) state.detailTab = "details";
   }
 
@@ -4073,8 +4070,6 @@
     const programTagsHtml = detailProgramTagsHtml(d.programTags);
     const tabs = [
       ["details", "Personal Details"],
-      ["medical-history", "Medical History"],
-      ["other-details", "Other Details"],
       ["screening", "Screening"],
       ["documents", "Documents"],
       ["notes", "Notes"],
@@ -9039,11 +9034,11 @@
       });
     }
 
-    if (state.route === "bishanClinics" && typeof window.WD_bishanPipeline !== "undefined" && state.bishanPipeline) {
-      const bpRoot = document.getElementById("bishan-pipeline-root");
-      if (bpRoot) {
-        window.WD_bishanPipeline.bindBishanPipeline(bpRoot, {
-          getState: () => state.bishanPipeline,
+    if (state.route === "bishanClinics" && typeof window.WD_bishanScreening !== "undefined" && state.bishanScreening) {
+      const bcRoot = document.getElementById("bishan-screening-root");
+      if (bcRoot) {
+        window.WD_bishanScreening.bindScreening(bcRoot, {
+          getState: () => state.bishanScreening,
           commit: () => renderApp(),
         });
       }
