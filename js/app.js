@@ -1854,6 +1854,36 @@
     return `<img class="app-header__logo" src="assets/branding/scs-logo.png" alt="Singapore Cancer Society Logo" width="200" height="64" />`;
   }
 
+  /** Which item is highlighted in the global top nav (logo + Prospect Management | Bishan | FIT). */
+  function headerPrimaryNavActiveId() {
+    if (state.route === "bishanClinics") return "bishan";
+    if (state.route === "fitKitTracker") return "fit";
+    return "prospects";
+  }
+
+  function renderHeaderPrimaryNav() {
+    const active = headerPrimaryNavActiveId();
+    const link = (id, href, label) => {
+      const isOn = active === id;
+      return `<a href="${href}" class="app-header__nav-link${isOn ? " is-active" : ""}">${escapeAttr(label)}</a>`;
+    };
+    return `
+      <nav class="app-header__primary-nav" aria-label="Main navigation">
+        ${link("prospects", "#/list", "Prospect Management")}
+        ${link("bishan", "#/bishan-clinics", "Bishan Clinics")}
+        ${link("fit", "#/fit-kit-tracker", "FIT Kit Tracker")}
+      </nav>`;
+  }
+
+  /** Placeholder content for top-nav sections not yet built out in this prototype. */
+  function renderPortalPlaceholderPage(title, description) {
+    return `
+      <div class="portal-placeholder">
+        <h1 class="registration__title">${escapeAttr(title)}</h1>
+        <p class="cell-muted portal-placeholder__lead">${escapeAttr(description)}</p>
+      </div>`;
+  }
+
   /** Legal entity line — keep in sync with `_figma_export/src/components/Footer.tsx` (`FOOTER_LEGAL_NAME`). */
   const APP_FOOTER_LEGAL_NAME = "WERKDONE PTE LTD.";
 
@@ -1903,6 +1933,7 @@
         <div class="app-header__brand">
           ${renderScsLogo()}
         </div>
+        ${renderHeaderPrimaryNav()}
         <div class="app-header__actions">
           ${switcher}
           <button type="button" class="user-chip" aria-label="User menu">
@@ -6071,6 +6102,12 @@
         state.prospectV3BiodataModalOpen = false;
         state.prospectV3BiodataDraft = null;
       }
+    } else if (head === "bishan-clinics") {
+      state.route = "bishanClinics";
+      state.routeId = null;
+    } else if (head === "fit-kit-tracker") {
+      state.route = "fitKitTracker";
+      state.routeId = null;
     } else if (head === "register") {
       state.route = "register";
       state.routeId = null;
@@ -6386,7 +6423,11 @@
     if (state.route === "detail") main = renderDetailPage();
     else if (state.route === "screening") main = renderScreeningDetailsPage();
     else if (state.route === "prospectv3") main = renderProspectDetailV3Page();
-    else if (state.route !== "register") main = renderListPage();
+    else if (state.route === "bishanClinics") {
+      main = renderPortalPlaceholderPage("Bishan Clinics", "Clinic operations view — content coming soon.");
+    } else if (state.route === "fitKitTracker") {
+      main = renderPortalPlaceholderPage("FIT Kit Tracker", "FIT kit tracking — content coming soon.");
+    } else if (state.route !== "register") main = renderListPage();
 
     if (state.route === "register" && state.registerSelfServiceEntry === "landing") {
       app.innerHTML = `${renderRegisterSelfServiceLandingPage()}${renderModal()}`;
