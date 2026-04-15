@@ -506,9 +506,9 @@
     registerSelfService: false,
     /** Mobile token URL: “Skip to section” drawer open */
     registrationMobileNavOpen: false,
-    /** Token URL: landing vs full form */
+    /** Registration flow: Singpass vs manual landing vs full form */
     registerSelfServiceEntry: "landing",
-    /** Token URL: Singpass path — demo prefill + lock listed fields */
+    /** Singpass path — demo prefill + lock listed fields (self-service or staff) */
     registerSingpassLocked: false,
   };
 
@@ -524,7 +524,7 @@
    * - Phone (+65 prefix | tel): contact — same pattern as `fieldPhone`
    * - Select: gender, race, religion, residentialStatus, chasCardType
    * - Select (value ≠ label): healthierSg — same pairs as `fieldSelectValueLabel` for Healthier SG
-   * - Multi-checkbox (saved comma-separated): preferredLanguages — same options as `fieldCheckboxMulti`
+   * - Multi-select dropdown (saved comma-separated): preferredLanguages — same options as detail `fieldCheckboxMulti`
    * - Residential address: block, street, floor, unit, postal, country — same fields as screening registration (`reg-address`)
    * - Textarea: priorCancerScreening (3); personalCancerHistory, preExistingConditions,
    *   familyHistory (4 rows) — same as risk section `fieldTextarea`s
@@ -568,16 +568,6 @@
 
   /** Query param on self-registration URLs (patient-facing token link). */
   const SELF_REG_TOKEN_PARAM = "sr_token";
-  /** If `1`, show Singpass vs manual landing even when `sr_token` is present (default: token links go straight to MyInfo-locked form). */
-  const SELF_REG_LANDING_CHOICE_PARAM = "sr_landing";
-
-  function selfRegUrlWantsMethodLanding() {
-    try {
-      return new URL(window.location.href).searchParams.get(SELF_REG_LANDING_CHOICE_PARAM) === "1";
-    } catch (_) {
-      return false;
-    }
-  }
 
   /** Logged-in portal user (aligned with header chip; prototype). */
   const PORTAL_CURRENT_USER = Object.freeze({
@@ -632,14 +622,14 @@
   });
 
   let lastDetailTabForForm = "details";
-  let lastRenderWasRegisterSelfService = false;
+  /** Tracks last rendered top-level route so entering `#/register/…` can reset Singpass vs manual landing. */
+  let lastAppRenderedRoute = null;
 
   const DETAIL_TAB_IDS = [
     "details",
     "medical-history",
     "other-details",
     "screening",
-    "appointments",
     "documents",
     "notes",
   ];
@@ -2164,31 +2154,43 @@
     `;
   }
 
-  function csvEscapeCell(raw) {
-    const s = raw == null ? "" : String(raw);
-    if (/[",\r\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
-    return s;
-  }
-
-  function downloadTextFile(filename, content, mime) {
-    const blob = new Blob([content], { type: mime || "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 0);
-  }
-
-  function exportProspectsCsv() {
+  function exportProspectsDatasetForSheet() {
     const rows = sortListRows(getFilteredProspects());
+    const statusLabel = (s) => (s === "booked" ? "Booked" : s === "screened" ? "Screened" : "Qualified");
+    const riskLabel = (r) => (r === "high" ? "High" : r === "medium" ? "Medium" : "Low");
+    const data = rows.map((r) => {
+      const masked = r.maskedNric != null && String(r.maskedNric).trim() ? String(r.maskedNric).trim() : "—";
+      return {
+        Name: r.name,
+        "Prospect Ref": r.id || r.rowKey,
+        "NRIC (masked)": masked,
+        Program: programDisplayLabel(r.program),
+        "Date registered": formatDateRegisteredDisplay(r.dateRegistered),
+        Phone: r.phone,
+        Email: r.email,
+        Status: statusLabel(PIPELINE_KEYS.includes(r.status) ? r.status : "qualified"),
+        Attendance: classicScreeningAttendanceDisplay({ attendance: r.attendance }),
+        "Source type": r.sourceType,
+        "Source detail": r.sourceDetail,
+        "Next review": formatDateRegisteredDisplay(r.nextReview),
+        Risk: riskLabel(r.risk),
+      };
+    });
+    return { rows, data };
+  }
+
+  function exportProspectsXlsx() {
+    const XLSX = window.XLSX;
+    if (!XLSX || !XLSX.utils || !XLSX.writeFile) {
+      showToast("Export unavailable — XLSX library not loaded.");
+      return;
+    }
+    const { rows, data } = exportProspectsDatasetForSheet();
     if (!rows.length) {
       showToast("No prospects to export.");
       return;
     }
-    const headers = [
+    const header = [
       "Name",
       "Prospect Ref",
       "NRIC (masked)",
@@ -2203,103 +2205,53 @@
       "Next review",
       "Risk",
     ];
-    const statusLabel = (s) => (s === "booked" ? "Booked" : s === "screened" ? "Screened" : "Qualified");
-    const riskLabel = (r) => (r === "high" ? "High" : r === "medium" ? "Medium" : "Low");
-    const lines = [];
-    lines.push(headers.map(csvEscapeCell).join(","));
-    rows.forEach((r) => {
-      const masked = r.maskedNric != null && String(r.maskedNric).trim() ? String(r.maskedNric).trim() : "—";
-      lines.push(
-        [
-          r.name,
-          r.id || r.rowKey,
-          masked,
-          programDisplayLabel(r.program),
-          formatDateRegisteredDisplay(r.dateRegistered),
-          r.phone,
-          r.email,
-          statusLabel(PIPELINE_KEYS.includes(r.status) ? r.status : "qualified"),
-          classicScreeningAttendanceDisplay({ attendance: r.attendance }),
-          r.sourceType,
-          r.sourceDetail,
-          formatDateRegisteredDisplay(r.nextReview),
-          riskLabel(r.risk),
-        ]
-          .map(csvEscapeCell)
-          .join(",")
-      );
-    });
+    const ws = XLSX.utils.json_to_sheet(data, { header, skipHeader: false });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Prospects");
     const d = new Date();
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, "0");
     const da = String(d.getDate()).padStart(2, "0");
     const prog = state.program && state.program !== "all" ? state.program : "all";
-    downloadTextFile(`prospects-${prog}-${y}${m}${da}.csv`, lines.join("\r\n"), "text/csv;charset=utf-8");
+    XLSX.writeFile(wb, `prospects-${prog}-${y}${m}${da}.xlsx`);
     showToast(`Exported ${rows.length} prospects.`);
   }
 
-  function exportProspectsExcel() {
-    const rows = sortListRows(getFilteredProspects());
+  function exportProspectsCsvSheetJs() {
+    const XLSX = window.XLSX;
+    if (!XLSX || !XLSX.utils || !XLSX.writeFile) {
+      showToast("Export unavailable — XLSX library not loaded.");
+      return;
+    }
+    const { rows, data } = exportProspectsDatasetForSheet();
     if (!rows.length) {
       showToast("No prospects to export.");
       return;
     }
-    const esc = (raw) =>
-      String(raw == null ? "" : raw)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
-    const statusLabel = (s) => (s === "booked" ? "Booked" : s === "screened" ? "Screened" : "Qualified");
-    const riskLabel = (r) => (r === "high" ? "High" : r === "medium" ? "Medium" : "Low");
-    const tableRows = rows
-      .map((r) => {
-        const masked = r.maskedNric != null && String(r.maskedNric).trim() ? String(r.maskedNric).trim() : "—";
-        return `<tr>
-          <td>${esc(r.name)}</td>
-          <td>${esc(r.id || r.rowKey)}</td>
-          <td>${esc(masked)}</td>
-          <td>${esc(programDisplayLabel(r.program))}</td>
-          <td>${esc(formatDateRegisteredDisplay(r.dateRegistered))}</td>
-          <td>${esc(r.phone)}</td>
-          <td>${esc(r.email)}</td>
-          <td>${esc(statusLabel(PIPELINE_KEYS.includes(r.status) ? r.status : "qualified"))}</td>
-          <td>${esc(classicScreeningAttendanceDisplay({ attendance: r.attendance }))}</td>
-          <td>${esc(r.sourceType)}</td>
-          <td>${esc(r.sourceDetail)}</td>
-          <td>${esc(formatDateRegisteredDisplay(r.nextReview))}</td>
-          <td>${esc(riskLabel(r.risk))}</td>
-        </tr>`;
-      })
-      .join("");
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>
-      <table border="1">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Prospect Ref</th>
-            <th>NRIC (masked)</th>
-            <th>Program</th>
-            <th>Date registered</th>
-            <th>Phone</th>
-            <th>Email</th>
-            <th>Status</th>
-            <th>Attendance</th>
-            <th>Source type</th>
-            <th>Source detail</th>
-            <th>Next review</th>
-            <th>Risk</th>
-          </tr>
-        </thead>
-        <tbody>${tableRows}</tbody>
-      </table>
-    </body></html>`;
+    const header = [
+      "Name",
+      "Prospect Ref",
+      "NRIC (masked)",
+      "Program",
+      "Date registered",
+      "Phone",
+      "Email",
+      "Status",
+      "Attendance",
+      "Source type",
+      "Source detail",
+      "Next review",
+      "Risk",
+    ];
+    const ws = XLSX.utils.json_to_sheet(data, { header, skipHeader: false });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Prospects");
     const d = new Date();
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, "0");
     const da = String(d.getDate()).padStart(2, "0");
     const prog = state.program && state.program !== "all" ? state.program : "all";
-    downloadTextFile(`prospects-${prog}-${y}${m}${da}.xls`, html, "application/vnd.ms-excel;charset=utf-8");
+    XLSX.writeFile(wb, `prospects-${prog}-${y}${m}${da}.csv`, { bookType: "csv" });
     showToast(`Exported ${rows.length} prospects.`);
   }
 
@@ -2629,7 +2581,6 @@
       ["medical-history", "Medical History"],
       ["other-details", "Other Details"],
       ["screening", "Screening"],
-      ["appointments", "Appointments"],
       ["documents", "Documents"],
       ["notes", "Notes"],
     ];
@@ -2783,16 +2734,14 @@
         .map((s) => s.trim())
         .filter(Boolean)
     );
-    const boxes = V3_BIODATA_OPTIONS.preferredLanguages.map((opt) => {
-      const sid = `v3bio-lang-${String(opt).replace(/[^a-zA-Z0-9_-]/g, "")}`;
-      const ck = selected.has(opt) ? " checked" : "";
-      return `<label class="v1-bio2__check-label" for="${e(sid)}"><input type="checkbox" id="${e(sid)}" value="${e(
-        opt
-      )}"${ck} /> ${e(opt)}</label>`;
+    const options = V3_BIODATA_OPTIONS.preferredLanguages.map((opt) => {
+      const sel = selected.has(opt) ? " selected" : "";
+      return `<option value="${e(opt)}"${sel}>${e(opt)}</option>`;
     }).join("");
-    return v3BiodataControlWrap(
-      `<div class="v1-bio2__lang-multi" role="group" aria-label="Preferred languages" data-v3-biodata-multi="preferredLanguages">${boxes}</div>`
-    );
+    const hintId = "v3bio-inline-pref-lang-hint";
+    return `<span class="bio-v bio-v--control bio-v--control--pref-lang"><select class="bio-select bio-select--multi" multiple size="5" data-v3-biodata-multi="preferredLanguages" aria-describedby="${e(
+      hintId
+    )}">${options}</select><p class="field__hint" id="${e(hintId)}">Hold Ctrl (Windows) or ⌘ (Mac) to select multiple.</p></span>`;
   }
 
   function v3BiodataDobEdit(e, details) {
@@ -2821,22 +2770,22 @@
     )}</option>${opts}</select></span>`;
   }
 
-  /** Checkbox stack for modal (classic `fieldCheckboxMulti` options). */
-  function v3BiodataLangCheckboxesModal(e, details) {
+  /** Multi-select for modal (same canonical options as registration / detail panels). */
+  function v3BiodataLangSelectModal(e, details) {
     const selected = new Set(
       v3BiodataPreferredLangString(details)
         .split(/[,;]+/)
         .map((s) => s.trim())
         .filter(Boolean)
     );
-    const boxes = V3_BIODATA_OPTIONS.preferredLanguages.map((opt) => {
-      const sid = `v3bio-mod-lang-${String(opt).replace(/[^a-zA-Z0-9_-]/g, "")}`;
-      const ck = selected.has(opt) ? " checked" : "";
-      return `<label class="registration__check-label" for="${e(sid)}"><input type="checkbox" id="${e(
-        sid
-      )}" value="${e(opt)}"${ck} /> ${e(opt)}</label>`;
+    const options = V3_BIODATA_OPTIONS.preferredLanguages.map((opt) => {
+      const sel = selected.has(opt) ? " selected" : "";
+      return `<option value="${e(opt)}"${sel}>${e(opt)}</option>`;
     }).join("");
-    return `<div class="registration__checkbox-stack" data-v3-biodata-multi="preferredLanguages">${boxes}</div>`;
+    const hintId = "v3bio-mod-pref-lang-hint";
+    return `<select id="v3bio-pref-lang" class="registration__select registration__select--multi" multiple size="5" data-v3-biodata-multi="preferredLanguages" aria-describedby="${e(
+      hintId
+    )}">${options}</select><p class="field__hint" id="${e(hintId)}">Hold Ctrl (Windows) or ⌘ (Mac) to select multiple.</p>`;
   }
 
   /** Same masking as `detail-panels.js` `maskNricForProfileDisplay` (classic prospect profile). */
@@ -2948,8 +2897,8 @@
           </div>
         </div>
         <div class="field field--full">
-          <span class="field__static-label">Preferred language</span>
-          ${v3BiodataLangCheckboxesModal(e, details)}
+          <label for="v3bio-pref-lang">Preferred language</label>
+          ${v3BiodataLangSelectModal(e, details)}
         </div>
         <div class="field field--full">
           <span class="field__static-label">Residential address</span>
@@ -3089,13 +3038,24 @@
       if (!k) return;
       det[k] = inp.value.trim();
     });
-    root.querySelectorAll("[data-v3-biodata-multi]").forEach((group) => {
-      const k = group.getAttribute("data-v3-biodata-multi");
+    root.querySelectorAll("[data-v3-biodata-multi]").forEach((host) => {
+      const k = host.getAttribute("data-v3-biodata-multi");
       if (!k) return;
       const parts = [];
-      group.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
-        if (cb.checked) parts.push(cb.value);
-      });
+      const multi =
+        host instanceof HTMLSelectElement && host.multiple
+          ? host
+          : host.querySelector && host.querySelector("select[multiple]");
+      if (multi instanceof HTMLSelectElement) {
+        Array.from(multi.selectedOptions).forEach((o) => {
+          const v = String(o.value || "").trim();
+          if (v) parts.push(v);
+        });
+      } else {
+        host.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+          if (cb.checked) parts.push(cb.value);
+        });
+      }
       det[k] = parts.join(", ");
     });
     if (det.preferredLanguages != null) {
@@ -4509,9 +4469,35 @@
     );
   }
 
-  /** When true, MyInfo/Singpass demo NRIC is embedded in the hidden store at first paint (token self-service). */
+  function registrationSelectOptions(list, placeholderLabel) {
+    const items = Array.isArray(list) ? list : [];
+    const ph = placeholderLabel != null ? String(placeholderLabel) : "Select";
+    return [`<option value="">${escapeAttr(ph)}</option>`]
+      .concat(items.map((v) => `<option value="${escapeAttr(v)}">${escapeAttr(v)}</option>`))
+      .join("");
+  }
+
+  function registrationPreferredLanguagesField(idPrefix, name) {
+    const opts = (V3_BIODATA_OPTIONS && Array.isArray(V3_BIODATA_OPTIONS.preferredLanguages) ? V3_BIODATA_OPTIONS.preferredLanguages : []).filter(Boolean);
+    const sid = `${idPrefix}-select`;
+    const hintId = `${idPrefix}-hint`;
+    const optionHtml = opts.map((lbl) => `<option value="${escapeAttr(lbl)}">${escapeAttr(lbl)}</option>`).join("");
+    return `
+      <fieldset class="registration__fieldset field field--full">
+        <legend class="registration__fieldset-legend registration__fieldset-legend--field">Preferred Language</legend>
+        <select id="${escapeAttr(sid)}" name="${escapeAttr(name)}" class="registration__select registration__select--multi" multiple size="5" aria-describedby="${escapeAttr(
+      hintId
+    )}">
+          ${optionHtml || ""}
+        </select>
+        <p class="field__hint" id="${escapeAttr(hintId)}">Hold Ctrl (Windows) or ⌘ (Mac) to select more than one language.</p>
+      </fieldset>
+    `;
+  }
+
+  /** When true, MyInfo/Singpass demo NRIC is embedded in the hidden store at first paint (self-service or staff after Singpass). */
   function registrationSingpassNricSeed() {
-    return state.registerSelfService && state.registerSingpassLocked ? SINGPASS_DEMO.nricFull : "";
+    return state.registerSingpassLocked ? SINGPASS_DEMO.nricFull : "";
   }
 
   /** NRIC: hidden store + optional bullet mask; `js/nric-toggle.js` defaults to visible value */
@@ -4980,6 +4966,12 @@
                     </select>
                   </div>
                   <div class="field">
+                    <label for="religion">Religion</label>
+                    <select id="religion" name="religion">
+                      ${registrationSelectOptions(V3_BIODATA_OPTIONS?.religion, "Select Religion")}
+                    </select>
+                  </div>
+                  <div class="field">
                     <label for="phone">Contact Number<span class="field__req" aria-hidden="true">*</span></label>
                     <div class="field__inline">
                       <input type="text" class="field__prefix" value="+65" disabled aria-label="Country code" />
@@ -4991,6 +4983,7 @@
                     <input id="email" name="email" type="email" placeholder="Enter your email" />
                   </div>
                 </div>
+                ${registrationPreferredLanguagesField("pref-lang", "preferredLanguages")}
               </section>
 
               <section id="reg-address" class="registration-card" tabindex="-1">
@@ -5317,6 +5310,12 @@
                     </select>
                   </div>
                   <div class="field">
+                    <label for="hpvReligion">Religion</label>
+                    <select id="hpvReligion" name="hpvReligion">
+                      ${registrationSelectOptions(V3_BIODATA_OPTIONS?.religion, "Select Religion")}
+                    </select>
+                  </div>
+                  <div class="field">
                     <label for="hpvMobile">Contact Number<span class="field__req" aria-hidden="true">*</span></label>
                     <div class="field__inline">
                       <input type="text" class="field__prefix" value="+65" disabled aria-label="Country code" />
@@ -5328,6 +5327,7 @@
                     <input id="hpvEmail" name="hpvEmail" type="email" placeholder="Enter your email" />
                   </div>
                 </div>
+                ${registrationPreferredLanguagesField("hpv-pref-lang", "hpvPreferredLanguages")}
               </section>
 
               <section id="reg-hpv-address" class="registration-card" tabindex="-1">
@@ -5580,6 +5580,12 @@
                     </select>
                   </div>
                   <div class="field">
+                    <label for="fitReligion">Religion</label>
+                    <select id="fitReligion" name="fitReligion">
+                      ${registrationSelectOptions(V3_BIODATA_OPTIONS?.religion, "Select Religion")}
+                    </select>
+                  </div>
+                  <div class="field">
                     <label for="fitContact">Contact Number<span class="field__req" aria-hidden="true">*</span></label>
                     <div class="field__inline">
                       <input type="text" class="field__prefix" value="+65" disabled aria-label="Country code" />
@@ -5591,6 +5597,7 @@
                     <input id="fitEmail" name="fitEmail" type="email" placeholder="Enter your email" />
                   </div>
                 </div>
+                ${registrationPreferredLanguagesField("fit-pref-lang", "fitPreferredLanguages")}
               </section>
 
               <section id="reg-fit-address" class="registration-card" tabindex="-1">
@@ -6298,7 +6305,7 @@
   }
 
   function applySingpassDemoAndLocks() {
-    if (!state.registerSingpassLocked || !state.registerSelfService) return;
+    if (!state.registerSingpassLocked) return;
     const d = SINGPASS_DEMO;
     const p = state.registerProgram;
     if (p === "mammobus") {
@@ -6306,7 +6313,6 @@
       lockSingpassInput("nric", d.nricFull);
       lockSingpassInput("dob", d.dob);
       lockSingpassSelect("gender", d.gender);
-      lockSingpassSelect("race", d.race);
       lockSingpassSelect("residential", d.residential);
       lockSingpassInput("email", d.email);
       lockSingpassInput("phone", d.phone);
@@ -6322,7 +6328,6 @@
       lockSingpassInput("hpvNric", d.nricFull);
       lockSingpassInput("hpvDob", d.dob);
       lockSingpassSelect("hpvGender", d.gender);
-      lockSingpassSelect("hpvRace", d.race);
       lockSingpassSelect("hpvResidential", d.residential);
       lockSingpassInput("hpvEmail", d.email);
       lockSingpassInput("hpvMobile", d.phone);
@@ -6338,7 +6343,6 @@
       lockSingpassInput("fitNric", d.nricFull);
       lockSingpassInput("fitDob", d.dob);
       lockSingpassSelect("fitGender", d.gender);
-      lockSingpassSelect("fitRace", d.race);
       lockSingpassSelect("fitResidential", d.residential);
       lockSingpassSelect("fitChasCardType", d.chasCardType);
       lockSingpassInput("fitBlock", d.block);
@@ -6355,21 +6359,21 @@
   function renderApp() {
     parseRoute();
     if (state.route !== "detail") state.activityTimelineDrawerOpen = false;
-    const isRegisterSelfService = state.route === "register" && state.registerSelfService;
-    if (state.route === "register" && !state.registerSelfService) {
-      state.registerSelfServiceEntry = "form";
-    }
-    if (isRegisterSelfService && !lastRenderWasRegisterSelfService) {
-      if (selfRegUrlWantsMethodLanding()) {
+
+    const prevRoute = lastAppRenderedRoute;
+    lastAppRenderedRoute = state.route;
+    /* Internal staff `#/register/…` opens the form directly; patient `?sr_token=…#/register/…` (Copy link → View) starts on Singpass vs manual. */
+    if (state.route === "register" && prevRoute !== "register") {
+      if (state.registerSelfService) {
         state.registerSelfServiceEntry = "landing";
         state.registerSingpassLocked = false;
       } else {
-        /* Tokenised links imply an already-verified MyInfo handoff — pre-fill and lock without an extra Singpass click. */
         state.registerSelfServiceEntry = "form";
-        state.registerSingpassLocked = true;
+        state.registerSingpassLocked = false;
       }
     }
-    lastRenderWasRegisterSelfService = isRegisterSelfService;
+
+    const isRegisterSelfService = state.route === "register" && state.registerSelfService;
 
     syncDetailFromRoute();
     applyClassicScreeningRowExpandFromNavigation();
@@ -6384,7 +6388,7 @@
     else if (state.route === "prospectv3") main = renderProspectDetailV3Page();
     else if (state.route !== "register") main = renderListPage();
 
-    if (state.route === "register" && state.registerSelfService && state.registerSelfServiceEntry === "landing") {
+    if (state.route === "register" && state.registerSelfServiceEntry === "landing") {
       app.innerHTML = `${renderRegisterSelfServiceLandingPage()}${renderModal()}`;
       bindEvents();
       return;
@@ -6883,8 +6887,8 @@
         const fmt = btn.getAttribute("data-export-option");
         state.exportMenuOpen = false;
         renderApp();
-        if (fmt === "excel") exportProspectsExcel();
-        else exportProspectsCsv();
+        if (fmt === "excel") exportProspectsXlsx();
+        else exportProspectsCsvSheetJs();
       });
     });
 
@@ -7265,13 +7269,24 @@
               out[k] = inp.value;
             }
           });
-          root.querySelectorAll("[data-detail-multi-select]").forEach((group) => {
-            const k = group.getAttribute("data-detail-multi-select");
+          root.querySelectorAll("[data-detail-multi-select]").forEach((host) => {
+            const k = host.getAttribute("data-detail-multi-select");
             if (!k) return;
             const parts = [];
-            group.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
-              if (cb.checked) parts.push(cb.value);
-            });
+            const multi =
+              host instanceof HTMLSelectElement && host.multiple
+                ? host
+                : host.querySelector && host.querySelector("select[multiple]");
+            if (multi instanceof HTMLSelectElement) {
+              Array.from(multi.selectedOptions).forEach((o) => {
+                const v = String(o.value || "").trim();
+                if (v) parts.push(v);
+              });
+            } else {
+              host.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+                if (cb.checked) parts.push(cb.value);
+              });
+            }
             out[k] = parts.join(", ");
           });
           state.detailFormValues[stateKey] = out;

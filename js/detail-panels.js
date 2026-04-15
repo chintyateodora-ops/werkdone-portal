@@ -409,7 +409,7 @@
     )}</span></div>`;
   }
 
-  /** Multi-select checkboxes — values joined with ", " on save (`data-detail-multi-select` in app.js). */
+  /** Multi-select dropdown — values joined with ", " on save (`data-detail-multi-select` on the &lt;select&gt; in app.js). */
   function fieldCheckboxMulti(e, label, key, tabKey, merged, editing, optionList) {
     const valsRaw = merged[key] != null ? String(merged[key]) : "";
     const selected = new Set(
@@ -418,25 +418,20 @@
         .map((s) => s.trim())
         .filter(Boolean)
     );
-    const groupId = `df-${tabKey}-${key}-multi`;
-    const labelId = `${groupId}-legend`;
+    const fid = `df-${tabKey}-${key}-multi`;
+    const hintId = `${fid}-hint`;
     if (editing) {
-      const boxes = (optionList || [])
-        .map((opt) => {
-          const oid = `${groupId}-${String(opt).replace(/[^a-zA-Z0-9_-]/g, "")}`;
-          const checked = selected.has(opt) ? " checked" : "";
-          return `<label class="registration__check-label" for="${e(oid)}"><input type="checkbox" id="${e(
-            oid
-          )}" value="${e(opt)}"${checked} /> ${e(opt)}</label>`;
-        })
+      const options = (optionList || [])
+        .map((opt) => `<option value="${e(opt)}"${selected.has(opt) ? " selected" : ""}>${e(opt)}</option>`)
         .join("");
       return `<div class="field field--full">
-        <span class="field__static-label" id="${e(labelId)}">${e(label)}</span>
-        <div class="registration__checkbox-stack" role="group" aria-labelledby="${e(
-          labelId
-        )}" data-detail-multi-select="${e(key)}">
-          ${boxes}
-        </div>
+        <label for="${e(fid)}">${e(label)}</label>
+        <select id="${e(fid)}" class="registration__select registration__select--multi" multiple size="5" data-detail-multi-select="${e(
+        key
+      )}" aria-describedby="${e(hintId)}">
+          ${options}
+        </select>
+        <p class="field__hint" id="${e(hintId)}">Hold Ctrl (Windows) or ⌘ (Mac) to select more than one language.</p>
       </div>`;
     }
     const display = valsRaw.trim() || "—";

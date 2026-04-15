@@ -2173,6 +2173,28 @@ button {
   flex-shrink: 0;
 }
 
+.v1-bio2 .bio-v--control--pref-lang {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.25rem;
+}
+
+.v1-bio2 .bio-v--control--pref-lang .bio-select--multi {
+  align-self: flex-end;
+  max-width: var(--v1-bio2-control-max);
+}
+
+.v1-bio2 .bio-select--multi {
+  min-height: 7.5rem;
+  padding: 0.35rem 0.45rem;
+  text-align: left;
+  appearance: auto;
+  background-image: none;
+  padding-right: 0.45rem;
+  cursor: default;
+  line-height: 1.35;
+}
+
 .v1-bio2 .bio-wrap {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -4414,6 +4436,17 @@ button {
   cursor: pointer;
 }
 
+/* Listbox-style multi-select: do not use single-select chevron styling */
+.field select.registration__select--multi {
+  appearance: auto;
+  -webkit-appearance: listbox;
+  background-image: none;
+  padding-right: 0.75rem;
+  cursor: default;
+  min-height: 7.5rem;
+  line-height: 1.35;
+}
+
 /* Disabled controls: keep the same light border as enabled fields (UAs often draw a dark ring on selects) */
 .field input:disabled:not([type="radio"]):not([type="checkbox"]):not(.field__prefix),
 .field textarea:disabled {
@@ -5474,6 +5507,34 @@ button {
   gap: 0.5rem;
 }
 
+.registration__select--multi {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 7.5rem;
+  padding: 0.4rem 0.55rem;
+  font: inherit;
+  font-size: var(--text-reg-form);
+  line-height: 1.35;
+  border: 1px solid var(--color-gray-300);
+  border-radius: var(--radius-sm);
+  background: var(--color-white);
+  color: var(--color-neutral-9);
+}
+
+.registration__select--multi:focus {
+  outline: none;
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary-500) 22%, transparent);
+}
+
+.field__hint {
+  margin: 0.35rem 0 0;
+  font-size: var(--text-body-s);
+  line-height: 1.45;
+  color: var(--color-gray-600);
+}
+
 .registration__check-label {
   display: flex;
   flex-direction: row;
@@ -5951,6 +6012,10 @@ body.registration-nav-drawer-open {
 .registration--self-service .field textarea {
   min-height: 2.75rem;
   font-size: 16px; /* avoids iOS zoom on focus */
+}
+
+.registration--self-service .field select.registration__select--multi {
+  min-height: 7.5rem;
 }
 
 /* Touch-friendly hit area without forcing a min-height that breaks flex row alignment */

@@ -70,6 +70,18 @@ function riskTone(riskLevel: string | undefined) {
   }
 }
 
+/** Canonical list aligned with portal `V3_BIODATA_OPTIONS.preferredLanguages` / registration forms. */
+const BIODATA_PREF_LANGUAGE_OPTIONS = [
+  'English',
+  'Mandarin',
+  'Malay',
+  'Tamil',
+  'Hokkien',
+  'Cantonese',
+  'Teochew',
+  'Others',
+] as const;
+
 function statusTone(status: string | undefined) {
   switch ((status || '').toLowerCase()) {
     case 'booked':
@@ -1396,9 +1408,24 @@ export function ProspectDetailV3({ onNavigate, prospectRef }: ProspectDetailV3Pr
                 <Label>Contact No.</Label>
                 <Input value={bioForm.contactNo} onChange={(e) => setBioForm((p) => ({ ...p, contactNo: e.target.value }))} className="font-mono" />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1 sm:col-span-2">
                 <Label>Preferred Language</Label>
-                <Input value={bioForm.languageCsv} onChange={(e) => setBioForm((p) => ({ ...p, languageCsv: e.target.value }))} placeholder="E.g. English, Mandarin" />
+                <select
+                  multiple
+                  className="flex min-h-[8.5rem] w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  value={bioForm.languageCsv.split(/[,;]+/).map((s) => s.trim()).filter(Boolean)}
+                  onChange={(e) => {
+                    const selected = Array.from(e.target.selectedOptions, (o) => o.value);
+                    setBioForm((p) => ({ ...p, languageCsv: selected.join(', ') }));
+                  }}
+                >
+                  {BIODATA_PREF_LANGUAGE_OPTIONS.map((lang) => (
+                    <option key={lang} value={lang}>
+                      {lang}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">Hold Ctrl (Windows) or ⌘ (Mac) to select multiple.</p>
               </div>
               <div className="space-y-1 sm:col-span-2">
                 <Label>Address</Label>

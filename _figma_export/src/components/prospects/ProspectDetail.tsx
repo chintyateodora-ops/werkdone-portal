@@ -1118,27 +1118,24 @@ export function ProspectDetail({ onNavigate, prospectRef }: ProspectDetailProps)
                           </p>
                         ) : (
                           <div className="space-y-2">
-                            {PREFERRED_LANGUAGE_OPTIONS.map((lang) => (
-                              <label
-                                key={lang}
-                                className="flex items-center gap-2 cursor-pointer"
-                              >
-                                <Checkbox
-                                  checked={detailsFormData.preferredLanguages.includes(lang)}
-                                  onCheckedChange={() =>
-                                    setDetailsFormData((prev) => ({
-                                      ...prev,
-                                      preferredLanguages: prev.preferredLanguages.includes(lang)
-                                        ? prev.preferredLanguages.filter((l) => l !== lang)
-                                        : [...prev.preferredLanguages, lang],
-                                    }))
-                                  }
-                                />
-                                <span style={{ fontSize: 'var(--text-base)', color: '#111827' }}>
+                            <select
+                              multiple
+                              className="w-full min-h-[8.5rem] rounded-md border border-gray-300 bg-white px-3 py-2 text-[var(--text-base)] text-gray-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                              value={detailsFormData.preferredLanguages}
+                              onChange={(e) => {
+                                const selected = Array.from(e.target.selectedOptions, (o) => o.value);
+                                setDetailsFormData({ ...detailsFormData, preferredLanguages: selected });
+                              }}
+                            >
+                              {PREFERRED_LANGUAGE_OPTIONS.map((lang) => (
+                                <option key={lang} value={lang}>
                                   {lang}
-                                </span>
-                              </label>
-                            ))}
+                                </option>
+                              ))}
+                            </select>
+                            <p className="text-sm text-gray-600">
+                              Hold Ctrl (Windows) or ⌘ (Mac) to select multiple.
+                            </p>
                           </div>
                         )}
                       </div>
