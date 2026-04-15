@@ -439,6 +439,7 @@
     program: "all",
     search: "",
     filterModal: false,
+    exportMenuOpen: false,
     /** List view: empty array = no restriction for that dimension */
     listFilters: { stages: [], genders: [], risks: [], ageMin: 18, ageMax: 100 },
     /** Table sort */
@@ -653,7 +654,6 @@
       "detail-personal",
       "detail-address",
       "detail-screening",
-      "detail-appointment",
       "detail-risk",
       "detail-status",
       "detail-engagement",
@@ -2118,6 +2118,7 @@
   function renderListToolbar() {
     const listPressed = state.view === "list";
     const kanbanPressed = state.view === "kanban";
+    const exportOpen = state.exportMenuOpen ? "is-open" : "";
     return `
       <div class="page-toolbar page-toolbar--split">
         ${renderProgramTitleDropdown()}
@@ -2140,9 +2141,15 @@
               : ""
           }
         </button>
-        <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" id="btn-export-csv">
-          Export CSV
-        </button>
+        <div class="title-dropdown title-dropdown--align-end ${exportOpen}" id="export-dropdown">
+          <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-export-menu-toggle aria-expanded="${state.exportMenuOpen}" aria-haspopup="true">
+            Export
+          </button>
+          <div class="title-dropdown__panel" role="menu">
+            <button type="button" class="title-dropdown__option" role="menuitem" data-export-option="csv">Export CSV</button>
+            <button type="button" class="title-dropdown__option" role="menuitem" data-export-option="excel">Export Excel</button>
+          </div>
+        </div>
         <div class="title-dropdown title-dropdown--align-end ${state.addProspectMenuOpen ? "is-open" : ""}" id="add-prospect-dropdown">
           <button type="button" class="btn btn--primary" data-add-prospect-toggle aria-expanded="${state.addProspectMenuOpen}" aria-haspopup="true">
             ${icons.plus} Add Prospect
@@ -2228,6 +2235,71 @@
     const da = String(d.getDate()).padStart(2, "0");
     const prog = state.program && state.program !== "all" ? state.program : "all";
     downloadTextFile(`prospects-${prog}-${y}${m}${da}.csv`, lines.join("\r\n"), "text/csv;charset=utf-8");
+    showToast(`Exported ${rows.length} prospects.`);
+  }
+
+  function exportProspectsExcel() {
+    const rows = sortListRows(getFilteredProspects());
+    if (!rows.length) {
+      showToast("No prospects to export.");
+      return;
+    }
+    const esc = (raw) =>
+      String(raw == null ? "" : raw)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    const statusLabel = (s) => (s === "booked" ? "Booked" : s === "screened" ? "Screened" : "Qualified");
+    const riskLabel = (r) => (r === "high" ? "High" : r === "medium" ? "Medium" : "Low");
+    const tableRows = rows
+      .map((r) => {
+        const masked = r.maskedNric != null && String(r.maskedNric).trim() ? String(r.maskedNric).trim() : "—";
+        return `<tr>
+          <td>${esc(r.name)}</td>
+          <td>${esc(r.id || r.rowKey)}</td>
+          <td>${esc(masked)}</td>
+          <td>${esc(programDisplayLabel(r.program))}</td>
+          <td>${esc(formatDateRegisteredDisplay(r.dateRegistered))}</td>
+          <td>${esc(r.phone)}</td>
+          <td>${esc(r.email)}</td>
+          <td>${esc(statusLabel(PIPELINE_KEYS.includes(r.status) ? r.status : "qualified"))}</td>
+          <td>${esc(classicScreeningAttendanceDisplay({ attendance: r.attendance }))}</td>
+          <td>${esc(r.sourceType)}</td>
+          <td>${esc(r.sourceDetail)}</td>
+          <td>${esc(formatDateRegisteredDisplay(r.nextReview))}</td>
+          <td>${esc(riskLabel(r.risk))}</td>
+        </tr>`;
+      })
+      .join("");
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>
+      <table border="1">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Prospect Ref</th>
+            <th>NRIC (masked)</th>
+            <th>Program</th>
+            <th>Date registered</th>
+            <th>Phone</th>
+            <th>Email</th>
+            <th>Status</th>
+            <th>Attendance</th>
+            <th>Source type</th>
+            <th>Source detail</th>
+            <th>Next review</th>
+            <th>Risk</th>
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </body></html>`;
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const da = String(d.getDate()).padStart(2, "0");
+    const prog = state.program && state.program !== "all" ? state.program : "all";
+    downloadTextFile(`prospects-${prog}-${y}${m}${da}.xls`, html, "application/vnd.ms-excel;charset=utf-8");
     showToast(`Exported ${rows.length} prospects.`);
   }
 
@@ -2330,6 +2402,19 @@
   function kanbanCardDemographics(p) {
     const g = (p.ageGender || "").trim();
     return g || "—";
+  }
+
+  function kanbanCardResidentialStatus(p) {
+    const reg = findRegExistingClientByName(p?.name);
+    if (reg && reg.residential) return regResidentialToFormStatus(reg.residential);
+    return "—";
+  }
+
+  function kanbanCardMetaLine(p) {
+    const parts = [kanbanCardDemographics(p), kanbanCardResidentialStatus(p)]
+      .map((s) => String(s || "").trim())
+      .filter((s) => s && s !== "—");
+    return parts.length ? parts.join(" · ") : "—";
   }
 
   function kanbanCardProgress(p) {
@@ -2446,7 +2531,7 @@
         <article class="kanban-card" tabindex="0" data-kanban-card data-kanban-prospect="${escapeAttr(r.rowKey)}">
           <div class="kanban-card__program"><span class="pill">${escapeAttr(programDisplayLabel(r.program))}</span></div>
           <h2 class="kanban-card__name">${escapeAttr(r.name)}</h2>
-          <p class="kanban-card__meta">${escapeAttr(kanbanCardDemographics(r))}</p>
+          <p class="kanban-card__meta">${escapeAttr(kanbanCardMetaLine(r))}</p>
           ${riskHtml}
           <div class="kanban-card__tasks">
             <span>Tasks</span>
@@ -4840,13 +4925,13 @@
               <section id="reg-eligibility" class="registration-card" tabindex="-1">
                 <h2 class="registration__section-label">Screening Eligibility</h2>
                 <div class="registration__eligibility" role="note">
-                  <ol class="registration__eligibility-ol" type="a">
+                  <ul class="registration__eligibility-ul">
                     <li>Are a female Singapore Citizen or Permanent Resident aged 40 and above;</li>
                     <li>Have not gone for mammogram screening for the past 1 year (aged 40 to 49) or 2 years (aged 50 and above);</li>
                     <li>Do not have breast symptoms such as breast lumps or nipple discharge; and</li>
                     <li>Have not been breastfeeding for the past 6 months.</li>
                     <li>Not pregnant</li>
-                  </ol>
+                  </ul>
                 </div>
               </section>
 
@@ -6786,8 +6871,21 @@
       renderApp();
     });
 
-    document.getElementById("btn-export-csv")?.addEventListener("click", () => {
-      exportProspectsCsv();
+    document.querySelector("[data-export-menu-toggle]")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      state.exportMenuOpen = !state.exportMenuOpen;
+      renderApp();
+    });
+
+    document.querySelectorAll("[data-export-option]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        const fmt = btn.getAttribute("data-export-option");
+        state.exportMenuOpen = false;
+        renderApp();
+        if (fmt === "excel") exportProspectsExcel();
+        else exportProspectsCsv();
+      });
     });
 
     function readListFiltersFromForm() {
@@ -7661,6 +7759,11 @@
       state.programMenuOpen = false;
       renderApp();
     }
+    const exportDd = document.getElementById("export-dropdown");
+    if (state.exportMenuOpen && exportDd && !exportDd.contains(e.target)) {
+      state.exportMenuOpen = false;
+      renderApp();
+    }
     const addDd = document.getElementById("add-prospect-dropdown");
     if (state.addProspectMenuOpen && addDd && !addDd.contains(e.target)) {
       state.addProspectMenuOpen = false;
@@ -7700,6 +7803,11 @@
 
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
+    if (state.exportMenuOpen) {
+      state.exportMenuOpen = false;
+      renderApp();
+      return;
+    }
     if (state.detailDeleteNoteId) {
       state.detailDeleteNoteId = null;
       renderApp();

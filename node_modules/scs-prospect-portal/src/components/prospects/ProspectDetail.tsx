@@ -571,7 +571,6 @@ export function ProspectDetail({ onNavigate, prospectRef }: ProspectDetailProps)
     const sections = [
       { id: 'personal', element: document.getElementById('personal') },
       { id: 'screening', element: document.getElementById('screening') },
-      { id: 'appointment', element: document.getElementById('appointment') },
       { id: 'risk', element: document.getElementById('risk') },
       { id: 'status', element: document.getElementById('status') },
       { id: 'engagement', element: document.getElementById('engagement') },
@@ -927,7 +926,6 @@ export function ProspectDetail({ onNavigate, prospectRef }: ProspectDetailProps)
                     {[
                       { id: 'personal', label: 'Personal Information' },
                       { id: 'screening', label: 'Healthier SG & Subsidies' },
-                      { id: 'appointment', label: 'Appointment Preferences' },
                       { id: 'risk', label: 'Risk Assessment' },
                       { id: 'status', label: 'Screening Status' },
                       { id: 'engagement', label: 'Engagement' },
@@ -1230,49 +1228,6 @@ export function ProspectDetail({ onNavigate, prospectRef }: ProspectDetailProps)
                         }
                         placeholder="Enter Year of Last Screening"
                       />
-                    </div>
-                  </section>
-
-                  {/* Appointment Preferences — maps to screening registration `reg-appointment` / `reg-hpv-appointment` / `reg-fit-appointment` */}
-                  <section id="appointment" className="bg-white rounded-lg border border-gray-200 p-6">
-                    <h2 className={FORM_CARD_SECTION_TITLE_CLASS}>
-                      APPOINTMENT PREFERENCES
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <EditableField
-                        label="Preferred Screening Date"
-                        value={detailsFormData.preferredScreeningDate}
-                        isEditing={isEditingDetails}
-                        onChange={(value) =>
-                          setDetailsFormData({ ...detailsFormData, preferredScreeningDate: value })
-                        }
-                        placeholder="DD-MM-YYYY"
-                      />
-                      <EditableSelect
-                        label="Preferred Time Slot"
-                        value={detailsFormData.preferredTimeSlot}
-                        isEditing={isEditingDetails}
-                        onChange={(value) =>
-                          setDetailsFormData({ ...detailsFormData, preferredTimeSlot: value })
-                        }
-                        options={[
-                          { value: 'morning', label: 'Morning' },
-                          { value: 'afternoon', label: 'Afternoon' },
-                          { value: 'evening', label: 'Evening' },
-                        ]}
-                        emptyOptionLabel="Select Preferred Time Slot"
-                      />
-                      <div className="md:col-span-2">
-                        <EditableField
-                          label="Screening Location / Event"
-                          value={detailsFormData.screeningLocationEvent}
-                          isEditing={isEditingDetails}
-                          onChange={(value) =>
-                            setDetailsFormData({ ...detailsFormData, screeningLocationEvent: value })
-                          }
-                          placeholder="Enter Screening Location / Event"
-                        />
-                      </div>
                     </div>
                   </section>
 

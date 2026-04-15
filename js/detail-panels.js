@@ -140,7 +140,6 @@
     ["detail-personal", "Personal Information"],
     ["detail-address", "Residential Address"],
     ["detail-screening", "Healthier SG & Subsidies"],
-    ["detail-appointment", "Appointment Preferences"],
     ["detail-risk", "Risk Assessment"],
     ["detail-status", "Screening Status"],
     ["detail-engagement", "Engagement"],
@@ -816,34 +815,6 @@
                     })}
                   </div>`,
                   "detail-screening"
-                )}
-                ${section(
-                  e,
-                  "Appointment Preferences",
-                  `<div class="detail-fields detail-fields--2">
-                    ${fieldDateInput(e, "Preferred Screening Date", "preferredScreeningDate", "details", merged, editing, {
-                      required: false,
-                    })}
-                    ${fieldSelectValueLabel(
-                      e,
-                      "Preferred Time Slot",
-                      "preferredTimeSlot",
-                      "details",
-                      merged,
-                      editing,
-                      [
-                        ["morning", "Morning"],
-                        ["afternoon", "Afternoon"],
-                        ["evening", "Evening"],
-                      ],
-                      { required: false, placeholderLabel: "Select Preferred Time Slot" }
-                    )}
-                    ${fieldInput(e, "Screening Location / Event", "screeningLocationEvent", "details", merged, editing, {
-                      fullWidth: true,
-                      placeholder: "Enter Screening Location / Event",
-                    })}
-                  </div>`,
-                  "detail-appointment"
                 )}
                 ${section(
                   e,

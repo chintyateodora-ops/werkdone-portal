@@ -5591,8 +5591,9 @@ button {
   margin: 0.15rem 0;
 }
 
-.registration__eligibility ol.registration__eligibility-ol {
-  list-style-type: lower-alpha;
+/* Mammogram registration: use bullet list (no a/b/c markers). */
+.registration__eligibility ul.registration__eligibility-ul {
+  list-style: disc;
 }
 
 /* Screening Questions: ensure long legends + any static labels match 16px body */
