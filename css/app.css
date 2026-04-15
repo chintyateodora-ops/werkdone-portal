@@ -4386,6 +4386,12 @@ button {
   user-select: none;
 }
 
+/* Screening status — multi-line composed value (mammogram + supplement), read-only */
+.field .field__identifier-readonly-display.detail-screening-eligible-readonly {
+  white-space: pre-wrap;
+  user-select: text;
+}
+
 .field input:focus,
 .field select:focus,
 .field textarea:focus {
@@ -4795,10 +4801,15 @@ button {
 .registration__personal--client-locked .form-grid select:disabled,
 .registration__personal--client-locked .form-grid textarea:disabled,
 .registration__personal--client-locked .form-grid button:disabled {
-  background: var(--color-gray-50);
+  /* Use background-color only — `background` shorthand clears .field__date-btn calendar icon (background-image). */
+  background-color: var(--color-gray-50);
   color: var(--color-gray-700);
   cursor: not-allowed;
   opacity: 1;
+}
+
+.registration__personal--client-locked .field__date-btn:disabled {
+  background-color: var(--color-gray-100);
 }
 
 /* Composite NRIC shell: inner face stayed white; match other disabled fields */
