@@ -510,6 +510,562 @@
     registerSelfServiceEntry: "landing",
     /** Singpass path — demo prefill + lock listed fields (self-service or staff) */
     registerSingpassLocked: false,
+    /** FIT Kit Tracker (prototype) — in-memory session state */
+    fitKit: {
+      activeStage: 0,
+      search: "",
+      /** Selected patient row ids (for bulk actions). */
+      selectedIds: [],
+      nextId: 31,
+      patients: [
+        {
+          id: 1,
+          name: "Tan Ah Kow",
+          nric: "S****234A",
+          dob: "1965-03-12",
+          age: 59,
+          gender: "M",
+          mobile: "91234567",
+          address: "Blk 123 Ang Mo Kio Ave 6 #05-12 S560123",
+          stage: 1,
+          ncssRef: "NCSS-2024-001",
+          dispatchDate: "",
+          labRef: "",
+          receivedDate: "",
+          result: "",
+          resultDate: "",
+          notes: "",
+        },
+        {
+          id: 2,
+          name: "Wong Mei Fong",
+          nric: "S****789F",
+          dob: "1968-01-14",
+          age: 56,
+          gender: "F",
+          mobile: "96789012",
+          address: "Blk 89 Clementi Ave 3 #06-45 S120089",
+          stage: 1,
+          ncssRef: "NCSS-2024-002",
+          dispatchDate: "",
+          labRef: "",
+          receivedDate: "",
+          result: "",
+          resultDate: "",
+          notes: "",
+        },
+        {
+          id: 3,
+          name: "Suresh Pillai",
+          nric: "S****321K",
+          dob: "1961-08-19",
+          age: 62,
+          gender: "M",
+          mobile: "83456789",
+          address: "Blk 22 Hougang Ave 3 #07-11 S530022",
+          stage: 1,
+          ncssRef: "NCSS-2024-003",
+          dispatchDate: "",
+          labRef: "",
+          receivedDate: "",
+          result: "",
+          resultDate: "",
+          notes: "Prefers morning calls",
+        },
+        {
+          id: 4,
+          name: "Mdm Lee Geok Eng",
+          nric: "S****654B",
+          dob: "1956-04-02",
+          age: 68,
+          gender: "F",
+          mobile: "97654321",
+          address: "Blk 5 Queenstown Rd #03-08 S140005",
+          stage: 1,
+          ncssRef: "NCSS-2024-004",
+          dispatchDate: "",
+          labRef: "",
+          receivedDate: "",
+          result: "",
+          resultDate: "",
+          notes: "",
+        },
+        {
+          id: 5,
+          name: "Hamid Bin Osman",
+          nric: "S****112C",
+          dob: "1963-11-30",
+          age: 60,
+          gender: "M",
+          mobile: "91122334",
+          address: "Blk 301 Bukit Batok St 31 #10-05 S650301",
+          stage: 1,
+          ncssRef: "NCSS-2024-005",
+          dispatchDate: "",
+          labRef: "",
+          receivedDate: "",
+          result: "",
+          resultDate: "",
+          notes: "",
+        },
+        {
+          id: 6,
+          name: "Chua Boon Huat",
+          nric: "S****445D",
+          dob: "1958-06-15",
+          age: 65,
+          gender: "M",
+          mobile: "94455667",
+          address: "Blk 88 Pasir Ris Dr 6 #12-22 S510088",
+          stage: 1,
+          ncssRef: "NCSS-2024-006",
+          dispatchDate: "",
+          labRef: "",
+          receivedDate: "",
+          result: "",
+          resultDate: "",
+          notes: "Family history of CRC",
+        },
+        {
+          id: 7,
+          name: "Noor Aini Bte Kassim",
+          nric: "S****778E",
+          dob: "1966-09-07",
+          age: 57,
+          gender: "F",
+          mobile: "98778899",
+          address: "Blk 47 Woodlands Ave 6 #05-33 S730047",
+          stage: 1,
+          ncssRef: "NCSS-2024-007",
+          dispatchDate: "",
+          labRef: "",
+          receivedDate: "",
+          result: "",
+          resultDate: "",
+          notes: "",
+        },
+        {
+          id: 8,
+          name: "Siti Binte Rahmat",
+          nric: "S****567B",
+          dob: "1958-07-22",
+          age: 65,
+          gender: "F",
+          mobile: "92345678",
+          address: "Blk 45 Bedok North Rd #08-23 S460045",
+          stage: 2,
+          ncssRef: "NCSS-2024-008",
+          dispatchDate: "2026-03-13",
+          labRef: "",
+          receivedDate: "",
+          result: "",
+          resultDate: "",
+          notes: "",
+        },
+        {
+          id: 9,
+          name: "Muthu Selvam",
+          nric: "S****012G",
+          dob: "1957-06-08",
+          age: 67,
+          gender: "M",
+          mobile: "97890123",
+          address: "Blk 34 Serangoon Ave 2 #14-02 S550034",
+          stage: 2,
+          ncssRef: "NCSS-2024-009",
+          dispatchDate: "2026-03-13",
+          labRef: "",
+          receivedDate: "",
+          result: "",
+          resultDate: "",
+          notes: "",
+        },
+        {
+          id: 10,
+          name: "Goh Siew Leng",
+          nric: "S****233F",
+          dob: "1960-02-28",
+          age: 64,
+          gender: "F",
+          mobile: "93322110",
+          address: "Blk 115 Bishan St 12 #09-14 S570115",
+          stage: 2,
+          ncssRef: "NCSS-2024-010",
+          dispatchDate: "2026-03-07",
+          labRef: "",
+          receivedDate: "",
+          result: "",
+          resultDate: "",
+          notes: "Kit returned once — resent",
+        },
+        {
+          id: 11,
+          name: "Rajan s/o Pillai",
+          nric: "S****509H",
+          dob: "1962-05-12",
+          age: 61,
+          gender: "M",
+          mobile: "96509876",
+          address: "Blk 19 Jurong East Ave 1 #04-09 S609019",
+          stage: 2,
+          ncssRef: "NCSS-2024-011",
+          dispatchDate: "2026-03-20",
+          labRef: "",
+          receivedDate: "",
+          result: "",
+          resultDate: "",
+          notes: "",
+        },
+        {
+          id: 12,
+          name: "Tan Swee Huat",
+          nric: "S****381J",
+          dob: "1955-12-03",
+          age: 68,
+          gender: "M",
+          mobile: "91238765",
+          address: "Blk 72 Toa Payoh Lor 4 #06-18 S310072",
+          stage: 2,
+          ncssRef: "NCSS-2024-012",
+          dispatchDate: "2026-03-06",
+          labRef: "",
+          receivedDate: "",
+          result: "",
+          resultDate: "",
+          notes: "",
+        },
+        {
+          id: 13,
+          name: "Fatimah Bte Yusuf",
+          nric: "S****620L",
+          dob: "1967-03-19",
+          age: 56,
+          gender: "F",
+          mobile: "94620831",
+          address: "Blk 203 Tampines St 21 #11-04 S520203",
+          stage: 2,
+          ncssRef: "NCSS-2024-013",
+          dispatchDate: "2026-03-08",
+          labRef: "",
+          receivedDate: "",
+          result: "",
+          resultDate: "",
+          notes: "Reminder SMS sent",
+        },
+        {
+          id: 14,
+          name: "Rajesh Kumar",
+          nric: "S****890C",
+          dob: "1962-11-05",
+          age: 61,
+          gender: "M",
+          mobile: "93456789",
+          address: "Blk 78 Jurong West St 42 #12-34 S640078",
+          stage: 3,
+          ncssRef: "NCSS-2024-014",
+          dispatchDate: "2026-03-08",
+          labRef: "LAB-10023",
+          receivedDate: "2026-03-15",
+          result: "",
+          resultDate: "",
+          notes: "",
+        },
+        {
+          id: 15,
+          name: "Chan Soo Lin",
+          nric: "S****345H",
+          dob: "1963-12-25",
+          age: 60,
+          gender: "F",
+          mobile: "98901234",
+          address: "Blk 67 Punggol Rd #09-12 S820067",
+          stage: 3,
+          ncssRef: "NCSS-2024-015",
+          dispatchDate: "2026-03-25",
+          labRef: "LAB-10024",
+          receivedDate: "2026-03-31",
+          result: "",
+          resultDate: "",
+          notes: "",
+        },
+        {
+          id: 16,
+          name: "Ong Beng Kiat",
+          nric: "S****177M",
+          dob: "1959-07-14",
+          age: 65,
+          gender: "M",
+          mobile: "90177234",
+          address: "Blk 33 Marine Parade Rd #02-05 S440033",
+          stage: 3,
+          ncssRef: "NCSS-2024-016",
+          dispatchDate: "2026-03-09",
+          labRef: "LAB-10025",
+          receivedDate: "2026-03-25",
+          result: "",
+          resultDate: "",
+          notes: "",
+        },
+        {
+          id: 17,
+          name: "Madam Zainab Hussain",
+          nric: "S****293N",
+          dob: "1961-01-22",
+          age: 63,
+          gender: "F",
+          mobile: "92293041",
+          address: "Blk 410 Yishun Ave 6 #08-31 S760410",
+          stage: 3,
+          ncssRef: "NCSS-2024-017",
+          dispatchDate: "2026-03-13",
+          labRef: "LAB-10026",
+          receivedDate: "2026-03-26",
+          result: "",
+          resultDate: "",
+          notes: "Diabetic — flag for doctor",
+        },
+        {
+          id: 18,
+          name: "Loh Chin Wah",
+          nric: "S****854P",
+          dob: "1964-09-09",
+          age: 59,
+          gender: "M",
+          mobile: "98854321",
+          address: "Blk 55 Clementi Ave 2 #15-03 S120055",
+          stage: 3,
+          ncssRef: "NCSS-2024-018",
+          dispatchDate: "2026-03-22",
+          labRef: "LAB-10027",
+          receivedDate: "2026-04-07",
+          result: "",
+          resultDate: "",
+          notes: "",
+        },
+        {
+          id: 19,
+          name: "Selvamary d/o Rajan",
+          nric: "S****716Q",
+          dob: "1966-04-30",
+          age: 57,
+          gender: "F",
+          mobile: "91716082",
+          address: "Blk 9 Geylang Bahru #06-22 S330009",
+          stage: 3,
+          ncssRef: "NCSS-2024-019",
+          dispatchDate: "2026-03-18",
+          labRef: "LAB-10028",
+          receivedDate: "2026-03-24",
+          result: "",
+          resultDate: "",
+          notes: "",
+        },
+        {
+          id: 20,
+          name: "Koh Teck Soon",
+          nric: "S****428R",
+          dob: "1957-10-11",
+          age: 67,
+          gender: "M",
+          mobile: "84428765",
+          address: "Blk 141 Bukit Timah Rd #04-07 S590141",
+          stage: 3,
+          ncssRef: "NCSS-2024-020",
+          dispatchDate: "2026-03-20",
+          labRef: "LAB-10029",
+          receivedDate: "2026-04-01",
+          result: "",
+          resultDate: "",
+          notes: "",
+        },
+        {
+          id: 21,
+          name: "Ang Poh Choo",
+          nric: "S****562S",
+          dob: "1960-06-18",
+          age: 63,
+          gender: "F",
+          mobile: "96562034",
+          address: "Blk 88 Sengkang East Way #10-18 S540088",
+          stage: 3,
+          ncssRef: "NCSS-2024-021",
+          dispatchDate: "2026-03-07",
+          labRef: "LAB-10030",
+          receivedDate: "2026-03-18",
+          result: "",
+          resultDate: "",
+          notes: "",
+        },
+        {
+          id: 22,
+          name: "Lim Bee Choo",
+          nric: "S****123D",
+          dob: "1955-05-18",
+          age: 68,
+          gender: "F",
+          mobile: "94567890",
+          address: "Blk 12 Toa Payoh Lorong 2 #03-05 S310012",
+          stage: 4,
+          ncssRef: "NCSS-2024-022",
+          dispatchDate: "2026-03-24",
+          labRef: "LAB-10010",
+          receivedDate: "2026-04-07",
+          result: "Negative",
+          resultDate: "2026-04-13",
+          notes: "Normal. Re-screen in 1 year.",
+        },
+        {
+          id: 23,
+          name: "Ahmad Bin Yusof",
+          nric: "S****456E",
+          dob: "1960-09-30",
+          age: 63,
+          gender: "M",
+          mobile: "95678901",
+          address: "Blk 56 Tampines St 21 #10-11 S520056",
+          stage: 4,
+          ncssRef: "NCSS-2024-023",
+          dispatchDate: "2026-03-12",
+          labRef: "LAB-10008",
+          receivedDate: "2026-03-23",
+          result: "Positive",
+          resultDate: "2026-03-29",
+          notes: "Referred to polyclinic for colonoscopy.",
+        },
+        {
+          id: 24,
+          name: "Mdm Phua Geok Tin",
+          nric: "S****039T",
+          dob: "1956-03-25",
+          age: 68,
+          gender: "F",
+          mobile: "93039182",
+          address: "Blk 6 Redhill Cl #07-12 S150006",
+          stage: 4,
+          ncssRef: "NCSS-2024-024",
+          dispatchDate: "2026-03-05",
+          labRef: "LAB-10005",
+          receivedDate: "2026-03-17",
+          result: "Negative",
+          resultDate: "2026-03-22",
+          notes: "Normal. Re-screen in 1 year.",
+        },
+        {
+          id: 25,
+          name: "David Pereira",
+          nric: "S****281U",
+          dob: "1963-07-04",
+          age: 61,
+          gender: "M",
+          mobile: "91281047",
+          address: "Blk 20 Serangoon Garden Way #01-05 S556020",
+          stage: 4,
+          ncssRef: "NCSS-2024-025",
+          dispatchDate: "2026-03-19",
+          labRef: "LAB-10011",
+          receivedDate: "2026-03-29",
+          result: "Positive",
+          resultDate: "2026-04-02",
+          notes: "Referred for follow-up.",
+        },
+        {
+          id: 26,
+          name: "Madam Ho Siew Khim",
+          nric: "S****374V",
+          dob: "1958-11-13",
+          age: 65,
+          gender: "F",
+          mobile: "94374920",
+          address: "Blk 303 Choa Chu Kang Ave 4 #08-09 S680303",
+          stage: 4,
+          ncssRef: "NCSS-2024-026",
+          dispatchDate: "2026-03-23",
+          labRef: "LAB-10013",
+          receivedDate: "2026-04-05",
+          result: "Negative",
+          resultDate: "2026-04-09",
+          notes: "Normal.",
+        },
+        {
+          id: 27,
+          name: "Govindasamy s/o Nair",
+          nric: "S****815W",
+          dob: "1961-02-07",
+          age: 63,
+          gender: "M",
+          mobile: "98815034",
+          address: "Blk 77 Little India Arc #03-11 S210077",
+          stage: 4,
+          ncssRef: "NCSS-2024-027",
+          dispatchDate: "2026-03-16",
+          labRef: "LAB-10007",
+          receivedDate: "2026-03-26",
+          result: "Positive",
+          resultDate: "2026-04-04",
+          notes: "Urgent referral — colonoscopy booked.",
+        },
+        {
+          id: 28,
+          name: "Teo Lay Hoon",
+          nric: "S****647X",
+          dob: "1964-08-20",
+          age: 59,
+          gender: "F",
+          mobile: "92647813",
+          address: "Blk 55 Ang Mo Kio St 44 #11-22 S560055",
+          stage: 4,
+          ncssRef: "NCSS-2024-028",
+          dispatchDate: "2026-03-02",
+          labRef: "LAB-10015",
+          receivedDate: "2026-03-11",
+          result: "Negative",
+          resultDate: "2026-03-14",
+          notes: "Normal. Re-screen in 1 year.",
+        },
+        {
+          id: 29,
+          name: "Ismail Bin Hashim",
+          nric: "S****903Y",
+          dob: "1957-05-29",
+          age: 67,
+          gender: "M",
+          mobile: "97903456",
+          address: "Blk 112 Yishun Ring Rd #06-05 S760112",
+          stage: 4,
+          ncssRef: "NCSS-2024-029",
+          dispatchDate: "2026-03-14",
+          labRef: "LAB-10003",
+          receivedDate: "2026-03-22",
+          result: "Negative",
+          resultDate: "2026-03-30",
+          notes: "",
+        },
+        {
+          id: 30,
+          name: "Lily Tan Bee Lian",
+          nric: "S****258Z",
+          dob: "1959-12-01",
+          age: 64,
+          gender: "F",
+          mobile: "93258741",
+          address: "Blk 18 Dover Rd #09-04 S130018",
+          stage: 4,
+          ncssRef: "NCSS-2024-030",
+          dispatchDate: "2026-03-18",
+          labRef: "LAB-10017",
+          receivedDate: "2026-03-24",
+          result: "Positive",
+          resultDate: "2026-04-03",
+          notes: "Referred to SGH colorectal specialist.",
+        },
+      ],
+      editModal: null,
+      advanceModal: null,
+      uploadModalStage: null,
+      uploadState: { preview: null, errors: null, parsedRows: null },
+    },
+    /** Bishan Clinics — mammobus prospect pipeline board (session prototype; see `js/bishan-pipeline.js`). */
+    bishanPipeline: null,
   };
 
   const PROSPECT_V3_TAB_IDS = ["overview", "screenings", "biodata", "eligibility", "documents", "notes"];
@@ -1884,6 +2440,950 @@
       </div>`;
   }
 
+  function ensureBishanPipelineState() {
+    if (state.bishanPipeline) return;
+    if (typeof window.WD_bishanPipeline === "undefined") return;
+    state.bishanPipeline = window.WD_bishanPipeline.createInitialState();
+  }
+
+  function renderBishanClinicsPage() {
+    ensureBishanPipelineState();
+    if (typeof window.WD_bishanPipeline !== "undefined" && state.bishanPipeline) {
+      return window.WD_bishanPipeline.renderMarkup(state.bishanPipeline);
+    }
+    return renderPortalPlaceholderPage(
+      "Bishan Clinics",
+      "Pipeline tracker could not load. Ensure js/bishan-pipeline.js is included before app.js."
+    );
+  }
+
+  // —— FIT Kit Tracker (static prototype page) — based on provided JSX, adapted to portal shell —— //
+
+  const FIT_STAGES = Object.freeze([
+    { id: 1, label: "NCSS patient list", sub: "Received from NCSS" },
+    { id: 2, label: "Dispatched to packing", sub: "Sent to drop-ship company" },
+    { id: 3, label: "Kit returned to lab", sub: "Patient returned sample" },
+    { id: 4, label: "Lab result", sub: "Test result received" },
+  ]);
+
+  const FIT_STAGE_CSV_HEADERS = Object.freeze({
+    1: "NCSS Ref *,Full Name *,NRIC (masked),Date of Birth,Age *,Gender *,Mobile *,Home Address,Notes\ne.g. NCSS-2024-031,e.g. Tan Ah Kow,e.g. S****234A,YYYY-MM-DD,50-100,M or F,e.g. 91234567,Blk/Street/Unit,Any remarks",
+    2: "NCSS Ref *,Dispatch Date *,Notes\ne.g. NCSS-2024-001,YYYY-MM-DD,Any remarks",
+    3: "NCSS Ref *,Lab Reference *,Date Kit Received *,Notes\ne.g. NCSS-2024-001,e.g. LAB-10025,YYYY-MM-DD,Any remarks",
+    4: "NCSS Ref *,Result *,Result Date *,Notes\ne.g. NCSS-2024-001,Negative or Positive,YYYY-MM-DD,Any remarks",
+  });
+
+  const FIT_STAGE_CSV_NAMES = Object.freeze({
+    1: "FIT_Stage1_NCSS.csv",
+    2: "FIT_Stage2_Dispatch.csv",
+    3: "FIT_Stage3_Lab.csv",
+    4: "FIT_Stage4_Result.csv",
+  });
+
+  function fitNormalizeHeader(h) {
+    return String(h || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+  }
+
+  const FIT_HEADER_MAP = Object.freeze({
+    ncssref: "ncssRef",
+    referid: "ncssRef",
+    refid: "ncssRef",
+    fullname: "name",
+    patientname: "name",
+    nricmasked: "nric",
+    nric: "nric",
+    dateofbirth: "dob",
+    dob: "dob",
+    age: "age",
+    gender: "gender",
+    sex: "gender",
+    mobile: "mobile",
+    homeaddress: "address",
+    address: "address",
+    dispatchdate: "dispatchDate",
+    labreference: "labRef",
+    labref: "labRef",
+    datekitreceived: "receivedDate",
+    datereceived: "receivedDate",
+    receiveddate: "receivedDate",
+    result: "result",
+    resultdate: "resultDate",
+    notes: "notes",
+  });
+
+  const FIT_STAGE_REQUIRED = Object.freeze({
+    1: ["ncssref", "fullname", "age", "gender", "mobile"],
+    2: ["ncssref", "dispatchdate"],
+    3: ["ncssref", "labreference", "datekitreceived"],
+    4: ["ncssref", "result", "resultdate"],
+  });
+
+  function fitTodayIso() {
+    const d = new Date();
+    const pad2 = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  }
+
+  function fitStageCount(stageId) {
+    const ps = state.fitKit?.patients || [];
+    return ps.filter((p) => Number(p.stage) === Number(stageId)).length;
+  }
+
+  function fitFilteredPatients() {
+    const ps = state.fitKit?.patients || [];
+    const t = String(state.fitKit?.search || "")
+      .trim()
+      .toLowerCase();
+    if (!t) return ps;
+    return ps.filter((p) => {
+      const name = String(p.name || "").toLowerCase();
+      const ref = String(p.ncssRef || "").toLowerCase();
+      const mobile = String(p.mobile || "");
+      return name.includes(t) || ref.includes(t) || mobile.includes(t);
+    });
+  }
+
+  function fitDaysPending(p) {
+    if (!p) return null;
+    const stage = Number(p.stage);
+    if (stage === 4 && String(p.result || "").trim()) return null;
+    const entry =
+      stage === 2 ? p.dispatchDate : stage === 3 ? p.dispatchDate : stage === 4 ? p.receivedDate : null;
+    if (!entry) return null;
+    const ts = new Date(entry).getTime();
+    if (!Number.isFinite(ts)) return null;
+    const diff = Math.floor((Date.now() - ts) / 86400000);
+    if (!Number.isFinite(diff) || diff < 0) return null;
+    return diff;
+  }
+
+  function fitDownloadBlob(filename, blob) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.setAttribute("download", filename);
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    window.setTimeout(() => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (_) {
+        /* ignore */
+      }
+      try {
+        document.body.removeChild(a);
+      } catch (_) {
+        /* ignore */
+      }
+    }, 200);
+  }
+
+  function fitExportCsv() {
+    const hdr = [
+      "NCSS Ref",
+      "Patient Name",
+      "Mobile",
+      "Stage",
+      "Dispatch Date",
+      "Lab Ref",
+      "Date Received",
+      "Result",
+      "Result Date",
+      "Notes",
+    ];
+    const rows = (state.fitKit?.patients || []).map((p) => [
+      p.ncssRef,
+      p.name,
+      p.mobile,
+      p.stage,
+      p.dispatchDate || "",
+      p.labRef || "",
+      p.receivedDate || "",
+      p.result || "",
+      p.resultDate || "",
+      `"${String(p.notes || "").replace(/"/g, '""')}"`,
+    ]);
+    const csv = [hdr, ...rows]
+      .map((r) => r.map((x) => (x == null ? "" : String(x))).join(","))
+      .join("\n");
+    fitDownloadBlob("fit_kit_tracker.csv", new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+  }
+
+  function fitExportCsvSelected(ids) {
+    const sel = new Set((Array.isArray(ids) ? ids : []).map((x) => Number(x)).filter((n) => Number.isFinite(n)));
+    if (!sel.size) {
+      showToast("No records selected.");
+      return;
+    }
+    const patients = (state.fitKit?.patients || []).filter((p) => sel.has(Number(p.id)));
+    const hdr = [
+      "NCSS Ref",
+      "Patient Name",
+      "Mobile",
+      "Stage",
+      "Dispatch Date",
+      "Lab Ref",
+      "Date Received",
+      "Result",
+      "Result Date",
+      "Notes",
+    ];
+    const rows = patients.map((p) => [
+      p.ncssRef,
+      p.name,
+      p.mobile,
+      p.stage,
+      p.dispatchDate || "",
+      p.labRef || "",
+      p.receivedDate || "",
+      p.result || "",
+      p.resultDate || "",
+      `"${String(p.notes || "").replace(/"/g, '""')}"`,
+    ]);
+    const csv = [hdr, ...rows]
+      .map((r) => r.map((x) => (x == null ? "" : String(x))).join(","))
+      .join("\n");
+    fitDownloadBlob("fit_kit_tracker_selected.csv", new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+  }
+
+  function fitDownloadTemplate(stageId) {
+    const id = Number(stageId);
+    const csv = FIT_STAGE_CSV_HEADERS[id] || FIT_STAGE_CSV_HEADERS[1];
+    const name = FIT_STAGE_CSV_NAMES[id] || `FIT_Stage${id}.csv`;
+    fitDownloadBlob(name, new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+  }
+
+  function fitParseCsv(text) {
+    const lines = String(text || "").split(/\r?\n/);
+    const out = [];
+    for (const line of lines) {
+      const cells = [];
+      let cur = "";
+      let inQ = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line.charAt(i);
+        if (ch === '"') {
+          inQ = !inQ;
+        } else if (ch === "," && !inQ) {
+          cells.push(cur.trim());
+          cur = "";
+        } else {
+          cur += ch;
+        }
+      }
+      cells.push(cur.trim());
+      if (cells.some((c) => String(c).trim() !== "")) out.push(cells);
+    }
+    return out;
+  }
+
+  function fitHandleCsvFile(file, stageId) {
+    const sid = Number(stageId);
+    if (!file) return;
+    const name = String(file.name || "").toLowerCase();
+    if (!name.endsWith(".csv")) {
+      state.fitKit.uploadState = {
+        preview: null,
+        parsedRows: null,
+        errors: [
+          {
+            type: "format",
+            msg: "Please upload a .csv file. Download the template, fill it in Excel, then File → Save As → CSV.",
+          },
+        ],
+      };
+      renderApp();
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e?.target?.result;
+      const rows = fitParseCsv(text);
+      const reqCols = FIT_STAGE_REQUIRED[sid] || FIT_STAGE_REQUIRED[1];
+      let headerIdx = -1;
+      for (let i = 0; i < Math.min(rows.length, 10); i++) {
+        const norm = rows[i].map(fitNormalizeHeader);
+        if (reqCols.every((req) => norm.some((n) => n.includes(req)))) {
+          headerIdx = i;
+          break;
+        }
+      }
+      if (headerIdx < 0) {
+        state.fitKit.uploadState = {
+          preview: null,
+          parsedRows: null,
+          errors: [{ type: "format", msg: `Wrong template for Stage ${sid}. Please download the correct Stage ${sid} template.` }],
+        };
+        renderApp();
+        return;
+      }
+
+      const normHeaders = rows[headerIdx].map(fitNormalizeHeader);
+      const colIdx = {};
+      normHeaders.forEach((nh, i) => {
+        for (const [k, v] of Object.entries(FIT_HEADER_MAP)) {
+          if (nh.includes(k) && colIdx[v] == null) colIdx[v] = i;
+        }
+      });
+
+      let dataStart = headerIdx + 1;
+      if (dataStart < rows.length) {
+        const probe = rows[dataStart].join(" ").toLowerCase();
+        if (probe.includes("e.g") || probe.includes("yyyy")) dataStart++;
+      }
+      const dataRows = rows.slice(dataStart).filter((r) => r.some((c) => String(c).trim() !== ""));
+      if (!dataRows.length) {
+        state.fitKit.uploadState = {
+          preview: null,
+          parsedRows: null,
+          errors: [{ type: "format", msg: "No patient data found. Fill in at least one row below the header." }],
+        };
+        renderApp();
+        return;
+      }
+
+      const get = (r, field) => (colIdx[field] != null ? String(r[colIdx[field]] ?? "").trim() : "");
+      const parsed = [];
+      const errors = [];
+      const patients = state.fitKit.patients || [];
+
+      dataRows.forEach((r, idx) => {
+        const rowNum = dataStart + idx + 1;
+        const ncssRef = get(r, "ncssRef");
+        if (!ncssRef) {
+          errors.push({ type: "field", msg: `Row ${rowNum}: NCSS Ref required` });
+          return;
+        }
+        if (sid === 1) {
+          const name = get(r, "name");
+          const ageRaw = get(r, "age");
+          const gender = get(r, "gender").toUpperCase();
+          const mobile = get(r, "mobile").replace(/\s/g, "");
+          const errs = [];
+          if (!name) errs.push("Full Name required");
+          const age = parseInt(ageRaw, 10);
+          if (!ageRaw) errs.push("Age required");
+          else if (Number.isNaN(age)) errs.push("Age must be a number");
+          else if (age < 50 || age > 100) errs.push("Age must be 50–100");
+          if (!gender) errs.push("Gender required");
+          else if (!["M", "F"].includes(gender)) errs.push("Gender must be M or F");
+          if (!mobile) errs.push("Mobile required");
+          else if (!/^[689]\d{7}$/.test(mobile)) errs.push("Invalid SG mobile number");
+          if (patients.some((p) => String(p.ncssRef) === ncssRef)) errs.push(`NCSS Ref "${ncssRef}" already exists in portal`);
+          if (parsed.some((p) => String(p.ncssRef) === ncssRef)) errs.push(`NCSS Ref "${ncssRef}" duplicated in file`);
+          if (errs.length) {
+            errors.push({ type: "field", msg: `Row ${rowNum} (${name || ncssRef}): ${errs.join("; ")}` });
+            return;
+          }
+          parsed.push({
+            id: 0,
+            name,
+            ncssRef,
+            nric: get(r, "nric"),
+            dob: get(r, "dob"),
+            age,
+            gender,
+            mobile,
+            address: get(r, "address"),
+            stage: 1,
+            dispatchDate: "",
+            labRef: "",
+            receivedDate: "",
+            result: "",
+            resultDate: "",
+            notes: get(r, "notes"),
+          });
+          return;
+        }
+
+        const existing = patients.find((p) => String(p.ncssRef) === ncssRef);
+        const errs = [];
+        if (!existing) errs.push(`NCSS Ref "${ncssRef}" not found in portal`);
+        else if (Number(existing.stage) !== sid) errs.push(`NCSS Ref "${ncssRef}" belongs to Stage ${existing.stage}, not Stage ${sid}`);
+        if (sid === 2) {
+          const dispatchDate = get(r, "dispatchDate");
+          if (!dispatchDate) errs.push("Dispatch Date required");
+          if (errs.length) {
+            errors.push({ type: existing ? "field" : "ncss", msg: `Row ${rowNum} (${ncssRef}): ${errs.join("; ")}` });
+            return;
+          }
+          parsed.push({ _patch: true, ncssRef, dispatchDate, notes: get(r, "notes") });
+        } else if (sid === 3) {
+          const labRef = get(r, "labRef");
+          const receivedDate = get(r, "receivedDate");
+          if (!labRef) errs.push("Lab Reference required");
+          if (!receivedDate) errs.push("Date Kit Received required");
+          if (errs.length) {
+            errors.push({ type: existing ? "field" : "ncss", msg: `Row ${rowNum} (${ncssRef}): ${errs.join("; ")}` });
+            return;
+          }
+          parsed.push({ _patch: true, ncssRef, labRef, receivedDate, notes: get(r, "notes") });
+        } else if (sid === 4) {
+          const result = get(r, "result");
+          const resultDate = get(r, "resultDate");
+          if (!result) errs.push("Result required");
+          else if (!["Negative", "Positive"].includes(result)) errs.push("Result must be Negative or Positive");
+          if (!resultDate) errs.push("Result Date required");
+          if (errs.length) {
+            errors.push({ type: existing ? "field" : "ncss", msg: `Row ${rowNum} (${ncssRef}): ${errs.join("; ")}` });
+            return;
+          }
+          parsed.push({ _patch: true, ncssRef, result, resultDate, notes: get(r, "notes") });
+        }
+      });
+
+      if (errors.length) {
+        state.fitKit.uploadState = { preview: null, parsedRows: null, errors };
+        renderApp();
+        return;
+      }
+      state.fitKit.uploadState = { preview: parsed, parsedRows: parsed, errors: null };
+      renderApp();
+    };
+    reader.readAsText(file);
+  }
+
+  function fitConfirmUpload() {
+    const sid = Number(state.fitKit.uploadModalStage);
+    const parsed = state.fitKit?.uploadState?.parsedRows || [];
+    if (!sid || !Array.isArray(parsed) || !parsed.length) return;
+    let nid = Number(state.fitKit.nextId) || 1;
+    const nextPatients = [...(state.fitKit.patients || [])];
+    parsed.forEach((row) => {
+      if (row && row._patch) {
+        const i = nextPatients.findIndex((p) => String(p.ncssRef) === String(row.ncssRef));
+        if (i >= 0) nextPatients[i] = { ...nextPatients[i], ...row };
+      } else if (row) {
+        nextPatients.push({ ...row, id: nid++ });
+      }
+    });
+    state.fitKit.patients = nextPatients;
+    state.fitKit.nextId = nid;
+    state.fitKit.uploadModalStage = null;
+    state.fitKit.uploadState = { preview: null, errors: null, parsedRows: null };
+    showToast("CSV imported (prototype only).");
+    renderApp();
+  }
+
+  function fitResultBadgeHtml(resultRaw) {
+    const r = String(resultRaw || "").trim();
+    if (!r) return `<span class="fit-badge fit-badge--pending">Pending</span>`;
+    const pos = r === "Positive";
+    return `<span class="fit-badge ${pos ? "fit-badge--pos" : "fit-badge--neg"}">${escapeAttr(r)}</span>`;
+  }
+
+  function renderFitKitTrackerModals() {
+    const e = escapeAttr;
+    const fit = state.fitKit;
+    if (!fit) return "";
+
+    const closeBtn = `<button type="button" class="ui-btn ui-btn--ghost ui-btn--icon" data-fit-modal-close aria-label="Close">${icons.x}</button>`;
+
+    const edit = fit.editModal;
+    const adv = fit.advanceModal;
+    const uploadStage = fit.uploadModalStage;
+
+    const modalShell = (id, title, bodyHtml, footerHtml) => `
+      <div class="ui-dialog-overlay" id="${e(id)}" role="presentation">
+        <div class="ui-dialog" role="dialog" aria-modal="true" aria-labelledby="${e(id)}-title">
+          <div class="ui-dialog__close">${closeBtn}</div>
+          <div class="ui-dialog__header"><h2 class="ui-dialog__title" id="${e(id)}-title">${e(title)}</h2></div>
+          <div class="ui-dialog__body">${bodyHtml}</div>
+          <div class="ui-dialog__footer"><div class="ui-dialog__footer-actions">${footerHtml}</div></div>
+        </div>
+      </div>
+    `;
+
+    const modals = [];
+
+    if (edit) {
+      const isNew = !!edit.isNew;
+      const p = isNew ? null : fit.patients.find((x) => Number(x.id) === Number(edit.patientId));
+      const stage = Number(isNew ? edit.stage : p?.stage);
+      if (stage >= 1 && stage <= 4 && (isNew || p)) {
+        const title = isNew ? `Add patient — Stage ${stage}` : `Edit — ${p.name} (Stage ${stage})`;
+        const info =
+          stage === 1
+            ? `<p class="fit-modal__lede">${isNew ? "Enter patient details to add into Stage 1." : "All fields are editable for Stage 1."}</p>`
+            : stage === 2
+              ? `<p class="fit-modal__lede">${isNew ? "Add by NCSS Reference. Dispatch Date is required." : "Only <b>Dispatch Date</b> and <b>Notes</b> are editable at Stage 2."}</p>`
+              : stage === 3
+                ? `<p class="fit-modal__lede">${isNew ? "Add by NCSS Reference. Lab Reference and Date Received are required." : "Only <b>Lab Reference</b>, <b>Date Kit Received</b> and <b>Notes</b> are editable at Stage 3."}</p>`
+                : `<p class="fit-modal__lede">${isNew ? "Add by NCSS Reference. Result and Result Date are required." : "Only <b>Result</b>, <b>Result Date</b> and <b>Notes</b> are editable at Stage 4."}</p>`;
+
+        const roField = (label, value) => `
+          <div class="field field--full">
+            <label>${e(label)}</label>
+            <input type="text" value="${e(value || "")}" disabled />
+          </div>`;
+
+        const txt = (k) => e(edit.form?.[k] != null ? String(edit.form[k]) : "");
+        const body = `
+          <div class="fit-modal__stack">
+            ${info}
+            ${
+              isNew
+                ? `<div class="field field--full"><label for="fit-edit-ncssRef">NCSS Reference *</label><input id="fit-edit-ncssRef" type="text" value="${txt(
+                    "ncssRef"
+                  )}" data-fit-edit-field="ncssRef" /></div>`
+                : roField("NCSS Reference", p.ncssRef)
+            }
+            ${!isNew && stage !== 1 ? roField("Patient Name", p.name) : ""}
+            ${
+              stage === 1
+                ? `
+              <div class="form-grid">
+                <div class="field">
+                  <label for="fit-edit-name">Full Name *</label>
+                  <input id="fit-edit-name" type="text" value="${txt("name")}" data-fit-edit-field="name" />
+                </div>
+                <div class="field">
+                  <label for="fit-edit-age">Age</label>
+                  <input id="fit-edit-age" type="number" value="${txt("age")}" data-fit-edit-field="age" />
+                </div>
+                <div class="field">
+                  <label for="fit-edit-nric">NRIC (masked)</label>
+                  <input id="fit-edit-nric" type="text" value="${txt("nric")}" data-fit-edit-field="nric" />
+                </div>
+                <div class="field">
+                  <label for="fit-edit-gender">Gender</label>
+                  <select id="fit-edit-gender" data-fit-edit-field="gender">
+                    <option value="M"${txt("gender") === "M" ? " selected" : ""}>M</option>
+                    <option value="F"${txt("gender") === "F" ? " selected" : ""}>F</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="fit-edit-mobile">Mobile</label>
+                  <input id="fit-edit-mobile" type="text" value="${txt("mobile")}" data-fit-edit-field="mobile" />
+                </div>
+                <div class="field">
+                  <label for="fit-edit-dob">Date of Birth</label>
+                  <input id="fit-edit-dob" type="date" value="${txt("dob")}" data-fit-edit-field="dob" />
+                </div>
+                <div class="field field--full">
+                  <label for="fit-edit-address">Home Address</label>
+                  <input id="fit-edit-address" type="text" value="${txt("address")}" data-fit-edit-field="address" />
+                </div>
+              </div>`
+                : stage === 2
+                  ? `
+              <div class="form-grid">
+                <div class="field field--full">
+                  <label for="fit-edit-dispatchDate">Dispatch Date</label>
+                  <input id="fit-edit-dispatchDate" type="date" value="${txt("dispatchDate")}" data-fit-edit-field="dispatchDate" />
+                </div>
+              </div>`
+                  : stage === 3
+                    ? `
+              <div class="form-grid">
+                <div class="field">
+                  <label for="fit-edit-labRef">Lab Reference</label>
+                  <input id="fit-edit-labRef" type="text" value="${txt("labRef")}" data-fit-edit-field="labRef" />
+                </div>
+                <div class="field">
+                  <label for="fit-edit-receivedDate">Date Kit Received</label>
+                  <input id="fit-edit-receivedDate" type="date" value="${txt("receivedDate")}" data-fit-edit-field="receivedDate" />
+                </div>
+              </div>`
+                    : `
+              <div class="form-grid">
+                <div class="field">
+                  <label for="fit-edit-result">Result</label>
+                  <select id="fit-edit-result" data-fit-edit-field="result">
+                    <option value=""${txt("result") === "" ? " selected" : ""}>Pending</option>
+                    <option value="Negative"${txt("result") === "Negative" ? " selected" : ""}>Negative</option>
+                    <option value="Positive"${txt("result") === "Positive" ? " selected" : ""}>Positive</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="fit-edit-resultDate">Result Date</label>
+                  <input id="fit-edit-resultDate" type="date" value="${txt("resultDate")}" data-fit-edit-field="resultDate" />
+                </div>
+              </div>`
+            }
+            <div class="field field--full">
+              <label for="fit-edit-notes">Notes</label>
+              <textarea id="fit-edit-notes" rows="4" data-fit-edit-field="notes">${e(edit.form?.notes || "")}</textarea>
+            </div>
+          </div>
+        `;
+        const footer = `
+          <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-fit-modal-close>Cancel</button>
+          <button type="button" class="ui-btn ui-btn--default ui-btn--sm" data-fit-edit-save>Save</button>
+        `;
+        modals.push(modalShell("fit-edit-modal", title, body, footer));
+      }
+    }
+
+    if (adv && adv.patientId != null && adv.toStage) {
+      const p = fit.patients.find((x) => Number(x.id) === Number(adv.patientId));
+      if (p) {
+        const toStage = Number(adv.toStage);
+        const stageLabel = FIT_STAGES.find((s) => s.id === toStage)?.label || `Stage ${toStage}`;
+        const title = `Advance to Stage ${toStage} — ${stageLabel}`;
+        const f = adv.form || {};
+        const body = `
+          <div class="fit-modal__stack">
+            <p class="fit-modal__lede">Patient: <b>${e(p.name)}</b></p>
+            ${
+              toStage === 2
+                ? `<div class="field field--full"><label for="fit-adv-dispatchDate">Dispatch Date *</label><input id="fit-adv-dispatchDate" type="date" value="${e(
+                    f.dispatchDate || fitTodayIso()
+                  )}" data-fit-adv-field="dispatchDate" /></div>`
+                : ""
+            }
+            ${
+              toStage === 3
+                ? `
+              <div class="form-grid">
+                <div class="field">
+                  <label for="fit-adv-labRef">Lab Reference *</label>
+                  <input id="fit-adv-labRef" type="text" value="${e(f.labRef || "")}" data-fit-adv-field="labRef" />
+                </div>
+                <div class="field">
+                  <label for="fit-adv-receivedDate">Date Received *</label>
+                  <input id="fit-adv-receivedDate" type="date" value="${e(f.receivedDate || fitTodayIso())}" data-fit-adv-field="receivedDate" />
+                </div>
+              </div>`
+                : ""
+            }
+            ${
+              toStage === 4
+                ? `
+              <div class="form-grid">
+                <div class="field">
+                  <label for="fit-adv-result">Result *</label>
+                  <select id="fit-adv-result" data-fit-adv-field="result">
+                    <option value="">-- Select --</option>
+                    <option value="Negative"${String(f.result) === "Negative" ? " selected" : ""}>Negative</option>
+                    <option value="Positive"${String(f.result) === "Positive" ? " selected" : ""}>Positive</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="fit-adv-resultDate">Result Date *</label>
+                  <input id="fit-adv-resultDate" type="date" value="${e(f.resultDate || fitTodayIso())}" data-fit-adv-field="resultDate" />
+                </div>
+              </div>
+              <div class="field field--full">
+                <label for="fit-adv-labRef2">Lab Reference</label>
+                <input id="fit-adv-labRef2" type="text" value="${e(f.labRef || p.labRef || "")}" data-fit-adv-field="labRef" />
+              </div>`
+                : ""
+            }
+            <div class="field field--full">
+              <label for="fit-adv-notes">Notes</label>
+              <textarea id="fit-adv-notes" rows="4" data-fit-adv-field="notes">${e(f.notes || "")}</textarea>
+            </div>
+          </div>
+        `;
+        const footer = `
+          <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-fit-modal-close>Cancel</button>
+          <button type="button" class="ui-btn ui-btn--default ui-btn--sm" data-fit-adv-save>Advance</button>
+        `;
+        modals.push(modalShell("fit-advance-modal", title, body, footer));
+      }
+    }
+
+    if (uploadStage) {
+      const sid = Number(uploadStage);
+      const us = fit.uploadState || {};
+      const errs = Array.isArray(us.errors) ? us.errors : null;
+      const preview = Array.isArray(us.preview) ? us.preview : null;
+      const ready = Array.isArray(us.parsedRows) ? us.parsedRows : null;
+
+      const errsHtml = (() => {
+        if (!errs || !errs.length) return "";
+        const ncss = errs.filter((x) => x.type === "ncss" || String(x.msg || "").includes("not found") || String(x.msg || "").includes("Stage"));
+        const field = errs.filter((x) => !ncss.includes(x));
+        const section = (title, items, tone) =>
+          items && items.length
+            ? `<div class="fit-upload__err-block fit-upload__err-block--${tone}"><div class="fit-upload__err-title">${e(
+                title
+              )}</div><div class="fit-upload__err-items">${items.map((it) => `<div>• ${e(it.msg)}</div>`).join("")}</div></div>`
+            : "";
+        return `
+          <div class="fit-upload__errs">
+            ${section(`⚠ ${ncss.length} NCSS Reference ID${ncss.length === 1 ? "" : "s"} rejected — upload cancelled`, ncss, "danger")}
+            ${section(`${field.length} field validation error${field.length === 1 ? "" : "s"}`, field, "warn")}
+            <div class="fit-upload__err-foot">Please correct the errors and upload again. No records were updated.</div>
+          </div>
+        `;
+      })();
+
+      const previewHtml = (() => {
+        if (!preview || !preview.length) return "";
+        const cfg = {
+          1: { cols: ["ncssRef", "name", "age", "gender", "mobile"], labels: ["NCSS Ref", "Name", "Age", "Sex", "Mobile"] },
+          2: { cols: ["ncssRef", "dispatchDate", "notes"], labels: ["NCSS Ref", "Dispatch Date", "Notes"] },
+          3: { cols: ["ncssRef", "receivedDate", "notes"], labels: ["NCSS Ref", "Date Received", "Notes"] },
+          4: { cols: ["ncssRef", "result", "resultDate", "notes"], labels: ["NCSS Ref", "Result", "Result Date", "Notes"] },
+        }[sid] || { cols: ["ncssRef"], labels: ["NCSS Ref"] };
+        const head = cfg.labels.map((l) => `<th scope="col">${e(l)}</th>`).join("");
+        const rows = preview
+          .map((r) => `<tr>${cfg.cols.map((c) => `<td>${e(r?.[c] || "—")}</td>`).join("")}</tr>`)
+          .join("");
+        return `
+          <div class="fit-upload__preview">
+            <div class="fit-upload__preview-title">Preview — ${preview.length} record${preview.length === 1 ? "" : "s"} ready to import</div>
+            <div class="fit-upload__preview-table">
+              <table class="data-table data-table--compact">
+                <thead><tr>${head}</tr></thead>
+                <tbody>${rows}</tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      })();
+
+      const body = `
+        <div class="fit-modal__stack">
+          <div class="fit-upload__howto">
+            <b>How to use:</b><br/>
+            1. Download the CSV template below<br/>
+            2. Fill in patient details (one row per patient)<br/>
+            3. Save as <b>.csv</b> and upload here
+          </div>
+          <button type="button" class="ui-btn ui-btn--default ui-btn--sm" data-fit-download-template="${e(sid)}">Download CSV Template (Stage ${e(
+        sid
+      )})</button>
+          <div class="fit-upload__divider"><span>then upload your filled file</span></div>
+          <div class="fit-upload__dropzone" data-fit-upload-dropzone>
+            <div class="fit-upload__drop-ico">Upload</div>
+            <div class="fit-upload__drop-title">Click to select or drag &amp; drop</div>
+            <div class="fit-upload__drop-sub">.csv files only</div>
+            <input id="fit-upload-input" type="file" accept=".csv" style="display:none" />
+          </div>
+          ${errsHtml}
+          ${previewHtml}
+        </div>
+      `;
+      const footer = `
+        <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-fit-modal-close>Cancel</button>
+        ${
+          ready && ready.length
+            ? `<button type="button" class="ui-btn ui-btn--default ui-btn--sm" data-fit-upload-confirm>Import ${ready.length} record${
+                ready.length === 1 ? "" : "s"
+              }</button>`
+            : ""
+        }
+      `;
+      modals.push(modalShell("fit-upload-modal", `Upload CSV — Stage ${sid}`, body, footer));
+    }
+
+    return modals.join("");
+  }
+
+  /** KPI strip — same structure/classes as Prospect Management listing (`renderProspectSummarySection`). */
+  function renderFitKitSummarySection() {
+    const e = escapeAttr;
+    const patients = state.fitKit?.patients || [];
+    const total = patients.length;
+    const pos = patients.filter((p) => String(p.result) === "Positive").length;
+    const neg = patients.filter((p) => String(p.result) === "Negative").length;
+    const awaiting = patients.filter((p) => Number(p.stage) < 4).length;
+    const card = (classNames, label, value) => `
+          <article class="prospect-summary-card ${classNames}">
+            <h3 class="prospect-summary-card__label">${e(label)}</h3>
+            <p class="prospect-summary-card__value">${e(String(value))}</p>
+          </article>`;
+    return `
+      <section class="prospect-summary fit-kit-summary" aria-label="FIT kit summary">
+        <div class="prospect-summary__grid" role="group" aria-label="FIT pipeline summary">
+          ${card("", "Total patients", total)}
+          ${card("prospect-summary-card--qualified", "Stage 1 — NCSS list", fitStageCount(1))}
+          ${card("prospect-summary-card--booked", "Stage 2 — dispatched", fitStageCount(2))}
+          ${card("prospect-summary-card--screened", "Stage 3 — kit returned", fitStageCount(3))}
+          ${card("prospect-summary-card--conversion", "Stage 4 — results in", fitStageCount(4))}
+          ${card("prospect-summary-card--highrisk", "Positive results", pos)}
+          ${card("prospect-summary-card--screened", "Negative results", neg)}
+          ${card("prospect-summary-card--firsttime", "Awaiting result", awaiting)}
+        </div>
+      </section>`;
+  }
+
+  function renderFitKitTrackerPage() {
+    const e = escapeAttr;
+    const fit = state.fitKit;
+    const patients = fit?.patients || [];
+    const filtered = fitFilteredPatients();
+    const selectedSet = new Set((fit?.selectedIds || []).map((x) => Number(x)).filter((n) => Number.isFinite(n)));
+    const activeStage = Number(fit?.activeStage || 0);
+    const stagesToShow = activeStage ? FIT_STAGES.filter((s) => s.id === activeStage) : FIT_STAGES;
+
+    const stageNav = FIT_STAGES.map((s) => {
+      const on = activeStage === s.id;
+      return `
+        <button type="button" class="fit-stage-tab${on ? " is-active" : ""}" data-fit-stage="${e(s.id)}">
+          <span class="fit-stage-tab__dot">${e(s.id)}</span>
+          <span class="fit-stage-tab__txt">
+            <span class="fit-stage-tab__label">${e(s.label)}</span>
+            <span class="fit-stage-tab__sub">${e(s.sub)}</span>
+          </span>
+          <span class="fit-stage-tab__count">${e(fitStageCount(s.id))}</span>
+        </button>
+      `;
+    }).join("");
+
+    const stageSections = stagesToShow
+      .map((s) => {
+        const sid = Number(s.id);
+        const rows = filtered.filter((p) => Number(p.stage) === sid);
+
+        const cols =
+          sid === 1
+            ? [
+                ["ncssRef", "NCSS ref"],
+                ["name", "Patient name"],
+                ["nric", "NRIC"],
+                ["age", "Age"],
+                ["gender", "Sex"],
+                ["mobile", "Mobile"],
+                ["notes", "Notes"],
+              ]
+            : sid === 2
+              ? [
+                  ["ncssRef", "NCSS ref"],
+                  ["name", "Patient name"],
+                  ["nric", "NRIC"],
+                  ["age", "Age"],
+                  ["gender", "Sex"],
+                  ["mobile", "Mobile"],
+                  ["dispatchDate", "Dispatch date"],
+                  ["notes", "Notes"],
+                ]
+              : sid === 3
+                ? [
+                    ["ncssRef", "NCSS ref"],
+                    ["name", "Patient name"],
+                    ["nric", "NRIC"],
+                    ["age", "Age"],
+                    ["gender", "Sex"],
+                    ["mobile", "Mobile"],
+                    ["labRef", "Lab ref"],
+                    ["receivedDate", "Date received"],
+                    ["notes", "Notes"],
+                  ]
+                : [
+                    ["ncssRef", "NCSS ref"],
+                    ["name", "Patient name"],
+                    ["nric", "NRIC"],
+                    ["age", "Age"],
+                    ["gender", "Sex"],
+                    ["mobile", "Mobile"],
+                    ["result", "Result"],
+                    ["resultDate", "Result date"],
+                    ["notes", "Notes"],
+                  ];
+
+        const thead = `
+          <thead>
+            <tr>
+              <th scope="col" class="fit-th-check">
+                <input type="checkbox" class="fit-check" data-fit-select-all-stage="${e(sid)}" aria-label="Select all Stage ${e(
+          sid
+        )} records" />
+              </th>
+              ${cols.map(([, label]) => `<th scope="col">${e(label)}</th>`).join("")}
+              <th scope="col" class="fit-th-actions">Actions</th>
+            </tr>
+          </thead>
+        `;
+
+        const tbody = rows.length
+          ? rows
+              .map((p) => {
+                const checked = selectedSet.has(Number(p.id));
+                const canAdvanceRow = Number(p.stage) < 4;
+                const cell = (k) => {
+                  const v = p?.[k];
+                  if (k === "notes") return `<td class="fit-notes" title="${e(v || "")}">${e(v || "—")}</td>`;
+                  if (k === "result") return `<td>${fitResultBadgeHtml(v)}</td>`;
+                  return `<td class="${k.endsWith("Date") ? "mono" : ""}">${e(v || "—")}</td>`;
+                };
+                return `
+                  <tr class="fit-row" data-fit-row-stage="${e(sid)}">
+                    <td class="fit-td-check">
+                      <input type="checkbox" class="fit-check" data-fit-select-row="${e(p.id)}" data-fit-row-stage="${e(
+          sid
+        )}" aria-label="Select ${e(p.ncssRef || p.name || "record")}" ${checked ? "checked" : ""}/>
+                    </td>
+                    ${cols.map(([k]) => cell(k)).join("")}
+                    <td class="fit-actions">
+                      <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-fit-edit="${e(p.id)}">Edit</button>
+                      ${
+                        canAdvanceRow
+                          ? `<button type="button" class="ui-btn ui-btn--default ui-btn--sm" data-fit-advance="${e(
+                              p.id
+                            )}" aria-label="Advance">→</button>`
+                          : ""
+                      }
+                    </td>
+                  </tr>
+                `;
+              })
+              .join("")
+          : `<tr><td colspan="${cols.length + 2}" class="fit-empty">No patients in this stage.</td></tr>`;
+
+        return `
+          <section class="fit-stage" aria-label="Stage ${e(sid)}">
+            <div class="fit-stage__head">
+              <div class="fit-stage__left">
+                <span class="fit-stage__title"><span class="fit-stage__dot" aria-hidden="true"></span>Stage ${e(sid)} — ${e(
+          s.label
+        )}</span>
+                <span class="fit-stage__meta">${e(rows.length)} patient${rows.length === 1 ? "" : "s"}</span>
+              </div>
+              <div class="fit-stage__actions">
+                <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-fit-add-stage="${e(sid)}">+ Add to stage ${e(
+          sid
+        )}</button>
+                <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-fit-upload="${e(sid)}">Upload CSV</button>
+              </div>
+            </div>
+            <section class="table-card fit-kit__table-card">
+              <div class="table-card__body">
+                <div class="data-table-wrap">
+                  <table class="data-table fit-table">
+                    ${thead}
+                    <tbody>${tbody}</tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+          </section>
+        `;
+      })
+      .join("");
+
+    return `
+      <section class="fit-kit">
+        ${renderFitKitSummarySection()}
+        <div class="fit-kit__top">
+          <div>
+            <h1 class="fit-kit__title">FIT Kit Tracker</h1>
+            <p class="fit-kit__subtitle">Faecal Immunochemical Test — Colorectal Cancer Screening</p>
+          </div>
+          <div class="fit-kit__actions">
+            <div class="field fit-kit__search">
+              <label class="sr-only" for="fit-search">Search patient</label>
+              <input id="fit-search" type="text" placeholder="Search patient..." value="${e(fit?.search || "")}" />
+            </div>
+            <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" id="fit-export">Export CSV</button>
+          </div>
+        </div>
+
+        <div class="fit-kit__stagebar" role="tablist" aria-label="FIT pipeline">
+          ${stageNav}
+        </div>
+        ${stageSections}
+      </section>
+      ${renderFitKitTrackerModals()}
+    `;
+  }
+
   /** Legal entity line — keep in sync with `_figma_export/src/components/Footer.tsx` (`FOOTER_LEGAL_NAME`). */
   const APP_FOOTER_LEGAL_NAME = "WERKDONE PTE LTD.";
 
@@ -2019,7 +3519,10 @@
       if (isHighRiskProspect(r)) highRisk++;
       if (isFirstTimeScreenerProspect(r)) firstTime++;
     }
-    return { total: rows.length, qualified, booked, screened, followUp, highRisk, firstTime };
+    const total = rows.length;
+    /** Conversion = share of cases that reached screened (prototype: same as `status === "screened"`). */
+    const conversionRatePct = total === 0 ? 0 : Math.round((screened / total) * 1000) / 10;
+    return { total, qualified, booked, screened, followUp, highRisk, firstTime, conversionRatePct };
   }
 
   /** All `PROSPECTS` enrolment rows for the current prospect (same person, multiple programmes). */
@@ -2037,23 +3540,10 @@
     return [];
   }
 
-  /** Decorative trend deltas (no historical API in prototype); scales loosely with totals. */
-  function prospectListSummaryTrendDeltas(s) {
-    return {
-      total: s.total === 0 ? 0 : Math.max(1, Math.round(s.total * 0.081)),
-      qualified: s.qualified === 0 ? 0 : Math.max(1, Math.round(s.qualified * 0.11)),
-      booked: s.booked === 0 ? 0 : Math.max(1, Math.round(s.booked * 0.148)),
-      screened: s.screened === 0 ? 0 : Math.max(1, Math.round(s.screened * 0.066)),
-      followUp: s.followUp,
-      highRisk: s.highRisk === 0 ? 0 : Math.max(1, Math.round(s.highRisk * 0.09)),
-      firstTime: s.firstTime === 0 ? 0 : Math.max(1, Math.round(s.firstTime * 0.07)),
-    };
-  }
-
   /**
    * KPI cards (listing + V1 overview): same markup and logic as the main prospect list strip.
    * @param {object[]} rows Enrolment rows with `status` + `attendance` (e.g. `PROSPECTS` slice).
-   * @param {{ ariaLabel?: string, sectionClass?: string, gridOnly?: boolean }} [options] `gridOnly` = no outer `<section>`, only the five `<article>` cards in a grid.
+   * @param {{ ariaLabel?: string, sectionClass?: string, gridOnly?: boolean }} [options] `gridOnly` = no outer `<section>`, only the `<article>` cards in a grid.
    */
   function renderProspectSummarySection(rows, options) {
     options = options || {};
@@ -2061,30 +3551,7 @@
     const ariaLabel = options.ariaLabel != null ? String(options.ariaLabel) : "Prospect summary";
     const sectionExtra = options.sectionClass != null ? String(options.sectionClass).trim() : "";
     const s = computeProspectListSummary(rows);
-    const d = prospectListSummaryTrendDeltas(s);
     const esc = escapeAttr;
-    const trendPositive = (delta, hint) => {
-      if (delta <= 0) {
-        return `<div class="prospect-summary-card__trend prospect-summary-card__trend--muted"><span class="prospect-summary-card__hint">${esc(hint)}</span></div>`;
-      }
-      return `<div class="prospect-summary-card__trend prospect-summary-card__trend--positive">
-        <span class="prospect-summary-card__trend-icon">${icons.trendUp}</span>
-        <span class="prospect-summary-card__delta">${esc(String(delta))}</span>
-        <span class="prospect-summary-card__hint">${esc(hint)}</span>
-      </div>`;
-    };
-    const trendFollowUp = () => {
-      if (s.followUp === 0) {
-        return `<div class="prospect-summary-card__trend prospect-summary-card__trend--muted"><span class="prospect-summary-card__hint">${esc(
-          "No new no-shows"
-        )}</span></div>`;
-      }
-      return `<div class="prospect-summary-card__trend prospect-summary-card__trend--alert">
-        <span class="prospect-summary-card__trend-icon">${icons.trendUp}</span>
-        <span class="prospect-summary-card__delta">${esc(String(d.followUp))}</span>
-        <span class="prospect-summary-card__hint">${esc("new no-shows")}</span>
-      </div>`;
-    };
     const gridAttrs = gridOnly
       ? ` class="prospect-summary__grid v1-overview-kpi-grid" role="group" aria-label="${esc(ariaLabel)}"`
       : ` class="prospect-summary__grid"`;
@@ -2096,37 +3563,34 @@
           <article class="${cardClass("prospect-summary-card prospect-summary-card--total", "total")}"${cardAttrs("total")}>
             <h3 class="prospect-summary-card__label">Total cases</h3>
             <p class="prospect-summary-card__value">${esc(String(s.total))}</p>
-            ${trendPositive(d.total, "from last month")}
           </article>
           <article class="${cardClass("prospect-summary-card prospect-summary-card--qualified", "qualified")}"${cardAttrs("qualified")}>
             <h3 class="prospect-summary-card__label">Qualified</h3>
             <p class="prospect-summary-card__value">${esc(String(s.qualified))}</p>
-            ${trendPositive(d.qualified, "new intakes")}
           </article>
           <article class="${cardClass("prospect-summary-card prospect-summary-card--booked", "booked")}"${cardAttrs("booked")}>
             <h3 class="prospect-summary-card__label">Booked</h3>
             <p class="prospect-summary-card__value">${esc(String(s.booked))}</p>
-            ${trendPositive(d.booked, "new appointments")}
           </article>
           <article class="${cardClass("prospect-summary-card prospect-summary-card--screened", "screened")}"${cardAttrs("screened")}>
             <h3 class="prospect-summary-card__label">Screened</h3>
             <p class="prospect-summary-card__value">${esc(String(s.screened))}</p>
-            ${trendPositive(d.screened, "this week")}
           </article>
           <article class="${cardClass("prospect-summary-card prospect-summary-card--followup", "followup")}"${cardAttrs("followup")}>
             <h3 class="prospect-summary-card__label">Follow-up needed</h3>
             <p class="prospect-summary-card__value">${esc(String(s.followUp))}</p>
-            ${trendFollowUp()}
           </article>
           <article class="${cardClass("prospect-summary-card prospect-summary-card--highrisk", "highrisk")}"${cardAttrs("highrisk")}>
             <h3 class="prospect-summary-card__label">High risk</h3>
             <p class="prospect-summary-card__value">${esc(String(s.highRisk))}</p>
-            ${trendPositive(d.highRisk, "flagged")}
           </article>
           <article class="${cardClass("prospect-summary-card prospect-summary-card--firsttime", "firsttime")}"${cardAttrs("firsttime")}>
             <h3 class="prospect-summary-card__label">First-time screener</h3>
             <p class="prospect-summary-card__value">${esc(String(s.firstTime))}</p>
-            ${trendPositive(d.firstTime, "new")}
+          </article>
+          <article class="prospect-summary-card prospect-summary-card--conversion" aria-label="Conversion rate: screened cases as a share of total cases in view">
+            <h3 class="prospect-summary-card__label">Conversion rate</h3>
+            <p class="prospect-summary-card__value">${esc(s.total === 0 ? "—" : `${s.conversionRatePct}%`)}</p>
           </article>
         </div>`;
     if (gridOnly) return gridHtml;
@@ -6424,9 +7888,9 @@
     else if (state.route === "screening") main = renderScreeningDetailsPage();
     else if (state.route === "prospectv3") main = renderProspectDetailV3Page();
     else if (state.route === "bishanClinics") {
-      main = renderPortalPlaceholderPage("Bishan Clinics", "Clinic operations view — content coming soon.");
+      main = renderBishanClinicsPage();
     } else if (state.route === "fitKitTracker") {
-      main = renderPortalPlaceholderPage("FIT Kit Tracker", "FIT kit tracking — content coming soon.");
+      main = renderFitKitTrackerPage();
     } else if (state.route !== "register") main = renderListPage();
 
     if (state.route === "register" && state.registerSelfServiceEntry === "landing") {
@@ -7216,6 +8680,373 @@
         e.preventDefault();
         e.stopPropagation();
       });
+    }
+
+    // FIT Kit Tracker (route-local bindings)
+    if (state.route === "fitKitTracker") {
+      const fit = state.fitKit;
+      const byId = (id) => document.getElementById(id);
+        const toNumId = (raw) => {
+          const n = Number(raw);
+          return Number.isFinite(n) ? n : null;
+        };
+
+      const searchInp = byId("fit-search");
+      if (searchInp && searchInp instanceof HTMLInputElement) {
+        searchInp.addEventListener("input", () => {
+          fit.search = searchInp.value;
+          renderApp();
+        });
+      }
+
+      byId("fit-export")?.addEventListener("click", (e) => {
+        e.preventDefault();
+        fitExportCsv();
+      });
+
+      // Select-all + row selection (bulk actions)
+      const selected = new Set((fit.selectedIds || []).map((x) => Number(x)).filter((n) => Number.isFinite(n)));
+      const filtered = fitFilteredPatients();
+      const activeStage = Number(fit.activeStage || 0);
+      const stagesToShow = activeStage ? FIT_STAGES.filter((s) => s.id === activeStage) : FIT_STAGES;
+
+      const stageVisibleIds = new Map();
+      stagesToShow.forEach((s) => {
+        const sid = Number(s.id);
+        const ids = filtered
+          .filter((p) => Number(p.stage) === sid)
+          .map((p) => toNumId(p.id))
+          .filter((id) => id != null);
+        stageVisibleIds.set(sid, ids);
+      });
+
+      document.querySelectorAll("[data-fit-select-all-stage]").forEach((cb) => {
+        if (!(cb instanceof HTMLInputElement)) return;
+        const sid = Number(cb.getAttribute("data-fit-select-all-stage") || 0);
+        const ids = stageVisibleIds.get(sid) || [];
+        const selectedVisible = ids.filter((id) => selected.has(id)).length;
+        cb.checked = ids.length > 0 && selectedVisible === ids.length;
+        cb.indeterminate = selectedVisible > 0 && selectedVisible < ids.length;
+        cb.addEventListener("change", () => {
+          const want = cb.checked;
+          const next = new Set((fit.selectedIds || []).map((x) => Number(x)).filter((n) => Number.isFinite(n)));
+          if (want) ids.forEach((id) => next.add(id));
+          else ids.forEach((id) => next.delete(id));
+          fit.selectedIds = Array.from(next);
+          renderApp();
+        });
+      });
+
+      document.querySelectorAll("[data-fit-select-row]").forEach((cb) => {
+        if (!(cb instanceof HTMLInputElement)) return;
+        cb.addEventListener("change", () => {
+          const id = toNumId(cb.getAttribute("data-fit-select-row"));
+          if (id == null) return;
+          const next = new Set((fit.selectedIds || []).map((x) => Number(x)).filter((n) => Number.isFinite(n)));
+          if (cb.checked) next.add(id);
+          else next.delete(id);
+          fit.selectedIds = Array.from(next);
+          renderApp();
+        });
+      });
+
+      document.querySelectorAll("[data-fit-add-stage]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          const sid = Number(btn.getAttribute("data-fit-add-stage") || 0);
+          if (!sid) return;
+          fit.editModal = {
+            isNew: true,
+            stage: sid,
+            patientId: null,
+            form: {
+              ncssRef: "",
+              name: "",
+              nric: "",
+              dob: "",
+              age: "",
+              gender: "F",
+              mobile: "",
+              address: "",
+              dispatchDate: sid === 2 ? fitTodayIso() : "",
+              labRef: "",
+              receivedDate: sid === 3 ? fitTodayIso() : "",
+              result: "",
+              resultDate: sid === 4 ? fitTodayIso() : "",
+              notes: "",
+            },
+          };
+          renderApp();
+        });
+      });
+
+      document.querySelectorAll("[data-fit-stage]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          const raw = btn.getAttribute("data-fit-stage");
+          const sid = Number(raw || 0);
+          fit.activeStage = fit.activeStage === sid ? 0 : sid;
+          renderApp();
+        });
+      });
+
+      document.querySelectorAll("[data-fit-upload]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          const raw = btn.getAttribute("data-fit-upload");
+          fit.uploadModalStage = Number(raw || 0) || null;
+          fit.uploadState = { preview: null, errors: null, parsedRows: null };
+          renderApp();
+        });
+      });
+
+      document.querySelectorAll("[data-fit-edit]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          const pid = Number(btn.getAttribute("data-fit-edit") || 0);
+          const p = fit.patients.find((x) => Number(x.id) === pid);
+          if (!p) return;
+          fit.editModal = { patientId: pid, form: { ...p } };
+          renderApp();
+        });
+      });
+
+      document.querySelectorAll("[data-fit-advance]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          const pid = Number(btn.getAttribute("data-fit-advance") || 0);
+          const p = fit.patients.find((x) => Number(x.id) === pid);
+          if (!p) return;
+          const toStage = Math.min(4, Number(p.stage) + 1);
+          fit.advanceModal = {
+            patientId: pid,
+            toStage,
+            form: {
+              dispatchDate: fitTodayIso(),
+              labRef: "",
+              receivedDate: fitTodayIso(),
+              result: "",
+              resultDate: fitTodayIso(),
+              notes: p.notes || "",
+            },
+          };
+          renderApp();
+        });
+      });
+
+      // Modal close (X + Cancel)
+      document.querySelectorAll("[data-fit-modal-close]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          fit.editModal = null;
+          fit.advanceModal = null;
+          fit.uploadModalStage = null;
+          fit.uploadState = { preview: null, errors: null, parsedRows: null };
+          renderApp();
+        });
+      });
+
+      // Edit modal: field updates
+      document.querySelectorAll("[data-fit-edit-field]").forEach((el) => {
+        el.addEventListener("input", () => {
+          if (!fit.editModal) return;
+          const k = el.getAttribute("data-fit-edit-field");
+          if (!k) return;
+          fit.editModal.form[k] = el.value;
+        });
+        el.addEventListener("change", () => {
+          if (!fit.editModal) return;
+          const k = el.getAttribute("data-fit-edit-field");
+          if (!k) return;
+          fit.editModal.form[k] = el.value;
+        });
+      });
+
+      document.querySelectorAll("[data-fit-edit-save]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          const em = fit.editModal;
+          if (!em) return;
+          const f = em.form || {};
+          const isNew = !!em.isNew;
+          const stage = Number(isNew ? em.stage : (fit.patients.find((x) => Number(x.id) === Number(em.patientId))?.stage || 1));
+
+          if (isNew) {
+            const ncssRef = String(f.ncssRef || "").trim();
+            if (!ncssRef) {
+              alert("NCSS Reference is required.");
+              return;
+            }
+            if (stage === 2 && !String(f.dispatchDate || "").trim()) {
+              alert("Dispatch date required.");
+              return;
+            }
+            if (stage === 3 && !String(f.labRef || "").trim()) {
+              alert("Lab reference required.");
+              return;
+            }
+            if (stage === 4 && !String(f.result || "").trim()) {
+              alert("Result required.");
+              return;
+            }
+            const id = Number(fit.nextId || 1);
+            fit.nextId = id + 1;
+            fit.patients = [
+              ...fit.patients,
+              {
+                id,
+                stage,
+                ncssRef,
+                name: String(f.name || "").trim(),
+                nric: String(f.nric || "").trim(),
+                dob: String(f.dob || "").trim(),
+                age: Number.parseInt(f.age, 10) || 0,
+                gender: String(f.gender || "").trim(),
+                mobile: String(f.mobile || "").trim(),
+                address: String(f.address || "").trim(),
+                dispatchDate: String(f.dispatchDate || "").trim(),
+                labRef: String(f.labRef || "").trim(),
+                receivedDate: String(f.receivedDate || "").trim(),
+                result: String(f.result || "").trim(),
+                resultDate: String(f.resultDate || "").trim(),
+                notes: String(f.notes || "").trim(),
+              },
+            ];
+          } else {
+            const pid = Number(em.patientId);
+            fit.patients = fit.patients.map((p) => {
+              if (Number(p.id) !== pid) return p;
+              const st = Number(p.stage);
+              if (st === 1) {
+                return {
+                  ...p,
+                  name: f.name || p.name,
+                  age: Number.parseInt(f.age, 10) || p.age,
+                  nric: f.nric,
+                  gender: f.gender,
+                  dob: f.dob,
+                  mobile: f.mobile,
+                  address: f.address,
+                  notes: f.notes,
+                };
+              }
+              if (st === 2) return { ...p, dispatchDate: f.dispatchDate, notes: f.notes };
+              if (st === 3) return { ...p, labRef: f.labRef, receivedDate: f.receivedDate, notes: f.notes };
+              if (st === 4) return { ...p, result: f.result, resultDate: f.resultDate, notes: f.notes };
+              return p;
+            });
+          }
+          fit.editModal = null;
+          showToast("Data Updated");
+          renderApp();
+        });
+      });
+
+      // Advance modal fields
+      document.querySelectorAll("[data-fit-adv-field]").forEach((el) => {
+        el.addEventListener("input", () => {
+          if (!fit.advanceModal) return;
+          const k = el.getAttribute("data-fit-adv-field");
+          if (!k) return;
+          fit.advanceModal.form[k] = el.value;
+        });
+        el.addEventListener("change", () => {
+          if (!fit.advanceModal) return;
+          const k = el.getAttribute("data-fit-adv-field");
+          if (!k) return;
+          fit.advanceModal.form[k] = el.value;
+        });
+      });
+
+      document.querySelectorAll("[data-fit-adv-save]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          const am = fit.advanceModal;
+          if (!am) return;
+          const pid = Number(am.patientId);
+          const toStage = Number(am.toStage);
+          const f = am.form || {};
+          if (toStage === 2 && !String(f.dispatchDate || "").trim()) {
+            alert("Dispatch date required.");
+            return;
+          }
+          if (toStage === 3 && !String(f.labRef || "").trim()) {
+            alert("Lab reference required.");
+            return;
+          }
+          if (toStage === 4 && !String(f.result || "").trim()) {
+            alert("Result required.");
+            return;
+          }
+          fit.patients = fit.patients.map((p) => {
+            if (Number(p.id) !== pid) return p;
+            const patch =
+              toStage === 2
+                ? { dispatchDate: f.dispatchDate }
+                : toStage === 3
+                  ? { labRef: f.labRef, receivedDate: f.receivedDate }
+                  : { result: f.result, resultDate: f.resultDate, labRef: f.labRef || p.labRef };
+            return { ...p, ...patch, notes: f.notes, stage: toStage };
+          });
+          fit.advanceModal = null;
+          showToast("Data Updated");
+          renderApp();
+        });
+      });
+
+      // Upload modal: template + file selection + drop + confirm
+      document.querySelectorAll("[data-fit-download-template]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          const sid = Number(btn.getAttribute("data-fit-download-template") || 0);
+          if (sid) fitDownloadTemplate(sid);
+        });
+      });
+
+      const upInput = byId("fit-upload-input");
+      if (upInput && upInput instanceof HTMLInputElement) {
+        upInput.addEventListener("change", () => {
+          const f = upInput.files && upInput.files[0];
+          if (f) fitHandleCsvFile(f, fit.uploadModalStage);
+        });
+      }
+
+      const dz = document.querySelector("[data-fit-upload-dropzone]");
+      if (dz && dz instanceof HTMLElement) {
+        dz.addEventListener("click", () => {
+          byId("fit-upload-input")?.click();
+        });
+        dz.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          dz.classList.add("is-drag");
+        });
+        dz.addEventListener("dragleave", () => {
+          dz.classList.remove("is-drag");
+        });
+        dz.addEventListener("drop", (e) => {
+          e.preventDefault();
+          dz.classList.remove("is-drag");
+          const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+          if (f) fitHandleCsvFile(f, fit.uploadModalStage);
+        });
+      }
+
+      document.querySelectorAll("[data-fit-upload-confirm]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          fitConfirmUpload();
+        });
+      });
+    }
+
+    if (state.route === "bishanClinics" && typeof window.WD_bishanPipeline !== "undefined" && state.bishanPipeline) {
+      const bpRoot = document.getElementById("bishan-pipeline-root");
+      if (bpRoot) {
+        window.WD_bishanPipeline.bindBishanPipeline(bpRoot, {
+          getState: () => state.bishanPipeline,
+          commit: () => renderApp(),
+        });
+      }
     }
 
     document.getElementById("registration-nav-toggle")?.addEventListener("click", (e) => {
