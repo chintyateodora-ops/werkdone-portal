@@ -15,10 +15,23 @@
     return s;
   }
 
+  /** Matches profile / list display: `S****223E` (first + four stars + last four). */
+  function profileStyleMask(raw) {
+    var s = String(raw || "").trim();
+    if (!s) return "";
+    if (s.length <= 5) return s.charAt(0) + "****";
+    return s.charAt(0) + "****" + s.slice(-4);
+  }
+
   function updateMaskDisplay(shell) {
     var store = shell.querySelector(".field__nric-store");
     var span = shell.querySelector(".field__nric-asterisks");
+    var edit = shell.querySelector(".field__nric-edit");
     if (!store || !span) return;
+    if (edit && (edit.disabled || edit.readOnly)) {
+      span.textContent = profileStyleMask(store.value);
+      return;
+    }
     span.textContent = maskText((store.value || "").length);
   }
 

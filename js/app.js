@@ -4020,20 +4020,27 @@
     if (state.registerSelfService) return "";
     return `
                 <div class="registration__basic-info">
-                  <div class="registration__client-search-row">
-                    <div class="registration__client-search-field">
-                      <i class="fi fi-rr-search registration__client-search-icon" aria-hidden="true"></i>
-                      <input
-                        type="search"
-                        class="registration__client-search-input"
-                        data-reg-client-search
-                        name="clientLookup"
-                        autocomplete="off"
-                        placeholder="Search existing Client information by input NRIC or Client Name"
-                        aria-describedby="reg-client-search-hint"
-                      />
+                  <div class="registration__client-search-wrap">
+                    <div class="registration__client-search-row">
+                      <div class="registration__client-search-field">
+                        <i class="fi fi-rr-search registration__client-search-icon" aria-hidden="true"></i>
+                        <input
+                          type="search"
+                          class="registration__client-search-input"
+                          data-reg-client-search
+                          name="clientLookup"
+                          autocomplete="off"
+                          placeholder="Search existing Client information by input NRIC or Client Name"
+                          aria-describedby="reg-client-search-hint"
+                          aria-controls="reg-client-dropdown-list"
+                          aria-expanded="false"
+                        />
+                      </div>
+                      <button type="button" class="btn registration__client-search-reset" data-reg-client-search-reset>Reset</button>
                     </div>
-                    <button type="button" class="btn registration__client-search-reset" data-reg-client-search-reset>Reset</button>
+                    <div class="registration__client-dropdown" data-reg-client-dropdown hidden>
+                      <ul id="reg-client-dropdown-list" class="registration__client-dropdown-list" role="listbox" aria-label="Matching existing clients" data-reg-client-dropdown-list></ul>
+                    </div>
                   </div>
                   <p id="reg-client-search-hint" class="registration__client-search-status" data-reg-client-search-status role="status" aria-live="polite"></p>
                 </div>`;
@@ -4045,32 +4052,139 @@
       .toUpperCase();
   }
 
-  function findExistingClientByRegistrationQuery(raw) {
+  /** All demo clients matching NRIC or name (for registration search dropdown). */
+  function filterExistingClientsByRegistrationQuery(raw) {
     const q = String(raw || "").trim();
-    if (!q) return null;
+    if (!q) return [];
     const nq = normalizeRegistrationNricQuery(q);
     const lq = q.toLowerCase();
+    const out = [];
+    const seen = new Set();
+    const add = (c) => {
+      const k = `${c.nric}\u0000${c.name}`;
+      if (seen.has(k)) return;
+      seen.add(k);
+      out.push(c);
+    };
 
-    if (nq.length >= 4) {
-      const exact = REG_EXISTING_CLIENTS.find((c) => normalizeRegistrationNricQuery(c.nric) === nq);
-      if (exact) return exact;
-      const byNric = REG_EXISTING_CLIENTS.find((c) => {
+    if (nq.length >= 2) {
+      REG_EXISTING_CLIENTS.forEach((c) => {
         const cn = normalizeRegistrationNricQuery(c.nric);
-        return cn.includes(nq) || nq.includes(cn);
+        if (cn.includes(nq) || nq.includes(cn)) add(c);
       });
-      if (byNric) return byNric;
     }
-
-    const words = lq.split(/\s+/).filter(Boolean);
-    if (words.length) {
-      const byWords = REG_EXISTING_CLIENTS.find((c) => {
-        const name = c.name.toLowerCase();
-        return words.every((w) => name.includes(w));
+    if (out.length === 0 && lq) {
+      REG_EXISTING_CLIENTS.forEach((c) => {
+        if (c.name.toLowerCase().includes(lq)) add(c);
       });
-      if (byWords) return byWords;
     }
+    return out;
+  }
 
-    return REG_EXISTING_CLIENTS.find((c) => c.name.toLowerCase().includes(lq)) || null;
+  function registrationPersonalSectionSelector(program) {
+    if (program === "hpv") return "#reg-hpv-personal";
+    if (program === "fit") return "#reg-fit-personal";
+    return "#reg-personal";
+  }
+
+  function registrationExistingClientFieldIds(program) {
+    if (program === "hpv") {
+      return {
+        nricStore: "hpvNric",
+        fullName: "hpvFullName",
+        residential: "hpvResidential",
+        dob: "hpvDob",
+        gender: "hpvGender",
+        race: "hpvRace",
+        phone: "hpvMobile",
+        email: "hpvEmail",
+        block: "hpvBlock",
+        street: "hpvStreet",
+        floor: "hpvFloor",
+        unit: "hpvUnit",
+        postal: "hpvPostal",
+        country: "hpvCountry",
+      };
+    }
+    if (program === "fit") {
+      return {
+        nricStore: "fitNric",
+        fullName: "fitFullName",
+        residential: "fitResidential",
+        dob: "fitDob",
+        gender: "fitGender",
+        race: "fitRace",
+        phone: "fitContact",
+        email: "fitEmail",
+        block: "fitBlock",
+        street: "fitStreet",
+        floor: "fitFloor",
+        unit: "fitUnit",
+        postal: "fitPostal",
+        country: "fitCountry",
+      };
+    }
+    return {
+      nricStore: "nric",
+      fullName: "fullName",
+      residential: "residential",
+      dob: "dob",
+      gender: "gender",
+      race: "race",
+      phone: "phone",
+      email: "email",
+      block: "block",
+      street: "street",
+      floor: "floor",
+      unit: "unit",
+      postal: "postal",
+      country: "country",
+    };
+  }
+
+  function setRegistrationPersonalSectionLocked(form, program, locked) {
+    if (!form) return;
+    const section = form.querySelector(registrationPersonalSectionSelector(program));
+    if (!section) return;
+    const grid = section.querySelector(".form-grid");
+    if (!grid) return;
+    section.classList.toggle("registration__personal--client-locked", locked);
+    grid.querySelectorAll("input, select, textarea, button").forEach((el) => {
+      if (el.classList.contains("field__prefix")) return;
+      if (el.classList.contains("field__nric-store")) return;
+      if (el instanceof HTMLInputElement && el.name === "clientLookup") return;
+      if (el.classList.contains("field__nric-edit")) {
+        el.disabled = locked;
+        el.readOnly = locked;
+        return;
+      }
+      el.disabled = locked;
+    });
+    if (typeof window.WD_syncNricMasks === "function") window.WD_syncNricMasks(form);
+  }
+
+  function clearRegistrationLookupAutofill(form, program) {
+    if (!form) return;
+    const ids = registrationExistingClientFieldIds(program);
+    const setVal = (fieldId, val) => {
+      const el = form.querySelector(`#${CSS.escape(fieldId)}`);
+      if (el && "value" in el) el.value = val != null ? String(val) : "";
+    };
+    setVal(ids.fullName, "");
+    setVal(ids.residential, "");
+    setRegistrationNricValue(form, ids.nricStore, "");
+    setVal(ids.dob, "");
+    setVal(ids.gender, "");
+    setVal(ids.race, "");
+    setVal(ids.phone, "");
+    setVal(ids.email, "");
+    setVal(ids.block, "");
+    setVal(ids.street, "");
+    setVal(ids.floor, "");
+    setVal(ids.unit, "");
+    setVal(ids.postal, "");
+    setVal(ids.country, "");
+    if (typeof window.WD_syncNricMasks === "function") window.WD_syncNricMasks(form);
   }
 
   function setRegistrationNricValue(form, storeInputId, value) {
@@ -4088,57 +4202,7 @@
 
   function applyRegistrationExistingClientAutofill(form, program, client) {
     if (!form || !client) return;
-    const ids =
-      program === "hpv"
-        ? {
-            nricStore: "hpvNric",
-            fullName: "hpvFullName",
-            residential: "hpvResidential",
-            dob: "hpvDob",
-            gender: "hpvGender",
-            race: "hpvRace",
-            phone: "hpvMobile",
-            email: "hpvEmail",
-            block: "hpvBlock",
-            street: "hpvStreet",
-            floor: "hpvFloor",
-            unit: "hpvUnit",
-            postal: "hpvPostal",
-            country: "hpvCountry",
-          }
-        : program === "fit"
-          ? {
-              nricStore: "fitNric",
-              fullName: "fitFullName",
-              residential: "fitResidential",
-              dob: "fitDob",
-              gender: "fitGender",
-              race: "fitRace",
-              phone: "fitContact",
-              email: "fitEmail",
-              block: "fitBlock",
-              street: "fitStreet",
-              floor: "fitFloor",
-              unit: "fitUnit",
-              postal: "fitPostal",
-              country: "fitCountry",
-            }
-          : {
-              nricStore: "nric",
-              fullName: "fullName",
-              residential: "residential",
-              dob: "dob",
-              gender: "gender",
-              race: "race",
-              phone: "phone",
-              email: "email",
-              block: "block",
-              street: "street",
-              floor: "floor",
-              unit: "unit",
-              postal: "postal",
-              country: "country",
-            };
+    const ids = registrationExistingClientFieldIds(program);
 
     const setVal = (fieldId, val) => {
       const el = form.querySelector(`#${CSS.escape(fieldId)}`);
@@ -4163,10 +4227,19 @@
 
   function bindRegistrationClientLookup(form) {
     if (!form || state.registerSelfService) return;
+    if (form.getAttribute("data-reg-client-bound") === "1") return;
+    form.setAttribute("data-reg-client-bound", "1");
+
     const searchInput = form.querySelector("[data-reg-client-search]");
     const resetBtn = form.querySelector("[data-reg-client-search-reset]");
     const statusEl = form.querySelector("[data-reg-client-search-status]");
-    if (!(searchInput instanceof HTMLInputElement)) return;
+    const dropdown = form.querySelector("[data-reg-client-dropdown]");
+    const listEl = form.querySelector("[data-reg-client-dropdown-list]");
+    const wrap = form.querySelector(".registration__client-search-wrap");
+    if (!(searchInput instanceof HTMLInputElement) || !(listEl instanceof HTMLElement)) return;
+
+    let lastMatchList = [];
+    let docDownHandler = null;
 
     const setStatus = (msg, isError) => {
       if (!(statusEl instanceof HTMLElement)) return;
@@ -4174,33 +4247,97 @@
       statusEl.classList.toggle("registration__client-search-status--error", Boolean(isError));
     };
 
-    const runLookup = () => {
+    const setDropdownOpen = (open) => {
+      if (!(dropdown instanceof HTMLElement)) return;
+      dropdown.hidden = !open;
+      searchInput.setAttribute("aria-expanded", open ? "true" : "false");
+    };
+
+    const closeDropdown = () => {
+      lastMatchList = [];
+      listEl.innerHTML = "";
+      setDropdownOpen(false);
+      if (docDownHandler) {
+        document.removeEventListener("mousedown", docDownHandler, true);
+        docDownHandler = null;
+      }
+    };
+
+    const openDropdown = (matches) => {
+      lastMatchList = matches;
+      listEl.innerHTML = matches
+        .map((c, i) => {
+          const mask = v3MaskNricForProfileDisplay(c.nric);
+          return `<li class="registration__client-dropdown-item" role="option" tabindex="-1" data-reg-client-pick="${i}"><span class="registration__client-dropdown-name">${escapeAttr(
+            c.name
+          )}</span><span class="registration__client-dropdown-sep"> - </span><span class="registration__client-dropdown-nric">${escapeAttr(mask)}</span></li>`;
+        })
+        .join("");
+      setDropdownOpen(true);
+      if (!docDownHandler) {
+        docDownHandler = (e) => {
+          const t = e.target;
+          if (!(t instanceof Element)) return;
+          if (wrap && wrap.contains(t)) return;
+          closeDropdown();
+        };
+        document.addEventListener("mousedown", docDownHandler, true);
+      }
+    };
+
+    const selectClient = (client) => {
+      if (!client) return;
+      setRegistrationPersonalSectionLocked(form, state.registerProgram, false);
+      applyRegistrationExistingClientAutofill(form, state.registerProgram, client);
+      setRegistrationPersonalSectionLocked(form, state.registerProgram, true);
+      closeDropdown();
+      setStatus("Existing client selected — personal details and residential address were filled in. Fields are locked; use Reset to search again.", false);
+      showToast("Existing client selected");
+    };
+
+    const runSearchEnter = () => {
       const q = searchInput.value.trim();
       if (!q) {
         setStatus("Enter an NRIC or client name, then press Enter to search.", false);
+        closeDropdown();
         return;
       }
-      const client = findExistingClientByRegistrationQuery(q);
-      if (!client) {
+      const matches = filterExistingClientsByRegistrationQuery(q);
+      if (!matches.length) {
         setStatus("No matching client found. You can continue as a new registration.", true);
         showToast("No existing client match");
+        closeDropdown();
         return;
       }
-      applyRegistrationExistingClientAutofill(form, state.registerProgram, client);
-      setStatus("Existing client found — personal details and residential address were filled in. Please verify before submitting.", false);
-      showToast("Existing client found — details filled in");
+      setStatus("Select a client from the list below.", false);
+      openDropdown(matches);
     };
 
     searchInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
-        runLookup();
+        runSearchEnter();
+      } else if (e.key === "Escape") {
+        closeDropdown();
       }
     });
 
+    listEl.addEventListener("mousedown", (e) => {
+      const t = e.target instanceof Element ? e.target : null;
+      const row = t?.closest?.("[data-reg-client-pick]");
+      if (!(row instanceof HTMLElement)) return;
+      e.preventDefault();
+      const i = Number(row.getAttribute("data-reg-client-pick"));
+      const client = lastMatchList[i];
+      if (client) selectClient(client);
+    });
+
     resetBtn?.addEventListener("click", () => {
+      closeDropdown();
       searchInput.value = "";
       setStatus("");
+      setRegistrationPersonalSectionLocked(form, state.registerProgram, false);
+      clearRegistrationLookupAutofill(form, state.registerProgram);
       searchInput.focus();
     });
   }
