@@ -4,7 +4,7 @@ import { Page } from '../../App';
 import { useIndividualProfiles } from '../../context/IndividualProfileContext';
 import { resolveProspectByRef } from '../../lib/prospectRef';
 import { getStageChecklistLabels } from '../../lib/stageChecklist';
-import { buildDetailsFormDataForRow } from '../../data/prospectDetailSeed';
+import { buildDetailsFormDataForRow, composeScreeningEligibleDisplay } from '../../data/prospectDetailSeed';
 import { labelHealthierSg } from '../../lib/healthierSgProfile';
 import { Badge } from '../ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -217,7 +217,9 @@ export function ScreeningDetailsV4({ prospectRef }: ScreeningDetailsV4Props) {
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-muted-foreground">Prior screening</span>
-                  <span className="font-medium text-gray-900">{detailsForm.screeningEligible || '—'}</span>
+                  <span className="font-medium text-gray-900 whitespace-pre-line">
+                    {composeScreeningEligibleDisplay(detailsForm) || '—'}
+                  </span>
                 </div>
               </CardContent>
             </Card>

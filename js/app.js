@@ -14,6 +14,27 @@
     { id: "fit", label: "FIT Prospects", figma: "1:1468" },
   ];
 
+  const STORAGE_KEYS = Object.freeze({
+    listView: "wd.listView",
+  });
+
+  function getStoredListView() {
+    try {
+      const v = String(localStorage.getItem(STORAGE_KEYS.listView) || "").trim().toLowerCase();
+      return v === "list" || v === "kanban" ? v : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function setStoredListView(v) {
+    const next = v === "list" || v === "kanban" ? v : null;
+    if (!next) return;
+    try {
+      localStorage.setItem(STORAGE_KEYS.listView, next);
+    } catch (_) {}
+  }
+
   /** Country dropdown options for residential address (screening registration forms). */
   const REG_ADDRESS_COUNTRY_OPTIONS = `
                       <option value="Singapore" selected>Singapore</option>
@@ -255,6 +276,7 @@
       dateRegistered: "2025-10-22",
       nextReview: "2026-08-20",
       attendance: "Attended",
+      firstMammogramScreening: "no",
     },
     {
       rowKey: "PROS-001235",
@@ -272,6 +294,7 @@
       dateRegistered: "2025-10-18",
       nextReview: "2026-04-01",
       attendance: "Cancelled",
+      firstMammogramScreening: "no",
     },
     {
       rowKey: "PROS-001236",
@@ -289,6 +312,7 @@
       dateRegistered: "2025-10-12",
       nextReview: "2026-06-15",
       attendance: "No Show",
+      firstMammogramScreening: "yes",
     },
     {
       rowKey: "PROS-001237",
@@ -411,7 +435,7 @@
   const state = {
     route: "list",
     routeId: null,
-    view: "list",
+    view: "kanban",
     program: "all",
     search: "",
     filterModal: false,
@@ -419,6 +443,10 @@
     listFilters: { stages: [], genders: [], risks: [], ageMin: 18, ageMax: 100 },
     /** Table sort */
     listSort: { key: "name", dir: "asc" },
+    /** Listing KPI strip: active quick filter key (null = none). */
+    listKpiActive: null,
+    /** Preserve previous sort when KPI card forces a sort (optional UX). */
+    listKpiPrevSort: null,
     detailTab: "details",
     /** Classic collapsible screening records table (Prospect V1 + classic detail): filter + expanded row */
     classicScreeningFilter: "all",
@@ -539,6 +567,16 @@
 
   /** Query param on self-registration URLs (patient-facing token link). */
   const SELF_REG_TOKEN_PARAM = "sr_token";
+  /** If `1`, show Singpass vs manual landing even when `sr_token` is present (default: token links go straight to MyInfo-locked form). */
+  const SELF_REG_LANDING_CHOICE_PARAM = "sr_landing";
+
+  function selfRegUrlWantsMethodLanding() {
+    try {
+      return new URL(window.location.href).searchParams.get(SELF_REG_LANDING_CHOICE_PARAM) === "1";
+    } catch (_) {
+      return false;
+    }
+  }
 
   /** Logged-in portal user (aligned with header chip; prototype). */
   const PORTAL_CURRENT_USER = Object.freeze({
@@ -842,13 +880,23 @@
   function filterBySearch(rows) {
     const q = state.search.trim().toLowerCase();
     if (!q) return rows;
-    return rows.filter(
-      (r) =>
-        r.name.toLowerCase().includes(q) ||
-        r.id.toLowerCase().includes(q) ||
-        r.rowKey.toLowerCase().includes(q) ||
-        r.email.toLowerCase().includes(q)
-    );
+    const qPhone = q.replace(/\s+/g, "");
+    return rows.filter((r) => {
+      const name = String(r.name || "").toLowerCase();
+      const id = String(r.id || "").toLowerCase();
+      const rowKey = String(r.rowKey || "").toLowerCase();
+      const email = String(r.email || "").toLowerCase();
+      const nric = String(r.maskedNric || "").toLowerCase();
+      const phone = String(r.phone || "").replace(/\s+/g, "").toLowerCase();
+      return (
+        name.includes(q) ||
+        id.includes(q) ||
+        rowKey.includes(q) ||
+        email.includes(q) ||
+        nric.includes(q) ||
+        (qPhone.length > 0 && phone.includes(qPhone))
+      );
+    });
   }
 
   function programDisplayLabel(program) {
@@ -1098,13 +1146,37 @@
     </td>`;
   }
 
-  /** Expanded screening row: Result, Next review period, Next review date, Last updated by (— if empty). */
-  function normalizeClassicScreeningExpandedDetails(r) {
+  /** Expanded screening row: includes preference fields synced with profile / screening form. */
+  function normalizeClassicScreeningExpandedDetails(r, detailsFallback) {
     const dash = "—";
     const val = (x) => (x != null && String(x).trim() !== "" ? String(x).trim() : dash);
+    const timeSlotLabel = (raw) => {
+      const s = String(raw || "")
+        .trim()
+        .toLowerCase();
+      if (!s) return dash;
+      if (s === "morning") return "Morning";
+      if (s === "afternoon") return "Afternoon";
+      if (s === "evening") return "Evening";
+      return val(raw);
+    };
+    const preferredDate = (() => {
+      const direct = val(r?.preferredScreeningDate);
+      if (direct !== dash) return direct;
+      const fb = detailsFallback?.preferredScreeningDate;
+      return val(fb);
+    })();
+    const preferredSlot = (() => {
+      const direct = timeSlotLabel(r?.preferredTimeSlot);
+      if (direct !== dash) return direct;
+      const fb = detailsFallback?.preferredTimeSlot;
+      return timeSlotLabel(fb);
+    })();
     return [
+      ["Preferred screening date", preferredDate],
+      ["Preferred time slot", preferredSlot],
       ["Result", val(r.result)],
-      ["Next review period", val(r.nextReviewPeriod)],
+      ["Review period", val(r.nextReviewPeriod)],
       ["Next review date", val(r.nextReviewDate)],
       ["Last updated by", val(r.lastUpdatedBy)],
     ];
@@ -1129,6 +1201,7 @@
     if (!r || typeof r !== "object") return null;
     const id = r.id != null ? String(r.id) : "";
     if (!id) return null;
+    const detailsFb = state?.detailFormValues?.details || null;
     return {
       id,
       submitted: String(r.submitted || "—"),
@@ -1142,7 +1215,7 @@
       /** Legacy demo seed only; used as fallback when `appointmentType` is missing (MMG). */
       apptType: r.apptType != null ? String(r.apptType) : "",
       action: r.action && typeof r.action === "object" ? r.action : null,
-      expandedDetails: normalizeClassicScreeningExpandedDetails(r),
+      expandedDetails: normalizeClassicScreeningExpandedDetails(r, detailsFb),
     };
   }
 
@@ -1641,6 +1714,12 @@
   }
 
   function getFilteredProspects() {
+    const base = filterByListFilters(filterBySearch(filterByProgram(PROSPECTS)));
+    return applyListKpiFilter(base);
+  }
+
+  /** Listing KPI counts should ignore KPI click-filter; they respect program/search/Filters modal only. */
+  function getProspectsForSummaryCounts() {
     return filterByListFilters(filterBySearch(filterByProgram(PROSPECTS)));
   }
 
@@ -1782,12 +1861,43 @@
     return PIPELINE_KEYS.includes(r.status) ? r.status : "qualified";
   }
 
+  function isHighRiskProspect(r) {
+    return String(r?.risk || "")
+      .trim()
+      .toLowerCase() === "high";
+  }
+
+  function isFirstTimeScreenerProspect(r) {
+    const raw = r?.firstMammogramScreening;
+    const s = String(raw || "")
+      .trim()
+      .toLowerCase();
+    if (s === "yes" || s === "y" || s === "true" || s === "1") return true;
+    if (s === "no" || s === "n" || s === "false" || s === "0") return false;
+    return false;
+  }
+
+  function applyListKpiFilter(rows) {
+    const k = state.listKpiActive;
+    if (!k) return rows;
+    if (k === "total") return rows;
+    return rows.filter((r) => {
+      if (k === "qualified" || k === "booked" || k === "screened") return normListPipelineStatus(r) === k;
+      if (k === "followup") return String(r.attendance || "").trim().toLowerCase() === "no show";
+      if (k === "highrisk") return isHighRiskProspect(r);
+      if (k === "firsttime") return isFirstTimeScreenerProspect(r);
+      return true;
+    });
+  }
+
   /** KPI row on prospect listing — counts respect program, search, and list filters. */
   function computeProspectListSummary(rows) {
     let qualified = 0;
     let booked = 0;
     let screened = 0;
     let followUp = 0;
+    let highRisk = 0;
+    let firstTime = 0;
     for (const r of rows) {
       const st = normListPipelineStatus(r);
       if (st === "qualified") qualified++;
@@ -1795,8 +1905,10 @@
       else if (st === "screened") screened++;
       const a = String(r.attendance || "").trim().toLowerCase();
       if (a === "no show") followUp++;
+      if (isHighRiskProspect(r)) highRisk++;
+      if (isFirstTimeScreenerProspect(r)) firstTime++;
     }
-    return { total: rows.length, qualified, booked, screened, followUp };
+    return { total: rows.length, qualified, booked, screened, followUp, highRisk, firstTime };
   }
 
   /** All `PROSPECTS` enrolment rows for the current prospect (same person, multiple programmes). */
@@ -1822,6 +1934,8 @@
       booked: s.booked === 0 ? 0 : Math.max(1, Math.round(s.booked * 0.148)),
       screened: s.screened === 0 ? 0 : Math.max(1, Math.round(s.screened * 0.066)),
       followUp: s.followUp,
+      highRisk: s.highRisk === 0 ? 0 : Math.max(1, Math.round(s.highRisk * 0.09)),
+      firstTime: s.firstTime === 0 ? 0 : Math.max(1, Math.round(s.firstTime * 0.07)),
     };
   }
 
@@ -1863,32 +1977,45 @@
     const gridAttrs = gridOnly
       ? ` class="prospect-summary__grid v1-overview-kpi-grid" role="group" aria-label="${esc(ariaLabel)}"`
       : ` class="prospect-summary__grid"`;
+    const active = String(state.listKpiActive || "");
+    const cardAttrs = (key) => ` data-prospect-kpi="${esc(key)}" role="button" tabindex="0" aria-pressed="${active === key}"`;
+    const cardClass = (base, key) => `${base}${active === key ? " is-active" : ""}`;
     const gridHtml = `
         <div${gridAttrs}>
-          <article class="prospect-summary-card prospect-summary-card--total">
+          <article class="${cardClass("prospect-summary-card prospect-summary-card--total", "total")}"${cardAttrs("total")}>
             <h3 class="prospect-summary-card__label">Total cases</h3>
             <p class="prospect-summary-card__value">${esc(String(s.total))}</p>
             ${trendPositive(d.total, "from last month")}
           </article>
-          <article class="prospect-summary-card prospect-summary-card--qualified">
+          <article class="${cardClass("prospect-summary-card prospect-summary-card--qualified", "qualified")}"${cardAttrs("qualified")}>
             <h3 class="prospect-summary-card__label">Qualified</h3>
             <p class="prospect-summary-card__value">${esc(String(s.qualified))}</p>
             ${trendPositive(d.qualified, "new intakes")}
           </article>
-          <article class="prospect-summary-card prospect-summary-card--booked">
+          <article class="${cardClass("prospect-summary-card prospect-summary-card--booked", "booked")}"${cardAttrs("booked")}>
             <h3 class="prospect-summary-card__label">Booked</h3>
             <p class="prospect-summary-card__value">${esc(String(s.booked))}</p>
             ${trendPositive(d.booked, "new appointments")}
           </article>
-          <article class="prospect-summary-card prospect-summary-card--screened">
+          <article class="${cardClass("prospect-summary-card prospect-summary-card--screened", "screened")}"${cardAttrs("screened")}>
             <h3 class="prospect-summary-card__label">Screened</h3>
             <p class="prospect-summary-card__value">${esc(String(s.screened))}</p>
             ${trendPositive(d.screened, "this week")}
           </article>
-          <article class="prospect-summary-card prospect-summary-card--followup">
+          <article class="${cardClass("prospect-summary-card prospect-summary-card--followup", "followup")}"${cardAttrs("followup")}>
             <h3 class="prospect-summary-card__label">Follow-up needed</h3>
             <p class="prospect-summary-card__value">${esc(String(s.followUp))}</p>
             ${trendFollowUp()}
+          </article>
+          <article class="${cardClass("prospect-summary-card prospect-summary-card--highrisk", "highrisk")}"${cardAttrs("highrisk")}>
+            <h3 class="prospect-summary-card__label">High risk</h3>
+            <p class="prospect-summary-card__value">${esc(String(s.highRisk))}</p>
+            ${trendPositive(d.highRisk, "flagged")}
+          </article>
+          <article class="${cardClass("prospect-summary-card prospect-summary-card--firsttime", "firsttime")}"${cardAttrs("firsttime")}>
+            <h3 class="prospect-summary-card__label">First-time screener</h3>
+            <p class="prospect-summary-card__value">${esc(String(s.firstTime))}</p>
+            ${trendPositive(d.firstTime, "new")}
           </article>
         </div>`;
     if (gridOnly) return gridHtml;
@@ -1905,14 +2032,14 @@
       <div class="page-toolbar page-toolbar--split">
         ${renderProgramTitleDropdown()}
         <div class="view-toggle" role="group" aria-label="View mode">
-          <button type="button" class="btn btn--icon" aria-pressed="${listPressed}" aria-label="List view" data-view="list">${icons.list}</button>
           <button type="button" class="btn btn--icon" aria-pressed="${kanbanPressed}" aria-label="Kanban view" data-view="kanban">${icons.grid}</button>
+          <button type="button" class="btn btn--icon" aria-pressed="${listPressed}" aria-label="List view" data-view="list">${icons.list}</button>
         </div>
       </div>
       <div class="page-toolbar page-toolbar--tools">
         <div class="toolbar-search">
           <span class="toolbar-search__icon" aria-hidden="true">${icons.search}</span>
-          <input type="search" id="prospect-search" placeholder="Search by Name or NRIC" value="${escapeAttr(state.search)}" autocomplete="off" />
+          <input type="search" id="prospect-search" placeholder="Search by Name, NRIC, or Phone Number" value="${escapeAttr(state.search)}" autocomplete="off" />
         </div>
         <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" id="btn-list-filters" aria-haspopup="dialog" aria-expanded="${state.filterModal}">
           <span class="ui-btn__icon" aria-hidden="true">${icons.filter}</span>
@@ -1922,6 +2049,9 @@
               ? `<span class="ui-badge" aria-label="${listFilterCategoryCount()} filter categories active">${listFilterCategoryCount()}</span>`
               : ""
           }
+        </button>
+        <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" id="btn-export-csv">
+          Export CSV
         </button>
         <div class="title-dropdown title-dropdown--align-end ${state.addProspectMenuOpen ? "is-open" : ""}" id="add-prospect-dropdown">
           <button type="button" class="btn btn--primary" data-add-prospect-toggle aria-expanded="${state.addProspectMenuOpen}" aria-haspopup="true">
@@ -1935,6 +2065,80 @@
         </div>
       </div>
     `;
+  }
+
+  function csvEscapeCell(raw) {
+    const s = raw == null ? "" : String(raw);
+    if (/[",\r\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+    return s;
+  }
+
+  function downloadTextFile(filename, content, mime) {
+    const blob = new Blob([content], { type: mime || "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+
+  function exportProspectsCsv() {
+    const rows = sortListRows(getFilteredProspects());
+    if (!rows.length) {
+      showToast("No prospects to export.");
+      return;
+    }
+    const headers = [
+      "Name",
+      "Prospect Ref",
+      "NRIC (masked)",
+      "Program",
+      "Date registered",
+      "Phone",
+      "Email",
+      "Status",
+      "Attendance",
+      "Source type",
+      "Source detail",
+      "Next review",
+      "Risk",
+    ];
+    const statusLabel = (s) => (s === "booked" ? "Booked" : s === "screened" ? "Screened" : "Qualified");
+    const riskLabel = (r) => (r === "high" ? "High" : r === "medium" ? "Medium" : "Low");
+    const lines = [];
+    lines.push(headers.map(csvEscapeCell).join(","));
+    rows.forEach((r) => {
+      const masked = r.maskedNric != null && String(r.maskedNric).trim() ? String(r.maskedNric).trim() : "—";
+      lines.push(
+        [
+          r.name,
+          r.id || r.rowKey,
+          masked,
+          programDisplayLabel(r.program),
+          formatDateRegisteredDisplay(r.dateRegistered),
+          r.phone,
+          r.email,
+          statusLabel(PIPELINE_KEYS.includes(r.status) ? r.status : "qualified"),
+          classicScreeningAttendanceDisplay({ attendance: r.attendance }),
+          r.sourceType,
+          r.sourceDetail,
+          formatDateRegisteredDisplay(r.nextReview),
+          riskLabel(r.risk),
+        ]
+          .map(csvEscapeCell)
+          .join(",")
+      );
+    });
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const da = String(d.getDate()).padStart(2, "0");
+    const prog = state.program && state.program !== "all" ? state.program : "all";
+    downloadTextFile(`prospects-${prog}-${y}${m}${da}.csv`, lines.join("\r\n"), "text/csv;charset=utf-8");
+    showToast(`Exported ${rows.length} prospects.`);
   }
 
   function escapeAttr(s) {
@@ -2095,8 +2299,8 @@
   }
 
   function renderListPage() {
-    const filtered = getFilteredProspects();
-    const summary = renderProspectSummarySection(filtered, { ariaLabel: "Prospect summary" });
+    const summaryRows = getProspectsForSummaryCounts();
+    const summary = renderProspectSummarySection(summaryRows, { ariaLabel: "Prospect summary" });
     const toolbar = renderListToolbar();
     const body =
       state.view === "kanban"
@@ -2776,7 +2980,7 @@
             <input id="csu-result" type="text" value="${e(resultVal)}" placeholder="—" autocomplete="off" />
           </div>
           <div class="field">
-            <label for="csu-next-review-period">Next review period</label>
+            <label for="csu-next-review-period">Review period</label>
             <input id="csu-next-review-period" type="text" value="${e(nrpVal)}" placeholder="e.g. 12 months" autocomplete="off" />
           </div>
           <div class="field">
@@ -3989,10 +4193,17 @@
     );
   }
 
+  /** When true, MyInfo/Singpass demo NRIC is embedded in the hidden store at first paint (token self-service). */
+  function registrationSingpassNricSeed() {
+    return state.registerSelfService && state.registerSingpassLocked ? SINGPASS_DEMO.nricFull : "";
+  }
+
   /** NRIC: hidden store + optional bullet mask; `js/nric-toggle.js` defaults to visible value */
-  function registrationNricField(id, name, required) {
+  function registrationNricField(id, name, required, initialStoreValue) {
     const reqStore = required ? " required" : "";
     const reqEdit = required ? " required" : "";
+    const seedRaw = initialStoreValue != null && String(initialStoreValue).trim() !== "" ? String(initialStoreValue) : "";
+    const seedAttr = seedRaw ? escapeAttr(seedRaw) : "";
     const toggleIcons =
       '<span class="field__nric-toggle-icons" aria-hidden="true">' +
       '<i class="fi fi-rr-eye-crossed field__nric-toggle-ico field__nric-toggle-ico--when-masked"></i>' +
@@ -4004,7 +4215,9 @@
       id +
       '" name="' +
       name +
-      '" class="field__nric-store" autocomplete="off" value=""' +
+      '" class="field__nric-store" autocomplete="off" value="' +
+      seedAttr +
+      '"' +
       reqStore +
       " />" +
       '<div class="field__nric-face">' +
@@ -4425,7 +4638,7 @@
                   </div>
                   <div class="field">
                     <label for="nric">NRIC / FIN Number<span class="field__req" aria-hidden="true">*</span></label>
-                    ${registrationNricField("nric", "nric", true)}
+                    ${registrationNricField("nric", "nric", true, registrationSingpassNricSeed())}
                   </div>
                   <div class="field">
                     <label for="dob">Date of Birth<span class="field__req" aria-hidden="true">*</span></label>
@@ -4768,7 +4981,7 @@
                   </div>
                   <div class="field">
                     <label for="hpvNric">NRIC / FIN Number<span class="field__req" aria-hidden="true">*</span></label>
-                    ${registrationNricField("hpvNric", "hpvNric", true)}
+                    ${registrationNricField("hpvNric", "hpvNric", true, registrationSingpassNricSeed())}
                   </div>
                   <div class="field">
                     <label for="hpvDob">Date of Birth<span class="field__req" aria-hidden="true">*</span></label>
@@ -5027,7 +5240,7 @@
                   </div>
                   <div class="field">
                     <label for="fitNric">NRIC / FIN Number<span class="field__req" aria-hidden="true">*</span></label>
-                    ${registrationNricField("fitNric", "fitNric", true)}
+                    ${registrationNricField("fitNric", "fitNric", true, registrationSingpassNricSeed())}
                   </div>
                   <div class="field">
                     <label for="fitDob">Date of Birth<span class="field__req" aria-hidden="true">*</span></label>
@@ -5426,15 +5639,17 @@
     if (parts.length === 0) {
       state.route = "list";
       state.routeId = null;
-      state.view = "list";
+      state.view = getStoredListView() || "kanban";
     } else if (head === "list") {
       state.route = "list";
       state.routeId = null;
-      state.view = "list";
+      // `#/list` is the canonical listing route; view is restored from the user's last choice.
+      state.view = getStoredListView() || "kanban";
     } else if (head === "kanban") {
       state.route = "list";
       state.view = "kanban";
       state.routeId = null;
+      setStoredListView("kanban");
     } else if (head === "screening") {
       state.route = "screening";
       state.routeId = parts[1] ? decodeURIComponent(parts[1]) : DETAIL_DEFAULT.rowKey;
@@ -5684,14 +5899,31 @@
   function lockSingpassInput(id, value) {
     const el = document.getElementById(id);
     if (!el) return;
-    el.value = value == null ? "" : String(value);
-    el.disabled = true;
-    markSingpassFieldGroup(el);
+    const val = value == null ? "" : String(value);
     const shell = el.closest(".field__nric");
-    const edit = shell?.querySelector?.(".field__nric-edit");
-    if (edit instanceof HTMLInputElement) edit.disabled = true;
-    const toggle = shell?.querySelector?.("[data-nric-toggle]");
-    if (toggle instanceof HTMLButtonElement) toggle.disabled = true;
+    if (shell) {
+      const store = shell.querySelector(".field__nric-store");
+      const edit = shell.querySelector(".field__nric-edit");
+      const toggle = shell.querySelector("[data-nric-toggle]");
+      if (store instanceof HTMLInputElement) {
+        store.value = val;
+        store.disabled = false;
+      }
+      if (edit instanceof HTMLInputElement) {
+        edit.value = val;
+        edit.disabled = true;
+        edit.readOnly = true;
+      }
+      if (toggle instanceof HTMLButtonElement) {
+        toggle.disabled = true;
+        toggle.toggleAttribute("disabled", true);
+      }
+      markSingpassFieldGroup(store instanceof HTMLInputElement ? store : el);
+    } else {
+      el.value = val;
+      el.disabled = true;
+      markSingpassFieldGroup(el);
+    }
 
     // Date text input: disable calendar button too so it picks up disabled styling.
     if (el.classList?.contains?.("field__date-text")) {
@@ -5782,8 +6014,14 @@
       state.registerSelfServiceEntry = "form";
     }
     if (isRegisterSelfService && !lastRenderWasRegisterSelfService) {
-      state.registerSelfServiceEntry = "landing";
-      state.registerSingpassLocked = false;
+      if (selfRegUrlWantsMethodLanding()) {
+        state.registerSelfServiceEntry = "landing";
+        state.registerSingpassLocked = false;
+      } else {
+        /* Tokenised links imply an already-verified MyInfo handoff — pre-fill and lock without an extra Singpass click. */
+        state.registerSelfServiceEntry = "form";
+        state.registerSingpassLocked = true;
+      }
     }
     lastRenderWasRegisterSelfService = isRegisterSelfService;
 
@@ -5846,8 +6084,16 @@
       ${state.registerSelfService ? renderRegistrationNavDrawer() : ""}
       ${renderModal()}
     `;
+      /* Apply MyInfo locks before NRIC/date bindings so init sees disabled fields + store values (avoids empty mask). */
+      applySingpassDemoAndLocks();
       bindEvents();
       setupRegistrationScrollSpy();
+      if (typeof window.WD_syncNricMasks === "function") {
+        window.WD_syncNricMasks(document.getElementById("registration-scroll-root") || document.getElementById("app"));
+      }
+      if (typeof window.WD_syncDatePickersFromFields === "function") {
+        window.WD_syncDatePickersFromFields(document.getElementById("app"));
+      }
       requestAnimationFrame(() => {
         applySingpassDemoAndLocks();
         if (typeof window.WD_syncNricMasks === "function") {
@@ -6087,6 +6333,44 @@
   }
 
   function bindEvents() {
+    document.querySelectorAll("[data-prospect-kpi]").forEach((el) => {
+      const onActivate = () => {
+        const key = el.getAttribute("data-prospect-kpi");
+        if (!key) return;
+        const already = state.listKpiActive === key;
+        const clear = already || key === "total";
+        if (clear) {
+          state.listKpiActive = null;
+          if (state.listKpiPrevSort) {
+            state.listSort = state.listKpiPrevSort;
+            state.listKpiPrevSort = null;
+          }
+          renderApp();
+          return;
+        }
+
+        if (!state.listKpiActive && !state.listKpiPrevSort) {
+          state.listKpiPrevSort = { ...state.listSort };
+        }
+        state.listKpiActive = key;
+        // KPI cards act as quick filters + opinionated sort defaults.
+        if (key === "highrisk") state.listSort = { key: "risk", dir: "desc" };
+        else if (key === "firsttime") state.listSort = { key: "dateRegistered", dir: "desc" };
+        else if (key === "followup") state.listSort = { key: "nextReview", dir: "asc" };
+        else if (key === "qualified" || key === "booked" || key === "screened") state.listSort = { key: "nextReview", dir: "asc" };
+        renderApp();
+      };
+      el.addEventListener("click", (e) => {
+        e.preventDefault();
+        onActivate();
+      });
+      el.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        onActivate();
+      });
+    });
+
     document.getElementById("reg-landing-singpass")?.addEventListener("click", () => {
       state.registerSelfServiceEntry = "form";
       state.registerSingpassLocked = true;
@@ -6117,6 +6401,7 @@
     document.querySelectorAll("[data-view]").forEach((btn) => {
       btn.addEventListener("click", () => {
         state.view = btn.getAttribute("data-view");
+        setStoredListView(state.view);
         const h = state.view === "kanban" ? "#/kanban" : "#/list";
         if (location.hash !== h) location.hash = h;
         else renderApp();
@@ -6171,6 +6456,10 @@
     document.getElementById("btn-list-filters")?.addEventListener("click", () => {
       state.filterModal = true;
       renderApp();
+    });
+
+    document.getElementById("btn-export-csv")?.addEventListener("click", () => {
+      exportProspectsCsv();
     });
 
     function readListFiltersFromForm() {

@@ -67,7 +67,10 @@
       } else {
         shell.classList.add("field__nric--masked");
         shell.classList.remove("field__nric--revealed");
-        store.value = edit.value;
+        /* Only copy edit → store when edit has input (avoid clobbering store set programmatically, e.g. Singpass on hidden store). */
+        if (String(edit.value || "").trim()) {
+          store.value = edit.value;
+        }
         updateMaskDisplay(shell);
         span.removeAttribute("hidden");
         span.style.display = "";

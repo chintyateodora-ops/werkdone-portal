@@ -64,7 +64,8 @@
       cancerScreeningEligibilityCheck: "No",
       preExistingConditions: "None",
       familyHistory: "Mother had breast cancer at age 55",
-      screeningEligible: "Mammogram (Mammobus) - Booked\nHPV Screening - Interested",
+      /** Supplement only; mammogram line is computed from screening questions (see `mammogramScreeningLineFromMerged`). */
+      screeningEligible: "HPV Screening - Interested",
       followUpNotes:
         "Booked for Mammobus on 15 Nov 2025 at Bedok CC. Follow up on HPV screening interest after mammogram results.",
       sourceType: "Event",
@@ -161,6 +162,54 @@
     const def = DETAIL_FORM_DEFAULTS[tabKey];
     if (!def) return {};
     return { ...def, ...(formValues || {}) };
+  }
+
+  /** Mammogram registration eligibility (same six questions as `app.js` mammogram section / Prospect v3 Eligibility). */
+  const MAMMOGRAM_SCREENING_ELIG_Q_KEYS = [
+    "covid19VaccineSoon",
+    "mammogramPast12or24Months",
+    "breastfeedingPast6Months",
+    "breastSymptoms",
+    "breastImplants",
+    "everHadBreastCancer",
+  ];
+
+  function normalizeScreeningYesNo(raw) {
+    const s = String(raw || "")
+      .trim()
+      .toLowerCase();
+    if (s === "yes" || s === "y" || s === "true" || s === "1") return "yes";
+    if (s === "no" || s === "n" || s === "false" || s === "0") return "no";
+    return "";
+  }
+
+  function mammogramScreeningLineFromMerged(merged) {
+    const answers = MAMMOGRAM_SCREENING_ELIG_Q_KEYS.map((k) => normalizeScreeningYesNo(merged[k]));
+    const answered = answers.filter((a) => a === "yes" || a === "no").length;
+    const anyYes = answers.some((a) => a === "yes");
+    const allNo = answered === MAMMOGRAM_SCREENING_ELIG_Q_KEYS.length && answers.every((a) => a === "no");
+    let suffix = "Incomplete";
+    if (answered === MAMMOGRAM_SCREENING_ELIG_Q_KEYS.length) {
+      if (allNo) suffix = "Eligible";
+      else if (anyYes) suffix = "Not eligible";
+    }
+    return `Mammogram (Mammobus) - ${suffix}`;
+  }
+
+  /** Strip legacy combined `screeningEligible` rows so only non-mammogram lines are edited/stored. */
+  function supplementLinesFromScreeningEligibleStored(raw) {
+    return String(raw || "")
+      .split(/\r?\n/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .filter((l) => !/^Mammogram\s*\(Mammobus\)\s*-/i.test(l))
+      .join("\n");
+  }
+
+  function composeScreeningEligibleForDisplay(merged) {
+    const m = mammogramScreeningLineFromMerged(merged);
+    const rest = supplementLinesFromScreeningEligibleStored(merged.screeningEligible).trim();
+    return rest ? `${m}\n${rest}` : m;
   }
 
   /** Prospect profile: show NRIC like list view (e.g. S****567D), not full string. */
@@ -830,7 +879,12 @@
                   e,
                   "SCREENING STATUS",
                   `<div class="detail-fields">
-                    ${fieldTextarea(e, "Screening Eligible For & Signed Up", "screeningEligible", "details", merged, editing)}
+                    <div class="field field--full">
+                      <label id="detail-screening-eligible-label">Screening Eligible For &amp; Signed Up</label>
+                      <div class="field__identifier-readonly-display detail-screening-eligible-readonly" role="status" aria-labelledby="detail-screening-eligible-label">${e(
+                        composeScreeningEligibleForDisplay(merged)
+                      )}</div>
+                    </div>
                     ${fieldTextarea(e, "Follow-up Notes for CN", "followUpNotes", "details", merged, editing)}
                   </div>`,
                   "detail-status"
@@ -1152,6 +1206,8 @@
   window.WD_STAGE_CHECKLISTS = STAGE_CHECKLISTS;
   window.WD_DETAIL_FORM_DEFAULTS = DETAIL_FORM_DEFAULTS;
   window.WD_renderActivityTimelineSection = renderActivityTimelineSection;
+  window.WD_composeScreeningEligibleForDisplay = composeScreeningEligibleForDisplay;
+  window.WD_mammogramScreeningLineFromMerged = mammogramScreeningLineFromMerged;
 
   /** Full-width sticky toolbar (last updated + Edit/Save/Cancel) for prospect form tabs — rendered in app.js above .detail-panels */
   window.WD_renderDetailFormStickyToolbar = function (tab, ctx) {

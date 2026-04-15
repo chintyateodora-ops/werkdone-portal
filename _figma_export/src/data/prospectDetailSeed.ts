@@ -265,7 +265,65 @@ export type DetailsFormDataState = {
   screeningLocationEvent: string;
   reviewPeriod: string;
   nextReviewDate: string;
+  /** Mammogram registration eligibility (yes/no) — same six questions as screening form. */
+  covid19VaccineSoon: string;
+  mammogramPast12or24Months: string;
+  breastfeedingPast6Months: string;
+  breastSymptoms: string;
+  breastImplants: string;
+  everHadBreastCancer: string;
+  /** Lines other than mammogram (e.g. HPV); mammogram row is computed from the six keys above. */
+  screeningEligible: string;
+  followUpNotes: string;
 };
+
+/** Same keys as `js/detail-panels.js` / mammogram registration form. */
+export const MAMMOGRAM_ELIGIBILITY_Q_KEYS = [
+  'covid19VaccineSoon',
+  'mammogramPast12or24Months',
+  'breastfeedingPast6Months',
+  'breastSymptoms',
+  'breastImplants',
+  'everHadBreastCancer',
+] as const;
+
+function normalizeYnProfile(raw: string | undefined): 'yes' | 'no' | '' {
+  const s = String(raw ?? '')
+    .trim()
+    .toLowerCase();
+  if (s === 'yes' || s === 'y' || s === 'true' || s === '1') return 'yes';
+  if (s === 'no' || s === 'n' || s === 'false' || s === '0') return 'no';
+  return '';
+}
+
+export function mammogramScreeningLineFromDetailsForm(form: DetailsFormDataState): string {
+  const answers = MAMMOGRAM_ELIGIBILITY_Q_KEYS.map((k) => normalizeYnProfile(form[k]));
+  const answered = answers.filter((a) => a === 'yes' || a === 'no').length;
+  const anyYes = answers.some((a) => a === 'yes');
+  const allNo = answered === MAMMOGRAM_ELIGIBILITY_Q_KEYS.length && answers.every((a) => a === 'no');
+  let suffix = 'Incomplete';
+  if (answered === MAMMOGRAM_ELIGIBILITY_Q_KEYS.length) {
+    if (allNo) suffix = 'Eligible';
+    else if (anyYes) suffix = 'Not eligible';
+  }
+  return `Mammogram (Mammobus) - ${suffix}`;
+}
+
+function screeningEligibleSupplementOnly(stored: string): string {
+  return String(stored || '')
+    .split(/\r?\n/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .filter((l) => !/^Mammogram\s*\(Mammobus\)\s*-/i.test(l))
+    .join('\n');
+}
+
+/** Full “Screening Eligible For & Signed Up” block for profile sidebars (mammogram computed + stored supplement). */
+export function composeScreeningEligibleDisplay(form: DetailsFormDataState): string {
+  const m = mammogramScreeningLineFromDetailsForm(form);
+  const rest = screeningEligibleSupplementOnly(form.screeningEligible).trim();
+  return rest ? `${m}\n${rest}` : m;
+}
 
 function listResidentialStatusFromForm(s: string): MockProspectListRow['residentialStatus'] {
   const t = s.toLowerCase();
@@ -368,6 +426,15 @@ export function buildDetailsFormDataForRow(row: MockProspectListRow): DetailsFor
     screeningLocationEvent: x.screeningLocationEvent,
     reviewPeriod: x.reviewPeriod,
     nextReviewDate: formatNextReviewLong(row.nextReview),
+    covid19VaccineSoon: 'no',
+    mammogramPast12or24Months: 'no',
+    breastfeedingPast6Months: 'no',
+    breastSymptoms: 'no',
+    breastImplants: 'no',
+    everHadBreastCancer: 'no',
+    screeningEligible: 'HPV Screening - Interested',
+    followUpNotes:
+      'Booked for Mammobus on 15 Nov 2025 at Bedok CC. Follow up on HPV screening interest after mammogram results.',
   };
 }
 

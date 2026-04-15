@@ -6,6 +6,7 @@ import {
   buildMedicalHistoryFormDataForRow,
   buildOtherDetailsFormDataForRow,
   detailsFormToProfilePatch,
+  composeScreeningEligibleDisplay,
 } from '../../data/prospectDetailSeed';
 import { HEALTHIER_SG_FORM_OPTIONS, healthierSgControlValue, labelHealthierSg } from '../../lib/healthierSgProfile';
 import { MOCK_PROSPECTS } from '../../data/mockProspectsList';
@@ -1351,19 +1352,25 @@ export function ProspectDetail({ onNavigate, prospectRef }: ProspectDetailProps)
                     </h2>
                     
                     <div className="space-y-4">
-                      <EditableTextArea
-                        label="Screening Eligible For & Signed Up"
-                        value="Mammogram (Mammobus) - Booked&#10;HPV Screening - Interested"
-                        isEditing={isEditingDetails}
-                        onChange={(value) => {}}
-                        rows={3}
-                      />
+                      <div>
+                        <div className="text-sm font-medium text-gray-700 mb-1.5">
+                          Screening Eligible For &amp; Signed Up
+                        </div>
+                        <div
+                          role="status"
+                          className="min-h-[2.75rem] rounded-md border border-input bg-muted/40 px-3 py-2 text-sm text-gray-900 whitespace-pre-wrap"
+                        >
+                          {composeScreeningEligibleDisplay(detailsFormData)}
+                        </div>
+                      </div>
 
                       <EditableTextArea
                         label="Follow-up Notes for CN"
-                        value="Booked for Mammobus on 15 Nov 2025 at Bedok CC. Follow up on HPV screening interest after mammogram results."
+                        value={detailsFormData.followUpNotes}
                         isEditing={isEditingDetails}
-                        onChange={(value) => {}}
+                        onChange={(value) =>
+                          setDetailsFormData({ ...detailsFormData, followUpNotes: value })
+                        }
                         rows={3}
                       />
                     </div>

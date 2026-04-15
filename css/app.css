@@ -571,8 +571,15 @@ button {
 
 .prospect-summary__grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  /* Keep KPI strip as one horizontal group (no 2nd row). */
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(170px, 1fr);
+  grid-template-columns: none;
   gap: 1rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem; /* space for scrollbar on Windows */
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
 }
 
 .prospect-summary-card {
@@ -581,6 +588,7 @@ button {
   border-radius: var(--radius-md);
   padding: 1rem 1.125rem;
   box-shadow: none;
+  scroll-snap-align: start;
 }
 
 .prospect-summary-card__label {
@@ -663,13 +671,13 @@ button {
 
 @media (max-width: 960px) {
   .prospect-summary__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-columns: minmax(165px, 1fr);
   }
 }
 
 @media (max-width: 520px) {
   .prospect-summary__grid {
-    grid-template-columns: 1fr;
+    grid-auto-columns: minmax(150px, 1fr);
   }
 }
 
@@ -4594,6 +4602,29 @@ button {
 
 .field__nric-toggle:hover {
   background-color: var(--color-gray-50);
+}
+
+.prospect-summary-card[data-prospect-kpi] {
+  cursor: pointer;
+  user-select: none;
+}
+
+.prospect-summary-card[data-prospect-kpi]:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(2, 6, 23, 0.06);
+}
+
+.prospect-summary-card[data-prospect-kpi].is-active {
+  outline: 2px solid var(--color-primary-200);
+  box-shadow: 0 12px 26px rgba(2, 6, 23, 0.08);
+}
+
+.prospect-summary-card--highrisk .prospect-summary-card__value {
+  color: #b91c1c;
+}
+
+.prospect-summary-card--firsttime .prospect-summary-card__value {
+  color: #1d4ed8;
 }
 
 .field--singpass-locked .field__nric-toggle {
