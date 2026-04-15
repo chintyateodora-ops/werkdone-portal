@@ -954,6 +954,36 @@ button {
   color: var(--color-neutral-8);
 }
 
+.pill--firsttime {
+  background: color-mix(in srgb, var(--color-primary-500) 12%, transparent);
+  color: var(--color-primary-500);
+}
+
+.pill--attendance {
+  background: var(--color-neutral-3);
+  color: var(--color-neutral-8);
+}
+
+.pill--attendance-attended {
+  background: color-mix(in srgb, var(--color-status-screened) 14%, transparent);
+  color: var(--color-status-screened);
+}
+
+.pill--attendance-no-show {
+  background: color-mix(in srgb, var(--color-status-booked) 16%, transparent);
+  color: var(--color-status-booked);
+}
+
+.pill--attendance-cancelled {
+  background: var(--color-neutral-3);
+  color: var(--color-neutral-9);
+}
+
+.pill--attendance-rescheduled {
+  background: color-mix(in srgb, var(--color-status-qualified) 14%, transparent);
+  color: var(--color-status-qualified);
+}
+
 /* Risk level: dot + label (shared: list, Kanban, prospect detail) */
 .risk-level.pill {
   gap: 0.35rem;
@@ -1093,6 +1123,10 @@ button {
 
 .kanban-card__risk {
   margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .kanban-card__name {
@@ -1129,6 +1163,31 @@ button {
   display: flex;
   justify-content: space-between;
   margin-bottom: 16px;
+}
+
+.kanban-card__review {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 0.65rem;
+  background: #ecfdf5;
+  border: 1px solid #bbf7d0;
+  color: #065f46;
+  font-size: var(--text-body-m);
+  line-height: var(--lh-body-m);
+  margin-top: 10px;
+  margin-bottom: 0;
+}
+
+.kanban-card__review-icon {
+  display: inline-flex;
+  color: #059669;
+}
+
+.kanban-card__review-text {
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
 }
 
 .kanban-card__bar {
@@ -5048,6 +5107,12 @@ button {
   font-size: var(--text-reg-form);
   color: var(--color-gray-700);
   line-height: 1.55;
+}
+
+.registration__option-card-subtitle {
+  font-weight: var(--weight-semibold);
+  color: var(--color-neutral-9);
+  margin-bottom: 0.25rem;
 }
 
 .registration__option-card-note {

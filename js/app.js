@@ -828,6 +828,8 @@
       '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>',
     clock:
       '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    calendar:
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
     userSm:
       '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
     refresh:
@@ -1150,6 +1152,25 @@
   function normalizeClassicScreeningExpandedDetails(r, detailsFallback) {
     const dash = "—";
     const val = (x) => (x != null && String(x).trim() !== "" ? String(x).trim() : dash);
+    const resultLabel = (raw) => {
+      const s = String(raw || "")
+        .trim()
+        .toLowerCase();
+      if (!s) return dash;
+      if (s === "normal") return "Normal";
+      if (s === "abnormal") return "Abnormal";
+      return val(raw);
+    };
+    const reviewPeriodLabel = (raw) => {
+      const s = String(raw || "").trim();
+      if (!s || s === dash) return dash;
+      const compact = s.toLowerCase().replace(/\s+/g, "");
+      if (compact === "12months" || compact === "1year" || compact === "1yr") return "1 year";
+      if (compact === "6months" || compact === "6month" || compact === "0.5year") return "6 months";
+      if (compact === "3years" || compact === "3year" || compact === "3yrs") return "3 years";
+      if (compact === "5years" || compact === "5year" || compact === "5yrs") return "5 years";
+      return val(raw);
+    };
     const timeSlotLabel = (raw) => {
       const s = String(raw || "")
         .trim()
@@ -1175,8 +1196,8 @@
     return [
       ["Preferred screening date", preferredDate],
       ["Preferred time slot", preferredSlot],
-      ["Result", val(r.result)],
-      ["Review period", val(r.nextReviewPeriod)],
+      ["Result", resultLabel(r.result)],
+      ["Review period", reviewPeriodLabel(r.nextReviewPeriod)],
       ["Next review date", val(r.nextReviewDate)],
       ["Last updated by", val(r.lastUpdatedBy)],
     ];
@@ -1184,9 +1205,9 @@
 
   /** Mammogram registration `name="appointmentType"` values → card titles (Screening Form). */
   const CLASSIC_MAMMOGRAM_APPOINTMENT_TYPE_LABELS = Object.freeze({
-    mammobus: "Community Mammobus Programme",
+    mammobus: "Mammobus",
     "scs-clinic": "SCS Clinic @ Bishan",
-    "healthier-sg": "Healthier SG Programme",
+    "healthier-sg": "Healthier SG",
   });
 
   const CLASSIC_SCREENING_STATUS_BY_KEY = Object.freeze({
@@ -1204,6 +1225,8 @@
     const detailsFb = state?.detailFormValues?.details || null;
     return {
       id,
+      /** Link back to prospect enrolment row (used to keep listing ↔ screening table 1:1). */
+      prospectRowKey: r.prospectRowKey != null ? String(r.prospectRowKey) : "",
       submitted: String(r.submitted || "—"),
       type: r.type || { key: "MMG", label: "—", tone: "sr-type--mmg" },
       status: r.status || { key: "qualified", label: "—", tone: "sr-status--qualified" },
@@ -1247,16 +1270,73 @@
     return "—";
   }
 
-  /** Rows from `#wd-classic-screening-records` in `index.html` (client-profile_2 demo). */
+  /**
+   * Demo screening records are generated PER prospect enrolment row.
+   * This keeps listing ↔ kanban ↔ screening table 1:1 consistent (no global shared seed).
+   */
   function getClassicScreeningRecordsRawArray() {
-    const el = document.getElementById("wd-classic-screening-records");
-    if (!el || !el.textContent || !el.textContent.trim()) return [];
-    try {
-      const raw = JSON.parse(el.textContent);
-      return Array.isArray(raw) ? raw : [];
-    } catch (_) {
-      return [];
-    }
+    const dash = "—";
+    const statusToKey = (raw) => {
+      const s = String(raw || "").trim().toLowerCase();
+      return s === "booked" ? "booked" : s === "screened" ? "screened" : "qualified";
+    };
+    const typeFromProgram = (p) => screeningTypeKeyFromListProgram(p) || "MMG";
+    const toTypeObj = (k) =>
+      k === "FIT"
+        ? { key: "FIT", label: "FIT Kit", tone: "sr-type--fit" }
+        : k === "PAP"
+          ? { key: "PAP", label: "HPV Test", tone: "sr-type--hpv" }
+          : { key: "MMG", label: "Mammogram", tone: "sr-type--mmg" };
+    const toStatusObj = (k) => CLASSIC_SCREENING_STATUS_BY_KEY[k] || CLASSIC_SCREENING_STATUS_BY_KEY.qualified;
+
+    const parseIso = (iso) => {
+      const s = String(iso || "").trim();
+      const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!m) return null;
+      const y = parseInt(m[1], 10);
+      const mo = parseInt(m[2], 10) - 1;
+      const d = parseInt(m[3], 10);
+      const dt = new Date(y, mo, d);
+      return Number.isFinite(dt.getTime()) ? dt : null;
+    };
+    const monthsBetween = (a, b) => {
+      if (!a || !b) return null;
+      return (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth());
+    };
+    const periodFromIsoDates = (startIso, endIso) => {
+      const a = parseIso(startIso);
+      const b = parseIso(endIso);
+      const m = monthsBetween(a, b);
+      if (m == null) return "";
+      if (m <= 7) return "6 months";
+      if (m <= 18) return "1 year";
+      if (m <= 48) return "3 years";
+      return "5 years";
+    };
+
+    return (PROSPECTS || []).map((p) => {
+      const typeKey = typeFromProgram(p.program);
+      const statusKey = statusToKey(p.status);
+      const submitted = p.dateRegistered ? formatDateRegisteredDisplay(p.dateRegistered) : dash;
+      const nextReviewDate = p.nextReview ? formatDateRegisteredDisplay(p.nextReview) : dash;
+      const nextReviewPeriod = periodFromIsoDates(p.dateRegistered, p.nextReview) || dash;
+      return {
+        id: `scr-${String(p.rowKey || "").replace(/[^a-zA-Z0-9_-]/g, "_")}`,
+        prospectRowKey: p.rowKey,
+        submitted,
+        type: toTypeObj(typeKey),
+        status: toStatusObj(statusKey),
+        appointment: null,
+        venue: dash,
+        appointmentType: typeKey === "MMG" ? "mammobus" : "",
+        action: null,
+        attendance: p.attendance || "",
+        result: dash,
+        nextReviewPeriod,
+        nextReviewDate,
+        lastUpdatedBy: "System",
+      };
+    });
   }
 
   function getClassicScreeningRecordsRawMerged() {
@@ -1267,8 +1347,12 @@
     });
   }
 
-  function getClassicScreeningRecordsCatalog() {
-    return getClassicScreeningRecordsRawMerged().map(normalizeClassicScreeningRecord).filter(Boolean);
+  function getClassicScreeningRecordsCatalog(opts) {
+    const rowKeys = Array.isArray(opts?.rowKeys) ? opts.rowKeys.filter(Boolean).map(String) : null;
+    const all = getClassicScreeningRecordsRawMerged().map(normalizeClassicScreeningRecord).filter(Boolean);
+    if (!rowKeys || rowKeys.length === 0) return all;
+    const set = new Set(rowKeys);
+    return all.filter((r) => r && r.prospectRowKey && set.has(String(r.prospectRowKey)));
   }
 
   /** List `program` / enrolment label → screening table `type.key` (MMG | FIT | PAP). */
@@ -1285,10 +1369,10 @@
     return screeningTypeKeyFromListProgram(programRaw);
   }
 
-  function pickClassicScreeningRecordIdForListProgram(programRaw) {
+  function pickClassicScreeningRecordIdForListProgram(programRaw, rowKey) {
     const typeKey = screeningTypeKeyFromListProgram(programRaw);
     if (!typeKey) return null;
-    const records = getClassicScreeningRecordsCatalog();
+    const records = getClassicScreeningRecordsCatalog({ rowKeys: rowKey ? [rowKey] : null });
     const fk = classicScreeningFilterKey();
     const visible = fk === "all" ? records : records.filter((r) => r.type?.key === fk);
     const hit = visible.find((r) => r.type?.key === typeKey);
@@ -1314,7 +1398,7 @@
     const prog = state.detail?.activeListProgram;
     const fk = classicScreeningFilterKeyFromListProgram(prog);
     if (fk) state.classicScreeningFilter = fk;
-    const id = pickClassicScreeningRecordIdForListProgram(prog);
+    const id = pickClassicScreeningRecordIdForListProgram(prog, state.detail?.rowKey);
     state.classicScreeningExpandedId = id || null;
   }
 
@@ -1342,8 +1426,8 @@
     const appointment = d && t ? { date: d, time: t } : null;
     const venue = document.getElementById("csu-venue")?.value?.trim() || "—";
     const attendance = document.getElementById("csu-attendance")?.value?.trim() || "";
-    const result = document.getElementById("csu-result")?.value?.trim() || "";
-    const nextReviewPeriod = document.getElementById("csu-next-review-period")?.value?.trim() || "";
+    const result = String(document.getElementById("csu-result")?.value || "").trim();
+    const nextReviewPeriod = String(document.getElementById("csu-next-review-period")?.value || "").trim();
     const nextReviewDate = document.getElementById("csu-next-review-date")?.value?.trim() || "";
     const patch = {
       submitted,
@@ -1538,7 +1622,15 @@
 
   /** Listing-style `table-card` + `data-table`, with toolbar filters and collapsible detail rows (no extra detail-card shell). */
   function renderClassicScreeningRecordsPanel(esc) {
-    const records = getClassicScreeningRecordsCatalog();
+    // In detail / v1 screening tabs, show only this prospect's enrolment rows.
+    let rowKeys = null;
+    const onScr =
+      (state.route === "detail" && state.detailTab === "screening") ||
+      (state.route === "prospectv3" && state.prospectV3Tab === "screenings");
+    if (onScr && state.detail) {
+      rowKeys = prospectEnrolmentRowsForDetail(state.detail).map((r) => r.rowKey).filter(Boolean);
+    }
+    const records = getClassicScreeningRecordsCatalog({ rowKeys });
     const counts = classicScreeningTypeCounts(records);
     const filterKey = classicScreeningFilterKey();
     const visible = filterKey === "all" ? records : records.filter((r) => r.type?.key === filterKey);
@@ -1616,7 +1708,7 @@
               <tr>
                 <th scope="col" class="data-table__th--narrow" aria-hidden="true"></th>
                 <th scope="col">Submitted</th>
-                <th scope="col">Type</th>
+                <th scope="col">Screening Type</th>
                 <th scope="col">Status</th>
                 <th scope="col">Appointment</th>
                 <th scope="col">Venue</th>
@@ -1685,9 +1777,7 @@
           cmp = (pa ?? -1) - (pb ?? -1);
           break;
         }
-        case "contact":
-          cmp = a.phone.localeCompare(b.phone);
-          break;
+        // contact sort removed (column is no longer sortable)
         case "status":
           cmp = PIPELINE_KEYS.indexOf(normStatus(a)) - PIPELINE_KEYS.indexOf(normStatus(b));
           break;
@@ -1697,7 +1787,7 @@
           );
           break;
         case "source":
-          cmp = a.sourceDetail.localeCompare(b.sourceDetail);
+          cmp = String(a.sourceType || "").localeCompare(String(b.sourceType || ""));
           break;
         case "nextReview":
           cmp = dateRegisteredSortValue(a.nextReview) - dateRegisteredSortValue(b.nextReview);
@@ -2184,7 +2274,7 @@
               ${renderSortableTh("Name", "name")}
               ${renderSortableTh("Program", "program")}
               ${renderSortableTh("Date registered", "dateRegistered")}
-              ${renderSortableTh("Contact", "contact")}
+              <th scope="col">Contact</th>
               ${renderSortableTh("Status", "status")}
               ${renderSortableTh("Attendance", "attendance")}
               ${renderSortableTh("Source", "source")}
@@ -2251,6 +2341,67 @@
     return { tasks: `${done}/${total}`, pct };
   }
 
+  function kanbanCardNextReview(p) {
+    const dash = "—";
+    const typeKey = screeningTypeKeyFromListProgram(p?.program);
+    const monthsBetween = (fromIso, toIso) => {
+      const a = String(fromIso || "").trim();
+      const b = String(toIso || "").trim();
+      if (!a || !b) return null;
+      const d1 = new Date(`${a}T12:00:00`);
+      const d2 = new Date(`${b}T12:00:00`);
+      if (Number.isNaN(d1.getTime()) || Number.isNaN(d2.getTime())) return null;
+      const y = d2.getFullYear() - d1.getFullYear();
+      const m = d2.getMonth() - d1.getMonth();
+      const total = y * 12 + m;
+      return Number.isFinite(total) ? total : null;
+    };
+    const periodFromMonths = (m) => {
+      if (m == null) return "";
+      if (m <= 7) return "6 months";
+      if (m <= 18) return "1 year";
+      if (m <= 48) return "3 years";
+      return "5 years";
+    };
+
+    let rec = null;
+    if (typeKey) {
+      rec = getClassicScreeningRecordsCatalog({ rowKeys: [p?.rowKey] }).find((r) => r.type?.key === typeKey) || null;
+    }
+
+    const periodRaw =
+      rec && rec.nextReviewPeriod != null && String(rec.nextReviewPeriod).trim() ? String(rec.nextReviewPeriod).trim() : "";
+    const periodCompact = periodRaw.toLowerCase().replace(/\s+/g, "");
+    const period =
+      periodCompact === "12months" || periodCompact === "1year" || periodCompact === "1yr"
+        ? "1 year"
+        : periodCompact === "6months" || periodCompact === "6month"
+          ? "6 months"
+          : periodCompact === "3years" || periodCompact === "3year" || periodCompact === "3yrs"
+            ? "3 years"
+            : periodCompact === "5years" || periodCompact === "5year" || periodCompact === "5yrs"
+              ? "5 years"
+              : periodRaw;
+
+    const dateRaw =
+      rec && rec.nextReviewDate != null && String(rec.nextReviewDate).trim() ? String(rec.nextReviewDate).trim() : "";
+    const dateFromProspect = (() => {
+      const iso = String(p?.nextReview || "").trim();
+      if (!iso) return "";
+      return formatDateRegisteredDisplay(iso);
+    })();
+    const date = dateRaw || dateFromProspect || "";
+
+    const prettyPeriodDirect = period && period !== dash ? period : "";
+    const prettyPeriodDerived = periodFromMonths(monthsBetween(p?.dateRegistered, p?.nextReview));
+    const prettyPeriod = prettyPeriodDirect || prettyPeriodDerived || "";
+
+    const prettyDate = date && date !== dash ? date : "";
+    if (!prettyPeriod && !prettyDate) return null;
+    const label = prettyPeriod && prettyDate ? `${prettyPeriod} · ${prettyDate}` : prettyPeriod || prettyDate || dash;
+    return { period: prettyPeriod, date: prettyDate, label };
+  }
+
   function renderKanbanFromProspects() {
     const rows = getFilteredProspects();
     const cols = [
@@ -2265,21 +2416,40 @@
           .map((r) => {
             const { tasks, pct } = kanbanCardProgress(r);
             const attendance = classicScreeningAttendanceDisplay({ attendance: r.attendance });
+            const nextReview = kanbanCardNextReview(r);
+            const nextReviewHtml = nextReview
+              ? `<div class="kanban-card__review" aria-label="Review period and next review">
+                  <span class="kanban-card__review-icon" aria-hidden="true">${icons.calendar}</span>
+                  <span class="kanban-card__review-text">${escapeAttr(nextReview.label)}</span>
+                </div>`
+              : "";
+            const firstTimeTag = isFirstTimeScreenerProspect(r)
+              ? `<span class="pill pill--firsttime" title="First-time screener">First-time</span>`
+              : "";
+            const attendanceSlug = String(attendance || "")
+              .trim()
+              .toLowerCase()
+              .replace(/\s+/g, "-")
+              .replace(/[^a-z0-9-]/g, "");
+            const attendanceTag =
+              attendance && attendance !== "—"
+                ? `<span class="pill pill--attendance pill--attendance-${escapeAttr(attendanceSlug)}" title="Attendance">${escapeAttr(
+                    attendance
+                  )}</span>`
+                : "";
+            const riskHtml = `<div class="kanban-card__risk">${riskLevelIndicator(r.risk)}${firstTimeTag}${attendanceTag}</div>`;
             return `
         <article class="kanban-card" tabindex="0" data-kanban-card data-kanban-prospect="${escapeAttr(r.rowKey)}">
           <div class="kanban-card__program"><span class="pill">${escapeAttr(programDisplayLabel(r.program))}</span></div>
           <h2 class="kanban-card__name">${escapeAttr(r.name)}</h2>
-          <div class="kanban-card__risk">${riskLevelIndicator(r.risk)}</div>
           <p class="kanban-card__meta">${escapeAttr(kanbanCardDemographics(r))}</p>
-          <div class="kanban-card__attendance">
-            <span>Attendance</span>
-            <span class="kanban-card__attendance-value">${escapeAttr(attendance)}</span>
-          </div>
+          ${riskHtml}
           <div class="kanban-card__tasks">
             <span>Tasks</span>
             <span>${escapeAttr(tasks)}</span>
           </div>
           <div class="kanban-card__bar"><span style="width:${pct}%"></span></div>
+          ${nextReviewHtml}
         </article>`;
           })
           .join("");
@@ -2905,9 +3075,22 @@
     const venueVal = record.venue != null ? String(record.venue) : "";
     const attVal = record.attendance != null ? String(record.attendance).trim() : "";
     const atVal = String(record.appointmentType || "").trim().toLowerCase();
-    const resultVal = record.result != null ? String(record.result) : "";
-    const nrpVal = record.nextReviewPeriod != null ? String(record.nextReviewPeriod) : "";
-    const nrdVal = record.nextReviewDate != null ? String(record.nextReviewDate) : "";
+    const resultValRaw = record.result != null ? String(record.result).trim() : "";
+    const resultVal = resultValRaw.toLowerCase() === "normal" ? "Normal" : resultValRaw.toLowerCase() === "abnormal" ? "Abnormal" : "";
+    const nrpValRaw = record.nextReviewPeriod != null ? String(record.nextReviewPeriod).trim() : "";
+    const nrpCompact = nrpValRaw.toLowerCase().replace(/\s+/g, "");
+    const nrpVal =
+      nrpCompact === "6months" || nrpCompact === "6month"
+        ? "6 months"
+        : nrpCompact === "12months" || nrpCompact === "1year" || nrpCompact === "1yr"
+          ? "1 year"
+          : nrpCompact === "3years" || nrpCompact === "3year" || nrpCompact === "3yrs"
+            ? "3 years"
+            : nrpCompact === "5years" || nrpCompact === "5year" || nrpCompact === "5yrs"
+              ? "5 years"
+              : "";
+    const nrdValRaw = record.nextReviewDate != null ? String(record.nextReviewDate).trim() : "";
+    const nrdVal = nrdValRaw && nrdValRaw !== "—" ? nrdValRaw : "";
     const statusChips = Object.keys(CLASSIC_SCREENING_STATUS_BY_KEY)
       .map((k) => {
         const L = CLASSIC_SCREENING_STATUS_BY_KEY[k];
@@ -2977,15 +3160,29 @@
         <div class="v3-biodata-modal__grid">
           <div class="field field--full">
             <label for="csu-result">Result</label>
-            <input id="csu-result" type="text" value="${e(resultVal)}" placeholder="—" autocomplete="off" />
+            <select id="csu-result">
+              <option value=""${resultVal ? "" : " selected"}>—</option>
+              <option value="Normal"${resultVal === "Normal" ? " selected" : ""}>Normal</option>
+              <option value="Abnormal"${resultVal === "Abnormal" ? " selected" : ""}>Abnormal</option>
+            </select>
           </div>
           <div class="field">
             <label for="csu-next-review-period">Review period</label>
-            <input id="csu-next-review-period" type="text" value="${e(nrpVal)}" placeholder="e.g. 12 months" autocomplete="off" />
+            <select id="csu-next-review-period">
+              <option value=""${nrpVal ? "" : " selected"}>-- Select --</option>
+              <option value="6 months"${nrpVal === "6 months" ? " selected" : ""}>6 months</option>
+              <option value="1 year"${nrpVal === "1 year" ? " selected" : ""}>1 year</option>
+              <option value="3 years"${nrpVal === "3 years" ? " selected" : ""}>3 years</option>
+              <option value="5 years"${nrpVal === "5 years" ? " selected" : ""}>5 years</option>
+            </select>
           </div>
           <div class="field">
             <label for="csu-next-review-date">Next review date</label>
-            <input id="csu-next-review-date" type="text" value="${e(nrdVal)}" placeholder="e.g. Jan 2025" autocomplete="off" />
+            <div class="field__date" data-next-review-date-wrap>
+              <input class="field__date-text" id="csu-next-review-date" type="text" value="${e(nrdVal)}" placeholder="DD-MM-YYYY" inputmode="numeric" autocomplete="off" maxlength="10" data-auto-next-review="1" />
+              <button type="button" class="field__date-btn" aria-label="Choose date" title="Choose date"></button>
+              <input type="date" class="field__date-native" tabindex="-1" aria-hidden="true" />
+            </div>
           </div>
         </div>
       </div>
@@ -3147,7 +3344,9 @@
 
     const mkTabHref = (t) => (t === "overview" ? `#/prospectv3/${rid}` : `#/prospectv3/${rid}/${encodeURIComponent(t)}`);
 
-    const classicScreeningRecords = getClassicScreeningRecordsCatalog();
+    const classicScreeningRecords = getClassicScreeningRecordsCatalog({
+      rowKeys: state.detail ? prospectEnrolmentRowsForDetail(state.detail).map((r) => r.rowKey).filter(Boolean) : null,
+    });
     const notesForV1Tab = detailNotesForRender(d.rowKey);
     const documentsForV1Tab = detailDocumentsForRender(d.rowKey);
 
@@ -3957,6 +4156,8 @@
     ["reg-hpv-personal", "Personal Information"],
     ["reg-hpv-address", "Residential Address"],
     ["reg-hpv-subsidies", "Healthier SG & Subsidies"],
+    ["reg-hpv-appointment-type", "Appointment Type"],
+    ["reg-hpv-healthier-sg", "Healthier SG Programme"],
     ["reg-hpv-appointment", "Appointment Preferences"],
     ["reg-hpv-engagement", "Engagement"],
     ["reg-hpv-consent", "Consent"],
@@ -3967,6 +4168,8 @@
     ["reg-fit-personal", "Personal Information"],
     ["reg-fit-address", "Residential Address"],
     ["reg-fit-subsidies", "Healthier SG & Subsidies"],
+    ["reg-fit-appointment-type", "Appointment Type"],
+    ["reg-fit-healthier-sg", "Healthier SG Programme"],
     ["reg-fit-appointment", "Appointment Preferences"],
     ["reg-fit-engagement", "Engagement"],
     ["reg-fit-consent", "Consent"],
@@ -4056,6 +4259,30 @@
           </nav>
         </div>
       </div>`;
+  }
+
+  function renderStandardConsentClauseHtml() {
+    return (
+      "I consent to Singapore Cancer Society (SCS) collecting, using, and storing my personal data for the purposes of delivering cancer screening services, and to support my cancer screening journey at other healthcare institutions. I understand that SCS may use my contact information to follow up with me regarding my screening results and any related health matters." +
+      "<br /><br />" +
+      "Where applicable, I consent to SCS sharing my personal data with relevant healthcare institutions and/or appointed partners (including NHG Diagnostics, for Mammobus screening) for the purposes of care coordination and the facilitation of follow-up appointments related to my cancer screening." +
+      "<br /><br />" +
+      "I confirm that my personal data as provided in this form is accurate and complete. I understand and accept the terms and conditions under the SCS Personal Data Protection Policy. I may withdraw my consent at any time by contacting SCS."
+    );
+  }
+
+  function renderStandardConsentRowHtml(opts) {
+    const id = String(opts?.id || "consent");
+    const name = String(opts?.name || id);
+    const required = opts?.required !== false;
+    return `
+      <div class="registration__consent">
+        <label class="registration__consent-row">
+          <input type="checkbox" name="${escapeAttr(name)}" id="${escapeAttr(id)}"${required ? " required" : ""} />
+          <span>${renderStandardConsentClauseHtml()}${required ? '<span class="field__req" aria-hidden="true">*</span>' : ""}</span>
+        </label>
+      </div>
+    `;
   }
 
   function renderHpvChrome() {
@@ -4745,14 +4972,13 @@
                     <input class="registration__option-card-input" type="radio" name="appointmentType" value="mammobus" checked />
                     <div class="registration__option-card-body">
                       <div class="registration__option-card-title-row">
-                        <div class="registration__option-card-title">Community Mammobus Programme</div>
+                        <div class="registration__option-card-title">Mammobus</div>
                         <span class="registration__option-card-ring" aria-hidden="true"></span>
                       </div>
                       <div class="registration__option-card-desc">
-                        An initiative by SCS, BCF, and NHGD to bring subsidised mammogram screenings to different neighbourhoods across Singapore.
+                        <div class="registration__option-card-subtitle">I would like to book a mammogram appointment on the Mammobus</div>
+                        SCS, BCF &amp; NHGD initiative bringing subsidised mammogram screenings to neighbourhoods across Singapore. Note: not wheelchair-accessible.
                       </div>
-                      <div class="registration__option-card-note"><em>Note: The Mammobus is not wheelchair-accessible.</em></div>
-                      <div class="registration__option-card-tag">Available to all eligible clients</div>
                     </div>
                   </label>
 
@@ -4764,9 +4990,9 @@
                         <span class="registration__option-card-ring" aria-hidden="true"></span>
                       </div>
                       <div class="registration__option-card-desc">
-                        Located at 9 Bishan Place, Junction 8 Office Tower, #06-05. Offers mammograms at no cost for eligible individuals with a Blue or Orange CHAS card, aged 50 and above.
+                        <div class="registration__option-card-subtitle">Yes, I would like to book a mammogram appointment at SCS Clinic @ Bishan</div>
+                        Free mammograms for individuals with a Blue or Orange CHAS card aged 50 and above.
                       </div>
-                      <div class="registration__option-card-tag">You are eligible for this option</div>
                     </div>
                   </label>
 
@@ -4774,13 +5000,13 @@
                     <input class="registration__option-card-input" type="radio" name="appointmentType" value="healthier-sg" />
                     <div class="registration__option-card-body">
                       <div class="registration__option-card-title-row">
-                        <div class="registration__option-card-title">Healthier SG Programme</div>
+                        <div class="registration__option-card-title">Healthier SG</div>
                         <span class="registration__option-card-ring" aria-hidden="true"></span>
                       </div>
                       <div class="registration__option-card-desc">
-                        The national health screening programme under Health Promotion Board. Book an appointment for any recommended subsidised screening test on HealthHub.
+                        <div class="registration__option-card-subtitle">I will / have already booked my screening through Healthier SG</div>
+                        HPB's national health screening programme for Singapore Citizens. Book any recommended subsidised screening on HealthHub.
                       </div>
-                      <div class="registration__option-card-tag">Available to Singapore Citizens</div>
                     </div>
                   </label>
                 </div>
@@ -4804,11 +5030,11 @@
                   </div>
                 </div>
 
-                <div class="registration__question-card">
+                <div class="registration__question-card" data-hsg-q2>
                   <div class="registration__question-kicker">QUESTION 2 OF 2</div>
-                  <div class="registration__question-title">When is the date of your screening?</div>
+                  <div class="registration__question-title">When is the date of your screening? (Choose date)</div>
                   <div class="field field--full">
-                    <input id="healthierSgScreeningDate" name="healthierSgScreeningDate" type="text" placeholder="DD/MM/YYYY" autocomplete="off" />
+                    ${registrationDateInput("healthierSgScreeningDate", "healthierSgScreeningDate", false)}
                   </div>
                 </div>
               </section>
@@ -4910,12 +5136,7 @@
               <section id="reg-consent" class="registration-card registration-card--fit-consent" tabindex="-1">
                 <h2 class="registration__section-label">Consent</h2>
                 <div class="registration__fit-consent-body">
-                  <div class="registration__consent">
-                    <label class="registration__consent-row">
-                      <input type="checkbox" name="consent" id="consent" required />
-                      <span>I confirm that my personal data is accurate and complete and I fully understand and accept the terms and conditions under the NHG Personal Data Protection Policy <a href="https://www.nhgd.com.sg/Pages/Personal-Data-Protection-Notification.aspx" class="registration__consent-link" target="_blank" rel="noopener noreferrer">https://www.nhgd.com.sg/Pages/Personal-Data-Protection-Notification.aspx</a>. I may withdraw my consent anytime through <a href="mailto:askNHGD@diagnostics.nhg.com.sg" class="registration__consent-link">askNHGD@diagnostics.nhg.com.sg</a>.<span class="field__req" aria-hidden="true">*</span></span>
-                    </label>
-                  </div>
+                  ${renderStandardConsentRowHtml({ id: "consent", name: "consent", required: true })}
                 </div>
               </section>
               ${renderRegistrationMobileSubmitFooter()}
@@ -5078,6 +5299,68 @@
                 </div>
               </section>
 
+              <section id="reg-hpv-appointment-type" class="registration-card" tabindex="-1">
+                <h2 class="registration__section-label">Appointment Type</h2>
+                <p class="registration__appointment-type-lead">
+                  There are several avenues where you can sign up for an HPV screening. Please select one of the options below.
+                </p>
+                <div class="registration__appointment-type" role="radiogroup" aria-label="Appointment Type">
+                  <label class="registration__option-card registration__option-card--selected" data-option-card>
+                    <input class="registration__option-card-input" type="radio" name="appointmentType" value="scs-clinic" checked />
+                    <div class="registration__option-card-body">
+                      <div class="registration__option-card-title-row">
+                        <div class="registration__option-card-title">SCS Clinic @ Bishan</div>
+                        <span class="registration__option-card-ring" aria-hidden="true"></span>
+                      </div>
+                      <div class="registration__option-card-desc">
+                        <div class="registration__option-card-subtitle">Yes, I would like to book an HPV screening appointment at SCS Clinic @ Bishan</div>
+                      </div>
+                    </div>
+                  </label>
+
+                  <label class="registration__option-card" data-option-card>
+                    <input class="registration__option-card-input" type="radio" name="appointmentType" value="healthier-sg" />
+                    <div class="registration__option-card-body">
+                      <div class="registration__option-card-title-row">
+                        <div class="registration__option-card-title">Healthier SG</div>
+                        <span class="registration__option-card-ring" aria-hidden="true"></span>
+                      </div>
+                      <div class="registration__option-card-desc">
+                        <div class="registration__option-card-subtitle">I will / have already booked my screening through Healthier SG</div>
+                        HPB's national health screening programme for Singapore Citizens. Book any recommended subsidised screening on HealthHub.
+                      </div>
+                    </div>
+                  </label>
+                </div>
+              </section>
+
+              <section id="reg-hpv-healthier-sg" class="registration-card registration__healthier-sg-extra" tabindex="-1" hidden>
+                <h2 class="registration__section-label">Healthier SG Programme</h2>
+
+                <div class="registration__question-card">
+                  <div class="registration__question-kicker">QUESTION 1 OF 2</div>
+                  <div class="registration__question-title">Have you booked your Healthier SG HPV screening yet?</div>
+                  <div class="registration__yesno" role="radiogroup" aria-label="Healthier SG booking status">
+                    <label class="registration__yesno-btn" data-yesno>
+                      <input class="registration__yesno-input" type="radio" name="hpvHealthierSgBooked" value="no" />
+                      <span>No</span>
+                    </label>
+                    <label class="registration__yesno-btn" data-yesno>
+                      <input class="registration__yesno-input" type="radio" name="hpvHealthierSgBooked" value="yes" />
+                      <span>Yes</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="registration__question-card" data-hsg-q2>
+                  <div class="registration__question-kicker">QUESTION 2 OF 2</div>
+                  <div class="registration__question-title">When is the date of your screening?</div>
+                  <div class="field field--full">
+                    ${registrationDateInput("hpvHealthierSgScreeningDate", "hpvHealthierSgScreeningDate", false)}
+                  </div>
+                </div>
+              </section>
+
               <section id="reg-hpv-appointment" class="registration-card" tabindex="-1">
                 <h2 class="registration__section-label">Appointment Preferences</h2>
                 <div class="form-grid form-grid--reg">
@@ -5123,68 +5406,10 @@
                 </div>
               </section>
 
-              <section id="reg-hpv-consent" class="registration-card" tabindex="-1">
+              <section id="reg-hpv-consent" class="registration-card registration-card--fit-consent" tabindex="-1">
                 <h2 class="registration__section-label">Consent</h2>
-                <div class="registration__consent-panel">
-                  <div class="registration__consent">
-                    <label class="registration__consent-row">
-                      <input type="checkbox" name="hpvConsentPrivacy" id="hpvConsentPrivacy" required />
-                      <span>I consent to the <a href="#" class="registration__consent-link">Privacy Policy</a> and to being contacted for screening appointments, results, and programme updates.<span class="field__req" aria-hidden="true">*</span></span>
-                    </label>
-                  </div>
-                  <fieldset class="registration__fieldset field field--full">
-                    <legend class="registration__fieldset-legend">Follow-up after screening results</legend>
-                    <div class="registration__radio-group" role="radiogroup">
-                      <label class="registration__radio-label"><input type="radio" name="hpvFollowUp" value="yes" /> Yes</label>
-                      <label class="registration__radio-label"><input type="radio" name="hpvFollowUp" value="no" /> No</label>
-                    </div>
-                  </fieldset>
-                  <fieldset class="registration__fieldset field field--full">
-                    <legend class="registration__fieldset-legend">Share data with programme partners</legend>
-                    <div class="registration__radio-group" role="radiogroup">
-                      <label class="registration__radio-label"><input type="radio" name="hpvDataShare" value="yes" /> Yes</label>
-                      <label class="registration__radio-label"><input type="radio" name="hpvDataShare" value="no" /> No</label>
-                    </div>
-                  </fieldset>
-                  <div class="registration__consent">
-                    <label class="registration__consent-row">
-                      <input type="checkbox" name="hpvConsentAccurate" id="hpvConsentAccurate" required />
-                      <span>I declare that the information provided is accurate and complete to the best of my knowledge.<span class="field__req" aria-hidden="true">*</span></span>
-                    </label>
-                  </div>
-                  <p class="registration__consent-intro">
-                    Communication preferences — please indicate Yes or No for each channel:
-                  </p>
-                  <div class="registration__channel-rows" role="group" aria-label="Communication preferences">
-                    <div class="registration__channel-row">
-                      <span>SMS</span>
-                      <div class="registration__channel-opts">
-                        <label class="registration__radio-label"><input type="radio" name="hpvSmsConsent" value="yes" /> Yes</label>
-                        <label class="registration__radio-label"><input type="radio" name="hpvSmsConsent" value="no" /> No</label>
-                      </div>
-                    </div>
-                    <div class="registration__channel-row">
-                      <span>Phone Call</span>
-                      <div class="registration__channel-opts">
-                        <label class="registration__radio-label"><input type="radio" name="hpvPhoneConsent" value="yes" /> Yes</label>
-                        <label class="registration__radio-label"><input type="radio" name="hpvPhoneConsent" value="no" /> No</label>
-                      </div>
-                    </div>
-                    <div class="registration__channel-row">
-                      <span>WhatsApp</span>
-                      <div class="registration__channel-opts">
-                        <label class="registration__radio-label"><input type="radio" name="hpvWhatsappConsent" value="yes" /> Yes</label>
-                        <label class="registration__radio-label"><input type="radio" name="hpvWhatsappConsent" value="no" /> No</label>
-                      </div>
-                    </div>
-                    <div class="registration__channel-row">
-                      <span>Email</span>
-                      <div class="registration__channel-opts">
-                        <label class="registration__radio-label"><input type="radio" name="hpvEmailConsent" value="yes" /> Yes</label>
-                        <label class="registration__radio-label"><input type="radio" name="hpvEmailConsent" value="no" /> No</label>
-                      </div>
-                    </div>
-                  </div>
+                <div class="registration__fit-consent-body">
+                  ${renderStandardConsentRowHtml({ id: "hpvConsentPrivacy", name: "hpvConsentPrivacy", required: true })}
                 </div>
               </section>
               ${renderRegistrationMobileSubmitFooter()}
@@ -5337,6 +5562,55 @@
                 </div>
               </section>
 
+              <section id="reg-fit-appointment-type" class="registration-card" tabindex="-1">
+                <h2 class="registration__section-label">Appointment Type</h2>
+                <p class="registration__appointment-type-lead">
+                  Please select one of the options below.
+                </p>
+                <div class="registration__appointment-type" role="radiogroup" aria-label="Appointment Type">
+                  <label class="registration__option-card registration__option-card--selected" data-option-card>
+                    <input class="registration__option-card-input" type="radio" name="appointmentType" value="healthier-sg" checked />
+                    <div class="registration__option-card-body">
+                      <div class="registration__option-card-title-row">
+                        <div class="registration__option-card-title">Healthier SG</div>
+                        <span class="registration__option-card-ring" aria-hidden="true"></span>
+                      </div>
+                      <div class="registration__option-card-desc">
+                        <div class="registration__option-card-subtitle">I will / have already booked my screening through Healthier SG</div>
+                        HPB's national health screening programme for Singapore Citizens. Book any recommended subsidised screening on HealthHub.
+                      </div>
+                    </div>
+                  </label>
+                </div>
+              </section>
+
+              <section id="reg-fit-healthier-sg" class="registration-card registration__healthier-sg-extra" tabindex="-1">
+                <h2 class="registration__section-label">Healthier SG Programme</h2>
+
+                <div class="registration__question-card">
+                  <div class="registration__question-kicker">QUESTION 1 OF 2</div>
+                  <div class="registration__question-title">Have you booked your Healthier SG screening yet?</div>
+                  <div class="registration__yesno" role="radiogroup" aria-label="Healthier SG booking status">
+                    <label class="registration__yesno-btn" data-yesno>
+                      <input class="registration__yesno-input" type="radio" name="healthierSgBooked" value="no" />
+                      <span>No</span>
+                    </label>
+                    <label class="registration__yesno-btn" data-yesno>
+                      <input class="registration__yesno-input" type="radio" name="healthierSgBooked" value="yes" />
+                      <span>Yes</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="registration__question-card" data-hsg-q2>
+                  <div class="registration__question-kicker">QUESTION 2 OF 2</div>
+                  <div class="registration__question-title">When is the date of your screening? (Choose date)</div>
+                  <div class="field field--full">
+                    ${registrationDateInput("healthierSgScreeningDate", "healthierSgScreeningDate", false)}
+                  </div>
+                </div>
+              </section>
+
               <section id="reg-fit-appointment" class="registration-card" tabindex="-1">
                 <h2 class="registration__section-label">Appointment Preferences</h2>
                 <div class="form-grid form-grid--reg">
@@ -5385,24 +5659,7 @@
               <section id="reg-fit-consent" class="registration-card registration-card--fit-consent" tabindex="-1">
                 <h2 class="registration__section-label">Consent</h2>
                 <div class="registration__fit-consent-body">
-                  <p class="registration__fit-consent-lead" id="fit-comms-pref-intro">
-                    If you wish to receive communications on Singapore Cancer Society (SCS) activities, programmes and services via phone call and/or text message to a phone number or numbers that you have provided to SCS, please tick the relevant box(es):
-                  </p>
-                  <div class="registration__checkbox-stack registration__fit-consent-checks" role="group" aria-labelledby="fit-comms-pref-intro">
-                    <label class="registration__check-label"><input type="checkbox" name="fitCommSms" value="1" /> Text Message</label>
-                    <label class="registration__check-label"><input type="checkbox" name="fitCommPhone" value="1" /> Phone Call</label>
-                  </div>
-                  <div class="registration__fit-consent-legal">
-                    <p>
-                      In any event, you agree that SCS may contact you via email and/or post on the follow-up to the screening completed on this form, its activities, programmes and services; including (but not limiting to) reminders for rescreen appointment, invitation to cancer awareness public forums, follow-up general cancer management communication to you, etc.
-                    </p>
-                    <p>
-                      If you do not wish to receive such communications as aforesaid, or if you wish to make changes to consent previously given, you may email to <a href="mailto:dataprotection@singaporecancersociety.org.sg" class="registration__consent-link">dataprotection@singaporecancersociety.org.sg</a>.
-                    </p>
-                    <p>
-                      If you opt out of communications or make changes to consent previously given, please understand that it may affect SCS&apos; ability to provide relevant services to you.
-                    </p>
-                  </div>
+                  ${renderStandardConsentRowHtml({ id: "fitConsent", name: "fitConsent", required: true })}
                 </div>
               </section>
               ${renderRegistrationMobileSubmitFooter()}
@@ -6333,6 +6590,73 @@
   }
 
   function bindEvents() {
+    // Classic screening update modal: auto-calc next review date from review period (user can override).
+    (function bindClassicScreeningReviewAutoCalc() {
+      const periodSel = document.getElementById("csu-next-review-period");
+      const dateText = document.getElementById("csu-next-review-date");
+      const dateNative = document.querySelector("#classic-screening-update-modal .field__date-native");
+      if (!(periodSel instanceof HTMLSelectElement)) return;
+      if (!(dateText instanceof HTMLInputElement)) return;
+      if (periodSel.getAttribute("data-next-review-bound") === "1") return;
+      periodSel.setAttribute("data-next-review-bound", "1");
+
+      const pad2 = (n) => String(n).padStart(2, "0");
+      const toDdMmYyyy = (d) => `${pad2(d.getDate())}-${pad2(d.getMonth() + 1)}-${d.getFullYear()}`;
+      const addMonths = (d, months) => {
+        const out = new Date(d.getTime());
+        const day = out.getDate();
+        out.setDate(1);
+        out.setMonth(out.getMonth() + months);
+        const last = new Date(out.getFullYear(), out.getMonth() + 1, 0).getDate();
+        out.setDate(Math.min(day, last));
+        return out;
+      };
+      const addYears = (d, years) => addMonths(d, years * 12);
+
+      const calcFromPeriod = (p) => {
+        const raw = String(p || "").trim().toLowerCase();
+        const today = new Date();
+        const base = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        if (raw === "6 months") return addMonths(base, 6);
+        if (raw === "1 year") return addYears(base, 1);
+        if (raw === "3 years") return addYears(base, 3);
+        if (raw === "5 years") return addYears(base, 5);
+        return null;
+      };
+
+      const markManual = () => dateText.setAttribute("data-auto-next-review", "0");
+      const isAuto = () => String(dateText.getAttribute("data-auto-next-review") || "1") !== "0";
+
+      // If the field already has a value, treat it as manual.
+      const existing = String(dateText.value || "").trim();
+      if (existing && existing !== "—") dateText.setAttribute("data-auto-next-review", "0");
+
+      const applyAuto = () => {
+        const dt = calcFromPeriod(periodSel.value);
+        if (!dt) return;
+        const cur = String(dateText.value || "").trim();
+        const emptyish = !cur || cur === "—";
+        if (emptyish || isAuto()) {
+          dateText.value = toDdMmYyyy(dt);
+          dateText.setAttribute("data-auto-next-review", "1");
+          // Keep native date in sync if present (date-input.js will also sync on init).
+          if (dateNative instanceof HTMLInputElement) {
+            const iso = `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())}`;
+            dateNative.value = iso;
+          }
+        }
+      };
+
+      periodSel.addEventListener("change", applyAuto);
+      periodSel.addEventListener("input", applyAuto);
+      dateText.addEventListener("input", markManual);
+      dateText.addEventListener("change", markManual);
+      dateNative?.addEventListener?.("change", markManual);
+
+      // Initial auto-fill on open if period is selected and date empty.
+      applyAuto();
+    })();
+
     document.querySelectorAll("[data-prospect-kpi]").forEach((el) => {
       const onActivate = () => {
         const key = el.getAttribute("data-prospect-kpi");
@@ -6607,43 +6931,78 @@
       };
 
       const syncHealthierSgExtra = () => {
-        const extra = regRoot.querySelector("#reg-healthier-sg");
-        if (!(extra instanceof HTMLElement)) return;
         const selected = regRoot.querySelector('input[type="radio"][name="appointmentType"][value="healthier-sg"]');
         const show = selected instanceof HTMLInputElement && selected.checked;
-        extra.hidden = !show;
-        // Disable inputs when hidden so they don't participate in form submission/validation.
-        extra.querySelectorAll("input, select, textarea").forEach((el) => {
-          if (el instanceof HTMLInputElement || el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement) {
-            el.disabled = !show;
+
+        const pairs = [
+          { extraId: "#reg-healthier-sg", extraTocId: null, bookedName: "healthierSgBooked", dateId: "healthierSgScreeningDate", apptId: "#reg-appointment", tocId: "reg-appointment" },
+          { extraId: "#reg-fit-healthier-sg", extraTocId: "reg-fit-healthier-sg", bookedName: "healthierSgBooked", dateId: "healthierSgScreeningDate", apptId: "#reg-fit-appointment", tocId: "reg-fit-appointment" },
+          { extraId: "#reg-hpv-healthier-sg", extraTocId: "reg-hpv-healthier-sg", bookedName: "hpvHealthierSgBooked", dateId: "hpvHealthierSgScreeningDate", apptId: "#reg-hpv-appointment", tocId: "reg-hpv-appointment" },
+        ];
+        pairs.forEach(({ extraId, extraTocId, bookedName, dateId, apptId, tocId }) => {
+          const extra = regRoot.querySelector(extraId);
+          if (extra instanceof HTMLElement) {
+            extra.hidden = !show;
+            extra.querySelectorAll("input, select, textarea, button").forEach((el) => {
+              if (
+                el instanceof HTMLInputElement ||
+                el instanceof HTMLSelectElement ||
+                el instanceof HTMLTextAreaElement ||
+                el instanceof HTMLButtonElement
+              ) {
+                el.disabled = !show;
+              }
+            });
+          }
+
+          // Hide Appointment Preferences when Healthier SG is selected.
+          const apptPref = regRoot.querySelector(apptId);
+          if (apptPref instanceof HTMLElement) {
+            apptPref.hidden = show;
+            apptPref.querySelectorAll("input, select, textarea, button").forEach((el) => {
+              if (
+                el instanceof HTMLInputElement ||
+                el instanceof HTMLSelectElement ||
+                el instanceof HTMLTextAreaElement ||
+                el instanceof HTMLButtonElement
+              ) {
+                el.disabled = show;
+              }
+            });
+          }
+
+          // Hide TOC entry too, so user can't navigate to a hidden section.
+          document.querySelectorAll(`[data-reg-nav="${tocId}"]`).forEach((btn) => {
+            if (btn instanceof HTMLElement) btn.style.display = show ? "none" : "";
+          });
+
+          if (extraTocId) {
+            document.querySelectorAll(`[data-reg-nav="${extraTocId}"]`).forEach((btn) => {
+              if (btn instanceof HTMLElement) btn.style.display = show ? "" : "none";
+            });
+          }
+
+          // Question 2: disable date unless Question 1 = "yes" (per-form radio names + date ids)
+          const bookedYes = regRoot.querySelector(`input[type="radio"][name="${bookedName}"][value="yes"]`);
+          const bookedNo = regRoot.querySelector(`input[type="radio"][name="${bookedName}"][value="no"]`);
+          const isYes = bookedYes instanceof HTMLInputElement && bookedYes.checked;
+          const isNo = bookedNo instanceof HTMLInputElement && bookedNo.checked;
+          const q2 = extra instanceof HTMLElement ? extra.querySelector('[data-hsg-q2]') : null;
+          if (q2 instanceof HTMLElement) q2.hidden = !show || !isYes;
+
+          const dateInput = regRoot.querySelector(`#${dateId}`);
+          if (dateInput instanceof HTMLInputElement) {
+            dateInput.disabled = !show || isNo || !isYes;
+            if (show && isNo) dateInput.value = "";
+            const shell = dateInput.closest(".field__date");
+            if (shell) {
+              const btn = shell.querySelector(".field__date-btn");
+              const native = shell.querySelector(".field__date-native");
+              if (btn instanceof HTMLButtonElement) btn.disabled = dateInput.disabled;
+              if (native instanceof HTMLInputElement) native.disabled = dateInput.disabled;
+            }
           }
         });
-
-        // Hide Appointment Preferences when Healthier SG is selected.
-        const apptPref = regRoot.querySelector("#reg-appointment");
-        if (apptPref instanceof HTMLElement) {
-          apptPref.hidden = show;
-          apptPref.querySelectorAll("input, select, textarea").forEach((el) => {
-            if (el instanceof HTMLInputElement || el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement) {
-              el.disabled = show;
-            }
-          });
-        }
-        // Hide TOC entry too, so user can't navigate to a hidden section.
-        document.querySelectorAll('[data-reg-nav="reg-appointment"]').forEach((btn) => {
-          if (btn instanceof HTMLElement) btn.style.display = show ? "none" : "";
-        });
-
-        // Question 2: disable date unless Question 1 = "yes"
-        const bookedYes = regRoot.querySelector('input[type="radio"][name="healthierSgBooked"][value="yes"]');
-        const bookedNo = regRoot.querySelector('input[type="radio"][name="healthierSgBooked"][value="no"]');
-        const isYes = bookedYes instanceof HTMLInputElement && bookedYes.checked;
-        const isNo = bookedNo instanceof HTMLInputElement && bookedNo.checked;
-        const dateInput = regRoot.querySelector("#healthierSgScreeningDate");
-        if (dateInput instanceof HTMLInputElement) {
-          dateInput.disabled = !show || isNo || !isYes;
-          if (show && isNo) dateInput.value = "";
-        }
       };
 
       const syncYesNoButtons = () => {
@@ -6687,8 +7046,9 @@
           syncHealthierSgExtra();
           return;
         }
-        if (t.type === "radio" && t.name === "healthierSgBooked") {
+        if (t.type === "radio" && (t.name === "healthierSgBooked" || t.name === "hpvHealthierSgBooked")) {
           syncYesNoButtons();
+          syncHealthierSgExtra();
         }
       });
 
@@ -6698,13 +7058,14 @@
         const el = raw instanceof Element ? raw : raw?.parentElement;
         const btn = el?.closest?.("[data-yesno]");
         if (!(btn instanceof HTMLElement)) return;
-        const input = btn.querySelector('input[type="radio"][name="healthierSgBooked"]');
+        const input = btn.querySelector('input[type="radio"][name="healthierSgBooked"], input[type="radio"][name="hpvHealthierSgBooked"]');
         if (!(input instanceof HTMLInputElement)) return;
         if (!input.checked) {
           input.checked = true;
           input.dispatchEvent(new Event("change", { bubbles: true }));
         }
         syncYesNoButtons();
+        syncHealthierSgExtra();
         e.preventDefault();
         e.stopPropagation();
       });
@@ -7060,7 +7421,13 @@
       state.classicScreeningTasksModalId = null;
       state.classicScreeningUpdateModalId = sid;
       renderApp();
-      requestAnimationFrame(() => document.getElementById("csu-submitted")?.focus());
+      requestAnimationFrame(() => {
+        const modal = document.getElementById("classic-screening-update-modal");
+        if (typeof window.WD_initDateInputs === "function") {
+          window.WD_initDateInputs(modal || document.getElementById("app"));
+        }
+        document.getElementById("csu-submitted")?.focus();
+      });
       return;
     }
 
