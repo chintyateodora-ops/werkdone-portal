@@ -2279,14 +2279,17 @@
               ${renderSortableTh("Attendance", "attendance")}
               ${renderSortableTh("Source", "source")}
               ${renderSortableTh("Next review", "nextReview")}
+              <th scope="col">Review period</th>
               ${renderSortableTh("Risk", "risk")}
               <th scope="col" class="data-table__th--actions">Actions</th>
             </tr>
           </thead>
           <tbody>
             ${rows
-              .map(
-                (r) => `
+              .map((r) => {
+                const nr = kanbanCardNextReview(r);
+                const reviewPeriod = nr?.period ? String(nr.period) : "—";
+                return `
               <tr tabindex="0" data-nav-prospect="${escapeAttr(r.rowKey)}">
                 ${renderProspectNameCell(r)}
                 <td>${escapeAttr(programDisplayLabel(r.program))}</td>
@@ -2306,11 +2309,12 @@
                   </div>
                 </td>
                 <td>${escapeAttr(formatDateRegisteredDisplay(r.nextReview))}</td>
+                <td>${escapeAttr(reviewPeriod)}</td>
                 <td>${riskPill(r.risk)}</td>
                 <td><button type="button" class="btn btn--icon" aria-label="Actions for ${escapeAttr(r.name)}">${icons.more}</button></td>
               </tr>
             `
-              )
+              })
               .join("")}
           </tbody>
         </table>
