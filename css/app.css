@@ -4801,6 +4801,79 @@ button {
   opacity: 1;
 }
 
+/* Composite NRIC shell: inner face stayed white; match other disabled fields */
+.registration__personal--client-locked .field__nric {
+  background: var(--color-gray-50);
+  border-color: var(--color-neutral-5);
+}
+
+.registration__personal--client-locked .field .field__nric:focus-within {
+  outline: none;
+  border-color: var(--color-neutral-5);
+}
+
+.registration__personal--client-locked .field__nric-face {
+  background: var(--color-gray-50);
+}
+
+.registration__personal--client-locked .field__nric-asterisks {
+  background: transparent;
+  color: var(--color-gray-700);
+}
+
+.registration__personal--client-locked .field__nric-edit:disabled {
+  background: var(--color-gray-50) !important;
+  color: var(--color-gray-700);
+  -webkit-text-fill-color: var(--color-gray-700);
+}
+
+.registration__personal--client-locked .field__nric-toggle:disabled {
+  background-color: var(--color-gray-100);
+}
+
+/* Composite date shell: grey wrapper + hide placeholder ghost over value when disabled */
+.registration__personal--client-locked .field__date {
+  background: var(--color-gray-50);
+  border-color: var(--color-neutral-5);
+}
+
+.registration__personal--client-locked .field .field__date:focus-within {
+  outline: none;
+  border-color: var(--color-neutral-5);
+}
+
+.registration__personal--client-locked .field__date-text:disabled {
+  background: var(--color-gray-50) !important;
+  color: var(--color-gray-700);
+  -webkit-text-fill-color: var(--color-gray-700);
+}
+
+.registration__personal--client-locked .field__date-text:disabled::placeholder {
+  color: transparent;
+  opacity: 0;
+}
+
+/* Native date input can still paint a locale hint (e.g. dd/mm/yyyy) over the text field — remove from layout when locked */
+.registration__personal--client-locked .field__date-native {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: 0 !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  clip: rect(0, 0, 0, 0) !important;
+  clip-path: inset(50%) !important;
+  overflow: hidden !important;
+}
+
 .registration__client-search-row {
   display: flex;
   flex-wrap: wrap;

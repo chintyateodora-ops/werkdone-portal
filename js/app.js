@@ -3259,7 +3259,11 @@
             <div class="client360-left__kv-row"><span>Personal Cancer Hx</span><strong>${escapeAttr(details.personalCancerHistory || "—")}</strong></div>
             <div class="client360-left__kv-row"><span>Family Cancer Hx</span><strong>${escapeAttr(details.familyHistory || "—")}</strong></div>
             <div class="client360-left__kv-row"><span>Pre-existing</span><strong>${escapeAttr(details.preExistingConditions || "—")}</strong></div>
-            <div class="client360-left__kv-row"><span>Prior Screening</span><strong>${escapeAttr(details.screeningEligible || "—")}</strong></div>
+            <div class="client360-left__kv-row"><span>Prior Screening</span><strong>${escapeAttr(
+              (typeof window.WD_composeScreeningEligibleForDisplay === "function"
+                ? window.WD_composeScreeningEligibleForDisplay(details)
+                : details.screeningEligible) || "—"
+            )}</strong></div>
             <div class="client360-left__kv-row"><span>Last Screened</span><strong>${escapeAttr(details.lastScreeningYear || "—")}</strong></div>
           </div>
         </div>
@@ -4160,7 +4164,40 @@
       }
       el.disabled = locked;
     });
+    const dobPhDefault = "DD-MM-YYYY";
+    grid.querySelectorAll(".field__date-text").forEach((text) => {
+      if (!(text instanceof HTMLInputElement)) return;
+      if (locked) {
+        if (String(text.value || "").trim()) {
+          if (!text.hasAttribute("data-reg-dob-ph-stash")) {
+            text.setAttribute("data-reg-dob-ph-stash", text.getAttribute("placeholder") || dobPhDefault);
+          }
+          text.removeAttribute("placeholder");
+          text.placeholder = "";
+        }
+      } else if (text.hasAttribute("data-reg-dob-ph-stash")) {
+        text.setAttribute("placeholder", text.getAttribute("data-reg-dob-ph-stash") || dobPhDefault);
+        text.removeAttribute("data-reg-dob-ph-stash");
+      }
+    });
+    /* Native type="date" can still paint a locale hint over the text field; use hidden while locked (text input holds submit value). */
+    grid.querySelectorAll(".field__date").forEach((wrap) => {
+      const nat = wrap.querySelector(".field__date-native");
+      if (!(nat instanceof HTMLInputElement)) return;
+      if (locked) {
+        if (!nat.hasAttribute("data-reg-native-type")) {
+          nat.setAttribute("data-reg-native-type", nat.type || "date");
+        }
+        nat.type = "hidden";
+        nat.value = "";
+      } else {
+        const prev = nat.getAttribute("data-reg-native-type");
+        nat.type = prev && prev !== "hidden" ? prev : "date";
+        nat.removeAttribute("data-reg-native-type");
+      }
+    });
     if (typeof window.WD_syncNricMasks === "function") window.WD_syncNricMasks(form);
+    if (typeof window.WD_syncDatePickersFromFields === "function") window.WD_syncDatePickersFromFields(form);
   }
 
   function clearRegistrationLookupAutofill(form, program) {
@@ -4336,8 +4373,8 @@
       closeDropdown();
       searchInput.value = "";
       setStatus("");
-      setRegistrationPersonalSectionLocked(form, state.registerProgram, false);
       clearRegistrationLookupAutofill(form, state.registerProgram);
+      setRegistrationPersonalSectionLocked(form, state.registerProgram, false);
       searchInput.focus();
     });
   }
