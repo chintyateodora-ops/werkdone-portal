@@ -1089,6 +1089,10 @@
       selPatId: null,
       calDate: TODAY,
       filterType: "all",
+      /** Summary KPI quick filter (null = none). */
+      kpiActive: null,
+      /** Extra stage filter applied by KPI cards. */
+      filterStage: "all",
       search: "",
       modal: null,
       toast: "",
@@ -1164,10 +1168,20 @@
       const phone = String(p?.phone || "").replace(/\s+/g, "").toLowerCase();
       return name.includes(qRaw) || nric.includes(qRaw) || (qPhone && phone.includes(qPhone));
     };
+    const stageFilter = String(bc.filterStage || "all");
+    const stageAllow =
+      stageFilter === "action"
+        ? ["pending_result", "doctor_input", "pending_print"]
+        : stageFilter === "done"
+          ? ["complete"]
+          : stageFilter === "dna"
+            ? ["no_test"]
+            : null;
     return bc.visits
       .filter((v) => v.date === bc.calDate)
       .map((v) => ({ ...v, patient: bc.patients.find((x) => x.id === v.patientId) }))
       .filter((r) => bc.filterType === "all" || (r.patient && r.patient.type === bc.filterType))
+      .filter((r) => !stageAllow || stageAllow.includes(r.stage))
       .filter((r) => (r.patient ? matchPatient(r.patient) : !qRaw));
   }
 
@@ -1203,21 +1217,6 @@
     return [...rows].sort((a, b) => a.slot - b.slot);
   }
 
-  function renderWorklistFilters(bc) {
-    const typeFilters = [
-      ["all", "All"],
-      ["mammogram", "Mammogram"],
-      ["hpv", "HPV Test"],
-      ["pap", "Pap Test"],
-    ];
-    return typeFilters
-      .map(
-        ([k, l]) =>
-          `<button type="button" class="bc-type-tab${bc.filterType === k ? " bc-type-tab--active" : ""}" data-bc-filter-type="${escAttr(k)}">${esc(l)}</button>`
-      )
-      .join("");
-  }
-
   function renderViewToggle(bc) {
     return `<div class="bc-view-toggle" role="tablist" aria-label="View mode">
       <button type="button" role="tab" class="bc-view-toggle__btn${bc.worklistMode === "queue" ? " bc-view-toggle__btn--active" : ""}" data-bc-wl-mode="queue" aria-selected="${bc.worklistMode === "queue"}">Queue Board</button>
@@ -1226,7 +1225,6 @@
   }
 
   function renderWorklistFiltersBar(bc) {
-    const filtBtns = renderWorklistFilters(bc);
     return `<div class="bc-bsh-filters">
       <div class="toolbar-search bc-bsh-filters__search" role="search">
         <span class="toolbar-search__icon" aria-hidden="true">${DETAIL_SEARCH_ICON}</span>
@@ -1238,7 +1236,6 @@
         <button type="button" class="bc-date-btn" aria-label="Choose date">${esc(fmtCalHeading(bc.calDate))}</button>
         <input type="date" class="bc-date-input-hidden" data-bc-cal-date value="${escAttr(bc.calDate)}" />
       </div>
-      <div class="bc-type-tabs">${filtBtns}</div>
       ${renderViewToggle(bc)}
     </div>`;
   }
@@ -1848,19 +1845,24 @@
       : [];
     const nextApt = pVisits.filter((v) => !isSlotPast(v.date, v.slot))[0];
 
-    const statCard = (mod, label, value, sub) =>
-      `<div class="bc-stat-card ${mod}">
+    const statCard = (mod, key, label, value, sub) => {
+      const active = bc.kpiActive === key && key !== "total";
+      const pressed = active ? ' aria-pressed="true"' : ' aria-pressed="false"';
+      return `<button type="button" class="bc-stat-card ${mod}${active ? " bc-stat-card--active" : ""}" data-bc-kpi="${escAttr(
+        key
+      )}"${pressed}>
         <div class="bc-stat-card__label">${esc(label)}</div>
         <div class="bc-stat-card__value">${esc(String(value))}</div>
         <div class="bc-stat-card__sub">${esc(sub)}</div>
-      </div>`;
+      </button>`;
+    };
     const statsRow = `
       <div class="bc-bsh-stats-row" aria-label="Today's summary">
-        ${statCard("bc-stat-card--total", "Today's Total", stats.total, `${stats.completedTotal} completed`)}
-        ${statCard("bc-stat-card--mammo", "Mammogram", stats.mammo, `${stats.completedMammo} completed`)}
-        ${statCard("bc-stat-card--hpv", "HPV Test", stats.hpv, `${stats.completedHpv} completed`)}
-        ${statCard("bc-stat-card--pap", "Pap Test", stats.pap, `${stats.completedPap} completed`)}
-        ${statCard("bc-stat-card--action", "Action Needed", stats.actionNeeded, "pending lab · review")}
+        ${statCard("bc-stat-card--total", "total", "Today's Total", stats.total, `${stats.completedTotal} completed`)}
+        ${statCard("bc-stat-card--mammo", "mammogram", "Mammogram", stats.mammo, `${stats.completedMammo} completed`)}
+        ${statCard("bc-stat-card--hpv", "hpv", "HPV Test", stats.hpv, `${stats.completedHpv} completed`)}
+        ${statCard("bc-stat-card--pap", "pap", "Pap Test", stats.pap, `${stats.completedPap} completed`)}
+        ${statCard("bc-stat-card--action", "action", "Action Needed", stats.actionNeeded, "pending lab · review")}
       </div>`;
 
     const searchDrop =
@@ -2035,6 +2037,33 @@
         return;
       }
 
+      if (el.closest("[data-bc-kpi]")) {
+        e.preventDefault();
+        const key = el.closest("[data-bc-kpi]").getAttribute("data-bc-kpi");
+        const already = bc.kpiActive === key;
+        const clear = already || key === "total";
+        if (clear) {
+          bc.kpiActive = null;
+          bc.filterType = "all";
+          bc.filterStage = "all";
+          commit();
+          return;
+        }
+        bc.kpiActive = key;
+        if (key === "action") {
+          bc.filterType = "all";
+          bc.filterStage = "action";
+        } else if (key === "mammogram" || key === "hpv" || key === "pap") {
+          bc.filterType = key;
+          bc.filterStage = "all";
+        } else {
+          bc.filterType = "all";
+          bc.filterStage = "all";
+        }
+        commit();
+        return;
+      }
+
       if (el.closest("[data-bc-wl-mode]")) {
         e.preventDefault();
         const mode = el.closest("[data-bc-wl-mode]").getAttribute("data-bc-wl-mode");
@@ -2073,13 +2102,6 @@
           contactPref: "Call",
           referral: "Social Media",
         };
-        commit();
-        return;
-      }
-
-      if (el.closest("[data-bc-filter-type]")) {
-        e.preventDefault();
-        bc.filterType = el.closest("[data-bc-filter-type]").getAttribute("data-bc-filter-type");
         commit();
         return;
       }

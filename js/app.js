@@ -514,6 +514,8 @@
     fitKit: {
       activeStage: 0,
       search: "",
+      /** Active KPI card filter (stage / result / awaiting). */
+      kpiActive: null,
       /** Selected patient row ids (for bulk actions). */
       selectedIds: [],
       nextId: 31,
@@ -2532,13 +2534,25 @@
     const t = String(state.fitKit?.search || "")
       .trim()
       .toLowerCase();
-    if (!t) return ps;
-    return ps.filter((p) => {
+    const kpi = String(state.fitKit?.kpiActive || "").trim();
+    const applyKpi = (p) => {
+      if (!kpi || kpi === "total") return true;
+      if (kpi === "awaiting") return Number(p.stage) < 4;
+      if (kpi === "positive") return String(p.result) === "Positive";
+      if (kpi === "negative") return String(p.result) === "Negative";
+      if (/^stage[1-4]$/.test(kpi)) return Number(p.stage) === Number(kpi.replace("stage", ""));
+      return true;
+    };
+
+    const base = t
+      ? ps.filter((p) => {
       const name = String(p.name || "").toLowerCase();
       const ref = String(p.ncssRef || "").toLowerCase();
       const mobile = String(p.mobile || "");
       return name.includes(t) || ref.includes(t) || mobile.includes(t);
-    });
+        })
+      : ps;
+    return base.filter(applyKpi);
   }
 
   function fitDaysPending(p) {
@@ -3175,27 +3189,30 @@
   /** KPI strip — same structure/classes as Prospect Management listing (`renderProspectSummarySection`). */
   function renderFitKitSummarySection() {
     const e = escapeAttr;
+    const active = String(state.fitKit?.kpiActive || "");
     const patients = state.fitKit?.patients || [];
     const total = patients.length;
     const pos = patients.filter((p) => String(p.result) === "Positive").length;
     const neg = patients.filter((p) => String(p.result) === "Negative").length;
     const awaiting = patients.filter((p) => Number(p.stage) < 4).length;
-    const card = (classNames, label, value) => `
-          <article class="prospect-summary-card ${classNames}">
+    const card = (key, classNames, label, value) => `
+          <article class="prospect-summary-card ${classNames}${active === key ? " is-active" : ""}" data-fit-kpi="${e(
+            key
+          )}" role="button" tabindex="0" aria-pressed="${active === key}">
             <h3 class="prospect-summary-card__label">${e(label)}</h3>
             <p class="prospect-summary-card__value">${e(String(value))}</p>
           </article>`;
     return `
       <section class="prospect-summary fit-kit-summary" aria-label="FIT kit summary">
         <div class="prospect-summary__grid" role="group" aria-label="FIT pipeline summary">
-          ${card("", "Total patients", total)}
-          ${card("prospect-summary-card--qualified", "Stage 1 — NCSS list", fitStageCount(1))}
-          ${card("prospect-summary-card--booked", "Stage 2 — dispatched", fitStageCount(2))}
-          ${card("prospect-summary-card--screened", "Stage 3 — kit returned", fitStageCount(3))}
-          ${card("prospect-summary-card--conversion", "Stage 4 — results in", fitStageCount(4))}
-          ${card("prospect-summary-card--highrisk", "Positive results", pos)}
-          ${card("prospect-summary-card--screened", "Negative results", neg)}
-          ${card("prospect-summary-card--firsttime", "Awaiting result", awaiting)}
+          ${card("total", "", "Total patients", total)}
+          ${card("stage1", "prospect-summary-card--qualified", "Stage 1 — NCSS list", fitStageCount(1))}
+          ${card("stage2", "prospect-summary-card--booked", "Stage 2 — dispatched", fitStageCount(2))}
+          ${card("stage3", "prospect-summary-card--screened", "Stage 3 — kit returned", fitStageCount(3))}
+          ${card("stage4", "prospect-summary-card--conversion", "Stage 4 — results in", fitStageCount(4))}
+          ${card("positive", "prospect-summary-card--highrisk", "Positive results", pos)}
+          ${card("negative", "prospect-summary-card--screened", "Negative results", neg)}
+          ${card("awaiting", "prospect-summary-card--firsttime", "Awaiting result", awaiting)}
         </div>
       </section>`;
   }
@@ -8965,6 +8982,31 @@
       byId("fit-export")?.addEventListener("click", (e) => {
         e.preventDefault();
         fitExportCsv();
+      });
+
+      document.querySelectorAll("[data-fit-kpi]").forEach((el) => {
+        const onActivate = () => {
+          const key = el.getAttribute("data-fit-kpi");
+          if (!key) return;
+          const already = String(fit.kpiActive || "") === key;
+          fit.kpiActive = already || key === "total" ? null : key;
+          if (fit.kpiActive === "stage1") fit.activeStage = 1;
+          else if (fit.kpiActive === "stage2") fit.activeStage = 2;
+          else if (fit.kpiActive === "stage3") fit.activeStage = 3;
+          else if (fit.kpiActive === "stage4") fit.activeStage = 4;
+          else if (fit.kpiActive === "positive" || fit.kpiActive === "negative") fit.activeStage = 4;
+          else if (fit.kpiActive === "awaiting") fit.activeStage = 0;
+          renderApp();
+        };
+        el.addEventListener("click", (e) => {
+          e.preventDefault();
+          onActivate();
+        });
+        el.addEventListener("keydown", (e) => {
+          if (e.key !== "Enter" && e.key !== " ") return;
+          e.preventDefault();
+          onActivate();
+        });
       });
 
       // Select-all + row selection (bulk actions)

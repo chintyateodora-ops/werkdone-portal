@@ -5340,12 +5340,27 @@ button {
   user-select: none;
 }
 
+.prospect-summary-card[data-fit-kpi] {
+  cursor: pointer;
+  user-select: none;
+}
+
 .prospect-summary-card[data-prospect-kpi]:hover {
   transform: translateY(-1px);
   box-shadow: 0 10px 22px rgba(2, 6, 23, 0.06);
 }
 
+.prospect-summary-card[data-fit-kpi]:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(2, 6, 23, 0.06);
+}
+
 .prospect-summary-card[data-prospect-kpi].is-active {
+  outline: 2px solid var(--color-primary-200);
+  box-shadow: 0 12px 26px rgba(2, 6, 23, 0.08);
+}
+
+.prospect-summary-card[data-fit-kpi].is-active {
   outline: 2px solid var(--color-primary-200);
   box-shadow: 0 12px 26px rgba(2, 6, 23, 0.08);
 }
