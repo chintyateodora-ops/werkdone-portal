@@ -756,7 +756,7 @@
           slot: 15 * 60,
           stage: "no_test",
           attended: false,
-          doctorNotes: "DNA — patient message received citing work conflict.",
+          doctorNotes: "Did not attend — patient message received citing work conflict.",
           referralRec: "None",
           reviewInterval: "",
           resultLabel: "",
@@ -1285,7 +1285,7 @@
       ["waiting", "Waiting", buckets.waiting],
       ["ongoing", "Ongoing / Screening", buckets.ongoing],
       ["done", "Done", buckets.done],
-      ["dna", "DNA", buckets.dna],
+      ["dna", "Do Not Attend", buckets.dna],
     ];
     const board = cols
       .map(([key, label, list]) => {
@@ -1934,6 +1934,14 @@
       : "";
 
     return `<section class="bc-screening${isPatientRoute ? " bc-screening--patient-route" : ""}" id="bishan-screening-root" aria-label="Bishan cancer screening clinic">
+      ${
+        isPatientRoute && typeof global.WD_renderAppBreadcrumb === "function"
+          ? global.WD_renderAppBreadcrumb(
+              [{ label: "Bishan Clinic", href: "#/bishan-clinics" }, { label: selPat.name }],
+              "registration"
+            )
+          : ""
+      }
       ${isPatientRoute ? patientBar : clinicToolbar}
       ${isPatientRoute ? "" : statsRow}
       <div class="bc-main">${main}</div>

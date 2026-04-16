@@ -3638,8 +3638,9 @@
             </div>
           </div>
           <div class="title-dropdown title-dropdown--align-end ${state.addProspectMenuOpen ? "is-open" : ""}" id="add-prospect-dropdown">
-            <button type="button" class="btn btn--primary" data-add-prospect-toggle aria-expanded="${state.addProspectMenuOpen}" aria-haspopup="true">
-              ${icons.plus} Add Prospect
+            <button type="button" class="ui-btn ui-btn--default ui-btn--sm" data-add-prospect-toggle aria-expanded="${state.addProspectMenuOpen}" aria-haspopup="true">
+              <span class="ui-btn__icon" aria-hidden="true">${icons.plus}</span>
+              Add Prospect
             </button>
             <div class="title-dropdown__panel" role="menu">
               <a href="#/register/mammobus" class="title-dropdown__option" role="menuitem">Mammogram Screening Registration</a>
@@ -10061,6 +10062,7 @@
   });
 
   window.WD_buildPreferredLanguagesMultiHtml = buildPreferredLanguagesMultiHtml;
+  window.WD_renderAppBreadcrumb = renderAppBreadcrumb;
 
   renderApp();
 
