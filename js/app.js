@@ -1741,9 +1741,21 @@
       const fb = detailsFallback?.preferredTimeSlot;
       return timeSlotLabel(fb);
     })();
+    const engagementSource = (() => {
+      const direct = val(r?.sourceType);
+      if (direct !== dash) return direct;
+      return val(detailsFallback?.sourceType);
+    })();
+    const engagementCampaign = (() => {
+      const direct = val(r?.sourceName);
+      if (direct !== dash) return direct;
+      return val(detailsFallback?.sourceName);
+    })();
     return [
       ["Preferred screening date", preferredDate],
       ["Preferred time slot", preferredSlot],
+      ["Source", engagementSource],
+      ["Campaign / Event Name", engagementCampaign],
       ["Result", resultLabel(r.result)],
       ["Review period", reviewPeriodLabel(r.nextReviewPeriod)],
       ["Next review date", val(r.nextReviewDate)],
