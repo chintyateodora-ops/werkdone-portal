@@ -1,48 +1,656 @@
-/* —— Bishan Clinics — cancer screening worklist (ScreeningPortal artifact, portal shell) —— */
+/* —— Bishan Clinic — visual parity with prospectadmintst-scs.werkdone.com/bishan (.bsh-*) —— */
 .bc-screening {
-  --bc-border: color-mix(in srgb, var(--color-primary) 20%, var(--color-input-border));
-  --bc-violet-lt: color-mix(in srgb, var(--color-primary) 12%, var(--color-card, #fff));
+  --space-page: 1.5rem;
+  --color-text-secondary: var(--color-neutral-7, #6a7178);
+  --bc-violet-lt: var(--color-primary-100, #f2eef6);
+  --bc-border: 1px solid var(--color-gray-200, #e5e7eb);
   font-size: var(--text-body-m);
 }
 
-.bc-page-intro {
-  margin-bottom: 0.75rem;
-}
-.bc-page-title {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: var(--weight-semibold);
-  color: var(--color-foreground);
-}
-.bc-page-lead {
-  margin: 0.35rem 0 0;
-  color: var(--color-muted-foreground);
-  max-width: 40rem;
-  line-height: var(--lh-body-m);
-}
-
-.bc-subbar {
+/* —— Toolbar (staging .bsh-toolbar) —— */
+.bc-bsh-toolbar {
+  padding: 1rem var(--space-page);
+  background: var(--color-white, #fff);
+  border-bottom: 1px solid var(--color-gray-200, #e5e7eb);
   display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
   align-items: center;
   gap: 1rem;
+}
+.bc-bsh-toolbar__title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+.bc-bsh-toolbar__title {
+  margin: 0;
+  font-size: var(--text-page-heading, 1.5rem);
+  line-height: var(--lh-page-heading, 1.3);
+  font-weight: var(--weight-bold, 700);
+  color: var(--color-neutral-9, #272b30);
+}
+.bc-bsh-toolbar__clock {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  font-family: "SF Mono", "Fira Code", ui-monospace, monospace;
+  font-size: var(--text-body-m);
+  color: var(--color-neutral-7, #6a7178);
+}
+.bc-bsh-toolbar__actions {
+  display: flex;
   flex-wrap: wrap;
-  padding: 0.65rem 0;
-  margin-bottom: 0.75rem;
-  border-bottom: 1px solid var(--color-border);
+  align-items: center;
+  gap: 0.75rem;
 }
-.bc-stat-mini {
-  text-align: center;
-  min-width: 4.5rem;
+
+/* —— Patient record route — prospect-style detail hero (see .detail-hero in app.css) —— */
+.bc-screening--patient-route .bc-main {
+  padding-top: 0.25rem;
 }
-.bc-stat-mini__n {
-  display: block;
-  font-size: 1.05rem;
-  font-weight: var(--weight-semibold);
+.bc-bsh-patient-bar {
+  padding: 1rem var(--space-page) 0;
+  background: var(--color-white, #fff);
+  border-bottom: var(--bc-border);
 }
-.bc-stat-mini__l {
-  font-size: 0.65rem;
-  color: var(--color-muted-foreground);
+.bc-bsh-patient-bar .bc-bsh-patient-hero.detail-hero {
+  margin-top: 0;
+  margin-bottom: 0;
+  padding-bottom: 1rem;
+  border-bottom: none;
+}
+.bc-bsh-patient-bar a.detail-hero__back {
+  color: var(--color-neutral-8, #495057);
+  text-decoration: none;
+}
+.bc-bsh-patient-bar a.detail-hero__back:hover {
+  color: var(--color-neutral-9, #272b30);
+}
+
+/* —— Stats row (staging .bsh-stats-row + .bsh-metric-card) —— */
+.bc-bsh-stats-row {
+  padding: 1rem var(--space-page);
+  background: var(--color-gray-50, #f9fafb);
+  border-bottom: 1px solid var(--color-gray-200, #e5e7eb);
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.75rem;
+  margin: 0;
+}
+@media (max-width: 900px) {
+  .bc-bsh-stats-row {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .bc-bsh-stats-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.bc-stat-card {
+  background: var(--color-white, #fff);
+  border: 0.5px solid var(--color-gray-200, #e5e7eb);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.bc-stat-card--total {
+  border-left: 3px solid var(--color-primary-500, #7c51a1);
+}
+.bc-stat-card--action {
+  border-left: 3px solid #dc2626;
+}
+.bc-stat-card__label {
+  font-size: 0.6875rem;
+  font-weight: var(--weight-semibold, 600);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-neutral-7, #6a7178);
+}
+.bc-stat-card__value {
+  font-size: 1.75rem;
+  font-weight: var(--weight-bold, 700);
+  color: var(--color-neutral-9, #272b30);
+  margin: 0.125rem 0 0;
+  line-height: 1.1;
+}
+.bc-stat-card--mammo .bc-stat-card__value {
+  color: #185fa5;
+}
+.bc-stat-card--hpv .bc-stat-card__value {
+  color: #993556;
+}
+.bc-stat-card--pap .bc-stat-card__value {
+  color: #3c3489;
+}
+.bc-stat-card--action .bc-stat-card__value {
+  color: #dc2626;
+}
+.bc-stat-card__sub {
+  color: var(--color-neutral-7, #6a7178);
+  margin-top: 0.125rem;
+  font-size: 0.6875rem;
+}
+
+/* —— Filters bar (staging .bsh-filters) —— */
+.bc-bsh-filters {
+  background: var(--color-white, #fff);
+  border: 0.5px solid var(--color-gray-200, #e5e7eb);
+  margin: 0.75rem var(--space-page);
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+.bc-bsh-worklist-wrap--queue .bc-bsh-filters {
+  margin-bottom: 0.5rem;
+}
+.bc-bsh-worklist-wrap--queue .bc-kanban {
+  margin: 0 var(--space-page) var(--space-page);
+}
+.bc-date-wrap {
+  position: relative;
+}
+.bc-date-btn {
+  border: 1px solid var(--color-gray-200, #e5e7eb);
+  border-radius: var(--radius-button, 5px);
+  background: var(--color-white, #fff);
+  height: 2.25rem;
+  font-size: var(--text-body-m);
+  font-weight: var(--weight-semibold, 600);
+  color: var(--color-neutral-9, #272b30);
+  cursor: pointer;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.875rem;
+  font-family: inherit;
+}
+.bc-date-btn:hover {
+  border-color: var(--color-primary-400, #926eb1);
+  color: var(--color-primary-500, #7c51a1);
+}
+.bc-date-btn:focus-visible {
+  outline: 2px solid var(--color-primary-400, #926eb1);
+  outline-offset: 1px;
+}
+.bc-date-input-hidden {
+  opacity: 0;
+  pointer-events: none;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  inset: 0;
+}
+.bc-type-tabs {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+.bc-type-tab {
+  border: 1px solid var(--color-gray-200, #e5e7eb);
+  border-radius: var(--radius-pill, 999px);
+  background: var(--color-white, #fff);
+  font-size: var(--text-body-m);
+  color: var(--color-neutral-8, #4f575e);
+  cursor: pointer;
+  padding: 0.375rem 0.875rem;
+  font-family: inherit;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+.bc-type-tab:hover {
+  border-color: var(--color-primary-400, #926eb1);
+  color: var(--color-primary-500, #7c51a1);
+}
+.bc-type-tab--active {
+  background: var(--color-primary-500, #7c51a1);
+  border-color: var(--color-primary-500, #7c51a1);
+  color: #fff;
+  font-weight: var(--weight-semibold, 600);
+}
+.bc-view-toggle {
+  display: flex;
+  gap: 0.375rem;
+  margin-left: auto;
+}
+.bc-view-toggle__btn {
+  border: 1px solid var(--color-gray-200, #e5e7eb);
+  border-radius: var(--radius-pill, 999px);
+  background: var(--color-white, #fff);
+  font-size: var(--text-body-m);
+  color: var(--color-neutral-8, #4f575e);
+  cursor: pointer;
+  padding: 0.375rem 0.875rem;
+  font-family: inherit;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+.bc-view-toggle__btn:hover {
+  border-color: var(--color-primary-400, #926eb1);
+  color: var(--color-primary-500, #7c51a1);
+}
+.bc-view-toggle__btn--active {
+  background: var(--color-primary-500, #7c51a1);
+  border-color: var(--color-primary-500, #7c51a1);
+  color: #fff;
+  font-weight: var(--weight-semibold, 600);
+}
+
+/* —— Type badges & stage pills (staging .bsh-type-badge / .bsh-stage-pill) —— */
+.bc-type-badge {
+  border-radius: var(--radius-pill, 999px);
+  font-size: 0.8125rem;
+  font-weight: var(--weight-semibold, 600);
+  white-space: nowrap;
+  padding: 0.25rem 0.625rem;
+  display: inline-block;
+}
+.bc-type-badge--mammogram {
+  color: #0c447c;
+  background: #e6f1fb;
+}
+.bc-type-badge--hpv {
+  color: #72243e;
+  background: #fbeaf0;
+}
+.bc-type-badge--pap {
+  color: #065f46;
+  background: #d1fae5;
+}
+.bc-stage-pill {
+  border-radius: var(--radius-sm, 4px);
+  font-size: 0.8125rem;
+  font-weight: var(--weight-semibold, 600);
+  white-space: nowrap;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.625rem;
+  display: inline-flex;
+}
+.bc-stage-pill::before {
+  content: "";
+  border-radius: var(--radius-pill, 999px);
+  opacity: 0.65;
+  background: currentColor;
+  flex-shrink: 0;
+  width: 0.375rem;
+  height: 0.375rem;
+  display: inline-block;
+}
+.bc-stage-pill--appointment {
+  color: #2255a4;
+  background: #e8effd;
+}
+.bc-stage-pill--no_test {
+  color: #666;
+  background: #f3f3f3;
+}
+.bc-stage-pill--pending_result {
+  color: #92400e;
+  background: #fef3c7;
+}
+.bc-stage-pill--doctor_input {
+  color: #166534;
+  background: #dcfce7;
+}
+.bc-stage-pill--pending_print {
+  color: #9b1550;
+  background: #fceaf1;
+}
+.bc-stage-pill--complete {
+  color: #065f46;
+  background: #d1fae5;
+}
+
+.bc-btn-profile {
+  background: var(--color-primary-500, #7c51a1);
+  width: 7.5rem;
+  height: 1.875rem;
+  color: var(--color-white, #fff);
+  border-radius: var(--radius-button, 5px);
+  font-size: 0.75rem;
+  font-weight: var(--weight-semibold, 600);
+  cursor: pointer;
+  white-space: nowrap;
+  border: none;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+  font-family: inherit;
+  transition: background 0.12s;
+}
+.bc-btn-profile:hover {
+  background: var(--color-primary-400, #926eb1);
+}
+.bc-walkin-btn {
+  border: 1.5px dashed var(--color-gray-400, #9ca3af);
+  border-radius: var(--radius-button, 5px);
+  width: 7.5rem;
+  height: 1.875rem;
+  color: var(--color-neutral-7, #6a7178);
+  font-size: 0.75rem;
+  font-weight: var(--weight-medium, 500);
+  cursor: pointer;
+  white-space: nowrap;
+  background: none;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+  font-family: inherit;
+  transition: border-color 0.12s, color 0.12s;
+}
+.bc-walkin-btn:hover {
+  border-color: var(--color-primary-400, #926eb1);
+  color: var(--color-primary-500, #7c51a1);
+}
+.bc-available-text {
+  color: var(--color-neutral-6, #868e96);
+  font-size: 0.875rem;
+  font-style: italic;
+}
+
+/* —— Kanban queue board (staging .bsh-queue) —— */
+.bc-kanban {
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  align-items: start;
+  gap: 1rem;
+}
+@media (max-width: 1100px) {
+  .bc-kanban {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 560px) {
+  .bc-kanban {
+    grid-template-columns: 1fr;
+  }
+}
+.bc-kanban__col {
+  background: var(--color-white, #fff);
+  border: 1px solid var(--color-gray-200, #e5e7eb);
+  border-radius: var(--radius-md, 8px);
+  min-height: 12rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.bc-kanban__col-head {
+  font-size: var(--text-body-m);
+  font-weight: var(--weight-semibold, 600);
+  border-bottom: 1px solid var(--color-gray-200, #e5e7eb);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.625rem 0.875rem;
+  flex-shrink: 0;
+}
+.bc-kanban__col--waiting .bc-kanban__col-head {
+  color: #92400e;
+  background: #fffbeb;
+}
+.bc-kanban__col--ongoing .bc-kanban__col-head {
+  color: #1e40af;
+  background: #eff6ff;
+}
+.bc-kanban__col--done .bc-kanban__col-head {
+  color: #166534;
+  background: #f0fdf4;
+}
+.bc-kanban__col--dna .bc-kanban__col-head {
+  color: #374151;
+  background: #f9fafb;
+}
+.bc-kanban__col-label {
+  flex: 1;
+}
+.bc-kanban__count {
+  border-radius: var(--radius-pill, 999px);
+  min-width: 1.375rem;
+  height: 1.375rem;
+  font-size: 0.75rem;
+  font-weight: var(--weight-semibold, 600);
+  background: rgba(0, 0, 0, 0.08);
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 0.3rem;
+}
+.bc-kanban__col-body {
+  flex: 1;
+  overflow-y: auto;
+  max-height: min(52vh, 28rem);
+  -webkit-overflow-scrolling: touch;
+}
+.bc-kanban__empty {
+  text-align: center;
+  color: var(--color-neutral-7, #6a7178);
+  font-size: var(--text-body-m);
+  padding: 2rem 1rem;
+  font-style: italic;
+}
+.bc-kanban__card {
+  border-bottom: 1px solid var(--color-gray-200, #e5e7eb);
+  background: var(--color-white, #fff);
+  padding: 0.75rem 0.875rem;
+  cursor: default;
+  transition: background 0.12s;
+}
+.bc-kanban__card:last-child {
+  border-bottom: none;
+}
+.bc-kanban__card:hover {
+  background: var(--color-gray-50, #f9fafb);
+}
+.bc-kanban__card-hit {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  border-radius: var(--radius-sm, 4px);
+}
+.bc-kanban__card-hit:focus-visible {
+  outline: 2px solid var(--color-primary-500, #7c51a1);
+  outline-offset: 2px;
+}
+.bc-kanban__card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.35rem;
+}
+.bc-kanban__drag {
+  width: 12px;
+  height: 16px;
+  flex-shrink: 0;
+  cursor: grab;
+  opacity: 0.55;
+  background: radial-gradient(circle, var(--color-gray-500, #6b7280) 1px, transparent 1.5px) 0 0 / 4px 4px repeat;
+  display: inline-block;
+}
+.bc-kanban__menu {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-neutral-6, #868e96);
+  padding: 0.1rem 0.25rem;
+  line-height: 1;
+  font-size: 1.15rem;
+  border-radius: var(--radius-sm, 4px);
+}
+.bc-kanban__menu:hover {
+  background: var(--color-gray-100, #f3f4f6);
+  color: var(--color-neutral-9, #272b30);
+}
+.bc-kanban__card-body {
+  padding-left: 0.125rem;
+}
+.bc-kanban__patient-name {
+  font-weight: var(--weight-semibold, 600);
+  font-size: var(--text-body-m);
+  color: var(--color-neutral-9, #272b30);
+  line-height: 1.3;
+}
+.bc-kanban__patient-id {
+  font-size: 0.6875rem;
+  color: var(--color-text-secondary, var(--color-neutral-7));
+  margin-top: 2px;
+}
+.bc-kanban__card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  margin-top: 0.5rem;
+}
+.bc-kanban__appt-pill {
+  font-size: 0.75rem;
+  font-weight: var(--weight-medium, 500);
+  color: var(--color-neutral-7, #6a7178);
+  border: 1px solid var(--color-gray-200, #e5e7eb);
+  border-radius: var(--radius-pill, 999px);
+  padding: 0.1rem 0.45rem;
+  background: var(--color-white, #fff);
+}
+.bc-kanban__wait {
+  color: var(--color-neutral-7, #6a7178);
+  font-size: 0.75rem;
+  margin-top: 0.45rem;
+}
+.bc-kanban__card-actions {
+  margin-top: 0.65rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+.bc-kanban__btn-start,
+.bc-kanban__btn-done {
+  border: none;
+  border-radius: var(--radius-button, 5px);
+  font-size: 0.75rem;
+  font-weight: var(--weight-semibold, 600);
+  font-family: inherit;
+  padding: 0.35rem 0.65rem;
+  cursor: pointer;
+  background: var(--color-primary-500, #7c51a1);
+  color: var(--color-white, #fff);
+  transition: background 0.12s;
+}
+.bc-kanban__btn-start:hover,
+.bc-kanban__btn-done:hover {
+  background: var(--color-primary-400, #926eb1);
+}
+
+/* —— Worklist table shell (staging .bsh-worklist) —— */
+.bc-bsh-worklist-wrap {
+  margin: 0 0 var(--space-page);
+}
+.bc-wl-shell {
+  margin: 0 var(--space-page) var(--space-page);
+  background: var(--color-white, #fff);
+  border: 1px solid var(--color-gray-200, #e5e7eb);
+  border-radius: var(--radius-md, 8px);
+  overflow-x: auto;
+}
+.bc-wl-table {
+  table-layout: fixed;
+  border-collapse: collapse;
+  width: 100%;
+  font-size: var(--text-body-m);
+}
+.bc-wl-table thead tr {
+  background: var(--color-gray-50, #f9fafb);
+  border-bottom: 1px solid var(--color-gray-200, #e5e7eb);
+}
+.bc-wl-table th {
+  font-size: 0.6875rem;
+  font-weight: var(--weight-semibold, 600);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-neutral-7, #6a7178);
+  text-align: left;
+  white-space: nowrap;
+  padding: 0.625rem 1rem;
+}
+.bc-wl-th-time {
+  width: 5.5rem;
+}
+.bc-wl-th-action {
+  text-align: right;
+  width: 13rem;
+}
+.bc-wl-table td {
+  border-bottom: 1px solid var(--color-gray-100, #f3f4f6);
+  vertical-align: middle;
+  height: 68px;
+  padding: 0 1rem;
+}
+.bc-wl-table td:last-child {
+  text-align: right;
+}
+.bc-wl-tr--booked {
+  cursor: pointer;
+}
+.bc-wl-tr--booked:hover td {
+  background: var(--color-primary-100, #f2eef6);
+}
+.bc-wl-td-time {
+  color: var(--color-neutral-7, #6a7178);
+  white-space: nowrap;
+  vertical-align: middle;
+  font-family: "SF Mono", "Fira Code", ui-monospace, monospace;
+  font-size: 0.875rem;
+}
+.bc-wl-td-patient {
+  min-width: 14rem;
+}
+.bc-wl-name {
+  font-size: 0.9375rem;
+  font-weight: var(--weight-medium, 500);
+  color: var(--color-neutral-9, #272b30);
+  display: block;
+}
+.bc-wl-phone {
+  color: var(--color-neutral-7, #6a7178);
+  margin-top: 2px;
+  font-size: 0.8125rem;
+  display: block;
+}
+.bc-wl-td-attend {
+  text-align: center;
+}
+.bc-wl-attend-cb {
+  accent-color: var(--color-primary-500, #7c51a1);
+  cursor: default;
+  width: 1rem;
+  height: 1rem;
+}
+.bc-wl-tr--empty td {
+  color: var(--color-neutral-7, #6a7178);
+}
+.bc-wl-tr--lunch td {
+  color: #92400e;
+  background: #fffcf5;
+  height: 40px;
+  font-style: italic;
+}
+.bc-wl-lunch-label {
+  padding: 0.5rem 0.75rem;
 }
 
 .bc-spacer {
@@ -139,125 +747,6 @@
 
 .bc-main {
   padding-bottom: 1.5rem;
-}
-
-.bc-pill-row {
-  display: flex;
-  gap: 0.25rem;
-  flex-wrap: wrap;
-}
-.bc-pill {
-  padding: 0.3rem 0.6rem;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-input-border);
-  background: var(--color-card, #fff);
-  color: var(--color-muted-foreground);
-  font: inherit;
-  font-size: var(--text-body-s, 0.8125rem);
-  cursor: pointer;
-}
-.bc-pill--on {
-  border-color: var(--color-primary);
-  background: var(--bc-violet-lt);
-  color: var(--color-primary);
-  font-weight: var(--weight-semibold);
-}
-
-.bc-worklist__bar {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  padding: 0.65rem 0.85rem;
-  background: var(--color-card, #fff);
-  border: 1px solid var(--bc-border);
-  border-radius: var(--radius-md);
-  margin-bottom: 0.65rem;
-}
-.bc-input--date {
-  padding: 0.35rem 0.5rem;
-  border: 1px solid var(--color-input-border);
-  border-radius: var(--radius-sm);
-  font: inherit;
-}
-
-.bc-wl-table {
-  background: var(--color-card, #fff);
-  border: 1px solid var(--bc-border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-.bc-wl-head {
-  display: grid;
-  grid-template-columns: 4.25rem 1fr 6.25rem 7.8rem 4.75rem 6.9rem;
-  gap: 0.35rem;
-  padding: 0.5rem 0.85rem;
-  background: var(--bc-violet-lt);
-  border-bottom: 1px solid var(--bc-border);
-  font-size: var(--text-table-header);
-  font-weight: var(--weight-semibold);
-  color: var(--color-primary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.bc-wl-body {
-  max-height: 30rem;
-  overflow-y: auto;
-}
-.bc-wl-row {
-  display: grid;
-  grid-template-columns: 4.25rem 1fr 6.25rem 7.8rem 4.75rem 6.9rem;
-  gap: 0.35rem;
-  padding: 0.45rem 0.85rem;
-  border-bottom: 1px solid var(--color-border);
-  align-items: center;
-  background: var(--color-card, #fff);
-}
-.bc-wl-row--empty {
-  min-height: 1.5rem;
-  padding: 0.2rem 0.85rem;
-}
-.bc-wl-row--lunch {
-  background: #fffdf0;
-}
-.bc-wl-row:not(.bc-wl-row--empty):hover {
-  background: var(--bc-violet-lt);
-  cursor: pointer;
-}
-.bc-wl-time {
-  font-size: var(--text-table-header);
-  color: var(--color-muted-foreground);
-  font-variant-numeric: tabular-nums;
-}
-.bc-wl-empty {
-  font-size: var(--text-body-s, 0.8125rem);
-  color: var(--color-muted-foreground);
-  font-style: italic;
-}
-.bc-wl-name {
-  font-weight: var(--weight-semibold);
-  font-size: var(--text-body-m);
-}
-.bc-wl-phone {
-  font-size: var(--text-body-s, 0.8125rem);
-  color: var(--color-muted-foreground);
-}
-.bc-wl-att {
-  font-size: var(--text-body-m);
-  color: #aaa;
-}
-.bc-wl-att--yes {
-  color: #166534;
-  font-weight: var(--weight-semibold);
-}
-.bc-wl-walkin {
-  font-size: var(--text-table-header);
-  padding: 0.15rem 0.45rem;
-  border-radius: var(--radius-sm);
-  border: 1px dashed color-mix(in srgb, var(--color-primary) 35%, var(--color-input-border));
-  background: none;
-  color: var(--color-primary);
-  cursor: pointer;
 }
 
 .bc-chip {
@@ -943,26 +1432,20 @@
 
 .bc-toast {
   position: fixed;
-  bottom: 1.25rem;
+  bottom: 1.5rem;
   left: 50%;
   transform: translateX(-50%);
-  background: #0d7e6e;
+  background: var(--color-neutral-9, #272b30);
   color: #fff;
-  padding: 0.45rem 1rem;
-  border-radius: var(--radius-md);
+  padding: 0.625rem 1.25rem;
+  border-radius: var(--radius-md, 8px);
   font-size: var(--text-body-m);
-  font-weight: var(--weight-medium);
-  z-index: 1300;
-  pointer-events: none;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  z-index: 9999;
+  cursor: pointer;
+  box-shadow: var(--shadow-xl, 0 0 10px 0 rgba(188, 201, 192, 0.5));
 }
 
 @media (max-width: 900px) {
-  .bc-wl-head,
-  .bc-wl-row {
-    grid-template-columns: 3.5rem 1fr 5rem 5.5rem 3.5rem 5.5rem;
-    font-size: 0.7rem;
-  }
   .bc-patient-grid {
     grid-template-columns: 1fr;
   }

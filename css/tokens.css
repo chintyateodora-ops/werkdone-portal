@@ -77,8 +77,11 @@
   --lh-reg-form: 1.5;
   --text-body-m: 0.875rem;
   --lh-body-m: 1.375;
-  --text-page-title: 1.875rem;
-  --lh-page-title: 1.2;
+  /** Primary screen headings (toolbar / module titles, registration H1, FIT Kit, …) — 24px */
+  --text-page-heading: 1.5rem;
+  --lh-page-heading: 1.3;
+  --text-page-title: var(--text-page-heading);
+  --lh-page-title: var(--lh-page-heading);
   --text-h1: 2.5rem;
   --lh-h1: 1.2;
   --text-h4: 1.25rem;

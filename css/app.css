@@ -146,51 +146,46 @@ button {
   line-height: var(--lh-body-l);
 }
 
-/* —— FIT Kit Tracker —— */
-.fit-kit > .fit-kit-summary.prospect-summary {
-  margin-top: 0;
+/* —— FIT Kit Tracker (Bishan-parity shell: toolbar → KPI band → bc-main → filters + content) —— */
+.fit-kit-page-module {
+  min-height: 0;
 }
 
-.fit-kit__top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
-  margin-bottom: 0.75rem;
-}
-
-.fit-kit__title {
-  margin: 0;
-  font-size: 1.25rem;
-  line-height: 1.3;
-  font-weight: var(--weight-semibold);
-  color: var(--color-foreground);
-}
-
-.fit-kit__subtitle {
-  margin: 0.25rem 0 0;
+.fit-kit__toolbar-lead {
+  margin: 0.125rem 0 0;
   font-size: var(--text-body-m);
-  color: var(--color-muted-foreground);
+  line-height: var(--lh-body-m);
+  color: var(--color-neutral-7, #6a7178);
+  max-width: 40rem;
 }
 
-.fit-kit__actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+.fit-kit-page-module .prospects-kpi-shell .prospect-summary {
+  margin-bottom: 0;
 }
 
-.fit-kit__search {
-  margin: 0;
-  min-width: min(18rem, 100%);
+.fit-kit-page-module .fit-kit-main > .bc-bsh-filters.fit-kit-filters-bar {
+  margin-bottom: 0.5rem;
+}
+
+.fit-kit-page-module .fit-kit-filters-bar .toolbar-search {
+  flex: 1 1 280px;
+  min-width: 200px;
+  max-width: none;
+}
+
+.fit-kit-page-module .fit-kit-main > .fit-kit__stagebar {
+  margin: 0 var(--space-page) 0.75rem;
+}
+
+.fit-kit-page-module .fit-kit-main > .fit-stage {
+  margin-left: var(--space-page);
+  margin-right: var(--space-page);
 }
 
 .fit-kit__stagebar {
   display: grid;
   grid-template-columns: repeat(4, minmax(12rem, 1fr));
   gap: 0.5rem;
-  margin: 0.75rem 0 0.75rem;
   overflow-x: auto;
   padding-bottom: 0.25rem;
 }
@@ -774,6 +769,16 @@ button {
   min-height: 0;
 }
 
+/* Bishan screening: full-bleed under global header; inner rows keep horizontal padding. */
+.app-main.app-main--bishan-fullbleed {
+  padding: 0;
+}
+
+/* Prospect list: same full-bleed shell as Bishan (`bc-screening` + inner `--space-page` rhythm). */
+.app-main.app-main--prospects-fullbleed {
+  padding: 0;
+}
+
 /* Prospect detail flow: one scrollport (#detail-flow-scroll-root).
    Sticky stack: app-header → primary tabs → form toolbar (form tabs only) → left TOC (offsets below). */
 .app-shell--detail-flow {
@@ -1015,11 +1020,11 @@ button {
 .title-dropdown__trigger h1 {
   margin: 0;
   pointer-events: none;
-  font-family: var(--font-display);
-  font-size: var(--text-page-title);
-  line-height: var(--lh-page-title);
+  font-family: var(--font-body);
+  font-size: var(--text-page-heading);
+  line-height: var(--lh-page-heading);
   font-weight: var(--weight-bold);
-  color: var(--color-gray-900);
+  color: var(--color-neutral-9);
 }
 
 .title-dropdown__chev {
@@ -1106,6 +1111,57 @@ button {
 .page-toolbar--tools .toolbar-search {
   flex: 1 1 240px;
   max-width: none;
+}
+
+/* —— Prospect module: mirrors Bishan `bc-screening` → toolbar → stats strip → `bc-main` → `bc-bsh-filters` + board —— */
+.prospects-page-module {
+  min-height: 0;
+}
+
+/* KPI strip: same band treatment as `.bc-bsh-stats-row` (gray field + bottom rule). */
+.prospects-kpi-shell {
+  padding: 1rem var(--space-page);
+  background: var(--color-gray-50, #f9fafb);
+  border-bottom: 1px solid var(--color-gray-200, #e5e7eb);
+}
+
+.prospects-kpi-shell .prospect-summary {
+  margin-bottom: 0;
+}
+
+.prospects-page-module .prospects-filters-bar .prospects-filters-bar__search {
+  flex: 1 1 280px;
+  min-width: 200px;
+  max-width: none;
+}
+
+.prospects-page-module .prospects-filters-bar__end {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+@media (max-width: 640px) {
+  .prospects-page-module .prospects-filters-bar__end {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+.prospects-page-module .prospects-main > .bc-bsh-filters.prospects-filters-bar {
+  margin-bottom: 0.5rem;
+}
+
+.prospects-page-module .prospects-main > .kanban,
+.prospects-page-module .prospects-main > .table-card {
+  margin: 0 var(--space-page) var(--space-page);
+}
+
+.prospects-page-module .prospect-summary-card {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 /* —— Prospect listing: summary KPI cards —— */
@@ -1247,11 +1303,11 @@ button {
 
 .page-toolbar__title h1 {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--text-page-title);
-  line-height: var(--lh-page-title);
+  font-family: var(--font-body);
+  font-size: var(--text-page-heading);
+  line-height: var(--lh-page-heading);
   font-weight: var(--weight-bold);
-  color: var(--color-gray-900);
+  color: var(--color-neutral-9);
 }
 
 .view-toggle {
@@ -1413,6 +1469,15 @@ button {
 
 .data-table tbody tr:hover {
   background: var(--color-gray-50);
+}
+
+.prospects-page-module .table-card > .data-table tbody tr:nth-child(even) {
+  background: var(--color-gray-50);
+}
+
+.prospects-page-module .table-card > .data-table tbody tr:nth-child(even):hover,
+.prospects-page-module .table-card > .data-table tbody tr:nth-child(odd):hover {
+  background: var(--color-gray-100);
 }
 
 /* No full-row ring on click (avoid :focus-within when link/actions inside are focused). */
@@ -4907,9 +4972,11 @@ button {
 
 .form-page__title {
   margin: 0 0 0.25rem;
-  font-family: var(--font-display);
-  font-size: var(--text-h4);
+  font-family: var(--font-body);
+  font-size: var(--text-page-heading);
+  line-height: var(--lh-page-heading);
   font-weight: var(--weight-bold);
+  color: var(--color-neutral-9);
   letter-spacing: -0.02em;
 }
 
@@ -5314,7 +5381,9 @@ button {
 
 .registration__title {
   margin: 0 0 0.25rem;
-  font-size: var(--text-h4);
+  font-family: var(--font-body);
+  font-size: var(--text-page-heading);
+  line-height: var(--lh-page-heading);
   font-weight: var(--weight-bold);
   color: var(--color-neutral-9);
   letter-spacing: -0.02em;
@@ -6076,6 +6145,119 @@ button {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary-500) 22%, transparent);
 }
 
+.registration__preflang {
+  position: relative;
+  width: 100%;
+}
+
+/* Closed state: match `.field select` (Race, etc.) — border, radius, padding, slate chevron */
+.registration__preflang-trigger {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem 2.25rem 0.5rem 0.75rem;
+  border: 1px solid var(--color-neutral-5);
+  border-radius: var(--radius-md);
+  font: inherit;
+  line-height: inherit;
+  background-color: var(--color-white);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.65rem center;
+  background-size: 1rem 1rem;
+  color: var(--color-neutral-9);
+  text-align: left;
+  cursor: pointer;
+}
+
+.registration__preflang-trigger:focus {
+  outline: 2px solid var(--color-primary-200);
+  border-color: var(--color-primary-400);
+}
+
+.registration__preflang-trigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.registration__preflang-display {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.registration__preflang-display--placeholder {
+  color: var(--color-neutral-9);
+}
+
+.registration__preflang-chevron {
+  display: none;
+}
+
+.registration--self-service .registration__preflang-trigger {
+  min-height: 2.75rem;
+  font-size: 16px; /* match `.registration--self-service .field select` — avoids iOS zoom */
+}
+
+.registration__preflang-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 40;
+  max-height: 16rem;
+  overflow: auto;
+  padding: 0.35rem 0.45rem;
+  border: 1px solid var(--color-gray-300);
+  border-radius: var(--radius-sm);
+  background: var(--color-white);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  /* Panel options should match trigger / inputs (1rem), not `.field label` (0.875rem). */
+  font-size: var(--text-body-l);
+  line-height: var(--lh-body-l);
+}
+
+/* Option row is a <label>; override `.field label` (0.875rem) so text matches trigger / inputs. */
+label.registration__preflang-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.45rem 0.35rem;
+  margin: 0;
+  font-size: var(--text-body-l);
+  line-height: var(--lh-body-l);
+  font-weight: var(--weight-regular);
+  color: var(--color-neutral-9);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.registration__preflang-row:hover {
+  background: var(--color-gray-50);
+}
+
+.registration__preflang-row input {
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0;
+  accent-color: var(--color-primary-500);
+  flex-shrink: 0;
+}
+
+.registration__preflang-row-text {
+  flex: 1;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.bio-v--control--pref-lang .registration__preflang {
+  display: block;
+}
+
 .field__hint {
   margin: 0.35rem 0 0;
   font-size: var(--text-body-s);
@@ -6593,8 +6775,8 @@ body.registration-nav-drawer-open {
 
 @media (max-width: 640px) {
   .registration--self-service .registration__title {
-    font-size: clamp(1.125rem, 4.2vw, 1.375rem);
-    line-height: 1.3;
+    font-size: clamp(1.125rem, 4.2vw, var(--text-page-heading));
+    line-height: var(--lh-page-heading);
   }
 
   .registration--self-service .registration__form-col {
@@ -6937,11 +7119,12 @@ body.registration-nav-drawer-open {
 
 .reg-landing__title {
   margin: 0 0 0.5rem;
-  font-size: 1.25rem;
+  font-family: var(--font-body);
+  font-size: var(--text-page-heading);
+  line-height: var(--lh-page-heading);
   font-weight: var(--weight-bold);
   color: var(--color-neutral-9);
   letter-spacing: -0.02em;
-  line-height: 1.3;
 }
 
 .reg-landing__subtitle {

@@ -93,6 +93,37 @@
       return s;
     }
   }
+  /** e.g. 2026-04-16 → "16 Apr 2026" (for Bishan header). */
+  function fmtCalHeading(iso) {
+    if (!iso) return "—";
+    try {
+      const [y, m, d] = String(iso).split("-");
+      const dt = new Date(Number(y), Number(m) - 1, Number(d));
+      return dt.toLocaleDateString("en-SG", { day: "numeric", month: "short", year: "numeric" });
+    } catch {
+      return iso;
+    }
+  }
+  /** Live line: "16 Apr 2026 · 12:08:57 SGT" */
+  function formatNowSGTClock() {
+    const utc = Date.now() + new Date().getTimezoneOffset() * 60000;
+    const sgt = new Date(utc + 8 * 3600000);
+    const a = sgt.toLocaleDateString("en-SG", { day: "numeric", month: "short", year: "numeric" });
+    const t = `${String(sgt.getHours()).padStart(2, "0")}:${String(sgt.getMinutes()).padStart(2, "0")}:${String(sgt.getSeconds()).padStart(2, "0")}`;
+    return `${a} · ${t} SGT`;
+  }
+  /** Labels aligned with staging Bishan worklist (werkdone prospect admin). */
+  const STAGE_UI_LABEL = {
+    appointment: "Booked",
+    no_test: "No Test",
+    pending_result: "Pending Result",
+    doctor_input: "Doctor Review",
+    pending_print: "Pending Print",
+    complete: "Complete",
+  };
+  function stageUiLabel(stage) {
+    return STAGE_UI_LABEL[stage] || SLABELS[stage] || stage;
+  }
   function slotLbl(m) {
     return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
   }
@@ -142,6 +173,7 @@
       const by = 1955 + rnd(0, 35);
       pts.push({
         id: "p" + (i + 1),
+        bishanCode: "BSH-" + String(i + 1).padStart(3, "0"),
         name: FN[i % FN.length] + " " + LN[i % LN.length],
         dob: fd(by, rnd(1, 12), rnd(1, 28)),
         nric: ["S", "T", "F", "G"][i % 4] + String(7000000 + i * 1234).slice(0, 7) + String.fromCharCode(65 + ((i * 7) % 26)),
@@ -228,6 +260,651 @@
     return { pts, vis };
   }
 
+  /**
+   * Replace the first N generated patients with demo profiles and give each a visit on `todayIso`
+   * so the queue board / worklist show every screening type × Kanban column. Populates `detailSeedsOut`
+   * keyed by patient id for Medical History / Other Details tabs.
+   */
+  function applyBishanShowcaseData(pts, vis, todayIso, detailSeedsOut) {
+    const next = (interval) => addInt(todayIso, interval);
+    const roster = [
+      {
+        patient: {
+          name: "Monica Tay",
+          dob: "1985-06-14",
+          nric: "G7062934T",
+          age: "41",
+          phone: "8123 4567",
+          email: "monica.tay@email.sg",
+          type: "hpv",
+          gender: "Female",
+          nationality: "Singapore Citizen",
+          preferredLanguage: "English",
+          addressLine: "Blk 128 Bishan Street 12 #08-441",
+          postalCode: "570128",
+          emergencyName: "David Tay",
+          emergencyPhone: "9123 0001",
+          contactPref: "SMS",
+          referral: "Friend / Family",
+          sexualActivity: "Yes",
+          lastPap: "1-3 years ago",
+          lastMenses: "2026-04-10",
+        },
+        visit: {
+          slot: 9 * 60 + 28,
+          stage: "pending_result",
+          attended: true,
+          doctorNotes: "HPV self-sampling kit issued; sample collected without complications.",
+          referralRec: "None",
+          reviewInterval: "",
+          resultLabel: "",
+          nextApt: "",
+        },
+        detailSeed: {
+          medicalHistory: {
+            breastCancer: "No",
+            colorectalCancer: "No",
+            ovarianCancer: "No",
+            otherCancer: "No",
+            historyOfCancer: "No",
+            diagnosedYear: "—",
+            cancerDetail: "—",
+            followUpAt: "—",
+            surgery: "No",
+            radiation: "No",
+            chemo: "No",
+          },
+          otherDetails: {
+            otherMedicalIllness: "Nil significant.",
+            currentMedication: "Vitamin D 1000 IU once daily",
+            drugAllergy: "No",
+            highRiskImmuno: "No",
+            ageFirstSexual: "18",
+            multiplePartners: "No",
+            smoking: "No",
+            smokingDurationYrs: "0",
+            stiHistory: "No",
+            ocpYrs: "5",
+            hpvVaccination: "Yes",
+            cervicalOtherDetails: "Completed HPV vaccination (3 doses) in 2015. Attending routine recall at Bishan.",
+            para: "2",
+            lastPapTest: "12/08/2024",
+            lastPapResult: "Negative",
+            lastMammo: "—",
+            menarche: "12",
+            menopause: "",
+            firstChildbirth: "30",
+            hrtYrs: "0",
+            preMalignantBreast: "No",
+            breastConditionsDetail: "—",
+          },
+        },
+      },
+      {
+        patient: {
+          name: "Sarah Mei Lim",
+          dob: "1979-03-22",
+          nric: "S7903224C",
+          age: "47",
+          phone: "9234 1100",
+          email: "sarah.lim.mammo@email.sg",
+          type: "mammogram",
+          gender: "Female",
+          nationality: "Singapore Citizen",
+          preferredLanguage: "English",
+          addressLine: "Blk 245 Bishan Street 22 #12-102",
+          postalCode: "570245",
+          emergencyName: "Daniel Lim",
+          emergencyPhone: "9001 2200",
+          contactPref: "WhatsApp",
+          referral: "Doctor Referral",
+          sexualActivity: "Yes",
+          lastPap: "",
+          lastMenses: "",
+        },
+        visit: {
+          slot: 8 * 60 + 45,
+          stage: "appointment",
+          attended: false,
+          doctorNotes: "",
+          referralRec: "None",
+          reviewInterval: "",
+          resultLabel: "",
+          nextApt: "",
+        },
+        detailSeed: {
+          medicalHistory: {
+            breastCancer: "No",
+            colorectalCancer: "No",
+            ovarianCancer: "No",
+            otherCancer: "No",
+            historyOfCancer: "No",
+            diagnosedYear: "—",
+            cancerDetail: "—",
+            followUpAt: "—",
+            surgery: "No",
+            radiation: "No",
+            chemo: "No",
+          },
+          otherDetails: {
+            otherMedicalIllness: "Mild hypertension — on losartan.",
+            currentMedication: "Losartan 50 mg",
+            drugAllergy: "No",
+            highRiskImmuno: "No",
+            ageFirstSexual: "",
+            multiplePartners: "",
+            smoking: "No",
+            smokingDurationYrs: "0",
+            stiHistory: "",
+            ocpYrs: "",
+            hpvVaccination: "",
+            cervicalOtherDetails: "",
+            para: "",
+            lastPapTest: "",
+            lastPapResult: "",
+            lastMammo: "Never",
+            menarche: "13",
+            menopause: "",
+            firstChildbirth: "29",
+            hrtYrs: "0",
+            preMalignantBreast: "No",
+            breastConditionsDetail: "Benign fibroadenoma excised 2018 — histology benign.",
+          },
+        },
+      },
+      {
+        patient: {
+          name: "Nurul Huda Ahmad",
+          dob: "1992-11-08",
+          nric: "S9211081B",
+          age: "33",
+          phone: "8790 3344",
+          email: "nurul.huda.pap@email.sg",
+          type: "pap",
+          gender: "Female",
+          nationality: "Singapore Citizen",
+          preferredLanguage: "English, Malay",
+          addressLine: "Blk 510 Bishan Street 13 #04-88",
+          postalCode: "570510",
+          emergencyName: "Ahmad Rizal",
+          emergencyPhone: "9812 4455",
+          contactPref: "SMS",
+          referral: "Poster / Flyer",
+          sexualActivity: "Yes",
+          lastPap: "More than 3 years ago",
+          lastMenses: "2026-04-02",
+        },
+        visit: { slot: 9 * 60, stage: "appointment", attended: false, doctorNotes: "", referralRec: "None" },
+        detailSeed: {
+          medicalHistory: {
+            breastCancer: "No",
+            colorectalCancer: "No",
+            ovarianCancer: "No",
+            otherCancer: "No",
+            historyOfCancer: "No",
+            diagnosedYear: "—",
+            cancerDetail: "—",
+            followUpAt: "—",
+            surgery: "No",
+            radiation: "No",
+            chemo: "No",
+          },
+          otherDetails: {
+            otherMedicalIllness: "Nil.",
+            currentMedication: "Nil",
+            drugAllergy: "No",
+            highRiskImmuno: "No",
+            ageFirstSexual: "19",
+            multiplePartners: "No",
+            smoking: "No",
+            smokingDurationYrs: "0",
+            stiHistory: "No",
+            ocpYrs: "3",
+            hpvVaccination: "Yes",
+            cervicalOtherDetails: "First Pap at SCS mobile unit; anxious but keen to complete screening.",
+            para: "0",
+            lastPapTest: "2019",
+            lastPapResult: "Unknown / elsewhere",
+            lastMammo: "—",
+            menarche: "11",
+            menopause: "",
+            firstChildbirth: "",
+            hrtYrs: "0",
+            preMalignantBreast: "No",
+            breastConditionsDetail: "—",
+          },
+        },
+      },
+      {
+        patient: {
+          name: "Priya Devi Krishnan",
+          dob: "1988-07-30",
+          nric: "T8807302Z",
+          age: "37",
+          phone: "9100 7788",
+          email: "priya.devi@email.sg",
+          type: "hpv",
+          gender: "Female",
+          nationality: "Permanent Resident",
+          preferredLanguage: "English, Tamil",
+          addressLine: "Blk 288 Bishan Street 24 #15-2201",
+          postalCode: "570288",
+          emergencyName: "Krishnan Muthu",
+          emergencyPhone: "9456 0099",
+          contactPref: "Call",
+          referral: "Social Media",
+          sexualActivity: "Yes",
+          lastPap: "Less than 1 year ago",
+          lastMenses: "2026-04-08",
+        },
+        visit: { slot: 10 * 60 + 15, stage: "appointment", attended: false, doctorNotes: "", referralRec: "None" },
+      },
+      {
+        patient: {
+          name: "Jennifer Koh",
+          dob: "1966-01-19",
+          nric: "S6601193D",
+          age: "60",
+          phone: "9888 2016",
+          email: "j.koh.screening@email.sg",
+          type: "mammogram",
+          gender: "Female",
+          nationality: "Singapore Citizen",
+          preferredLanguage: "English",
+          addressLine: "Blk 151 Bishan Street 11 #07-654",
+          postalCode: "570151",
+          emergencyName: "Marcus Koh",
+          emergencyPhone: "8777 1033",
+          contactPref: "Email",
+          referral: "Friend / Family",
+          sexualActivity: "Yes",
+          lastPap: "",
+          lastMenses: "",
+        },
+        visit: {
+          slot: 10 * 60 + 45,
+          stage: "doctor_input",
+          attended: true,
+          doctorNotes: "Bilateral mammogram reviewed; routine BIRADS 1–2 pattern. Patient advised on breast awareness.",
+          referralRec: "None",
+          reviewInterval: "",
+          resultLabel: "Normal (Negative)",
+          nextApt: "",
+        },
+      },
+      {
+        patient: {
+          name: "Wei Ling Cheong",
+          dob: "1974-05-05",
+          nric: "S7405051A",
+          age: "51",
+          phone: "9366 5400",
+          email: "weiling.cheong@email.sg",
+          type: "pap",
+          gender: "Female",
+          nationality: "Singapore Citizen",
+          preferredLanguage: "English, Mandarin",
+          addressLine: "Blk 419 Shunfu Road #09-120",
+          postalCode: "570419",
+          emergencyName: "Cheong Wai Keong",
+          emergencyPhone: "9221 8877",
+          contactPref: "SMS",
+          referral: "Doctor Referral",
+          sexualActivity: "Yes",
+          lastPap: "1-3 years ago",
+          lastMenses: "2026-03-28",
+        },
+        visit: {
+          slot: 11 * 60,
+          stage: "pending_print",
+          attended: true,
+          doctorNotes: "Liquid-based cytology taken; counselling on results and recall interval completed.",
+          referralRec: "None",
+          reviewInterval: "1 year",
+          resultLabel: "Normal (Negative)",
+          nextApt: next("1 year"),
+        },
+      },
+      {
+        patient: {
+          name: "Fatimah Noor",
+          dob: "1990-09-12",
+          nric: "S9009125E",
+          age: "35",
+          phone: "9012 7712",
+          email: "fatimah.noor@email.sg",
+          type: "hpv",
+          gender: "Female",
+          nationality: "Singapore Citizen",
+          preferredLanguage: "English, Malay",
+          addressLine: "Blk 229 Bishan Street 23 #03-412",
+          postalCode: "570229",
+          emergencyName: "Noor Aisyah",
+          emergencyPhone: "9855 1200",
+          contactPref: "WhatsApp",
+          referral: "Social Media",
+          sexualActivity: "Yes",
+          lastPap: "Never",
+          lastMenses: "2026-04-12",
+        },
+        visit: {
+          slot: 11 * 60 + 30,
+          stage: "complete",
+          attended: true,
+          doctorNotes: "HPV DNA negative. Routine recall discussed.",
+          referralRec: "None",
+          reviewInterval: "3 years",
+          resultLabel: "Normal (Negative)",
+          nextApt: next("3 years"),
+        },
+      },
+      {
+        patient: {
+          name: "Angela Tan",
+          dob: "1959-12-02",
+          nric: "S5912021H",
+          age: "66",
+          phone: "9677 3300",
+          email: "angela.tan@email.sg",
+          type: "mammogram",
+          gender: "Female",
+          nationality: "Singapore Citizen",
+          preferredLanguage: "English",
+          addressLine: "Blk 282 Bishan Street 22 #16-88",
+          postalCode: "570282",
+          emergencyName: "Tan Wei Jie",
+          emergencyPhone: "8123 9900",
+          contactPref: "Call",
+          referral: "Poster / Flyer",
+          sexualActivity: "Yes",
+          lastPap: "",
+          lastMenses: "",
+        },
+        visit: {
+          slot: 13 * 60,
+          stage: "complete",
+          attended: true,
+          doctorNotes: "Tomosynthesis screening unremarkable. Patient comfortable with technique.",
+          referralRec: "None",
+          reviewInterval: "2 years",
+          resultLabel: "Normal (Negative)",
+          nextApt: next("2 years"),
+        },
+      },
+      {
+        patient: {
+          name: "Lisa Wong",
+          dob: "1982-04-18",
+          nric: "S8204186G",
+          age: "44",
+          phone: "9223 6618",
+          email: "lisa.wong@email.sg",
+          type: "pap",
+          gender: "Female",
+          nationality: "Singapore Citizen",
+          preferredLanguage: "English",
+          addressLine: "Blk 131 Bishan Street 12 #10-305",
+          postalCode: "570131",
+          emergencyName: "Wong Kai Ming",
+          emergencyPhone: "9009 4412",
+          contactPref: "Email",
+          referral: "Friend / Family",
+          sexualActivity: "Yes",
+          lastPap: "Less than 1 year ago",
+          lastMenses: "2026-04-05",
+        },
+        visit: {
+          slot: 13 * 60 + 45,
+          stage: "complete",
+          attended: true,
+          doctorNotes: "Screening Pap completed; patient advised on red-flag symptoms.",
+          referralRec: "Repeat Screening in 6 Months",
+          reviewInterval: "6 months",
+          resultLabel: "Changes Detected (Positive)",
+          nextApt: next("6 months"),
+        },
+      },
+      {
+        patient: {
+          name: "Suresh Kumar",
+          dob: "1995-02-28",
+          nric: "T9502288F",
+          age: "31",
+          phone: "8133 2201",
+          email: "suresh.k@email.sg",
+          type: "hpv",
+          gender: "Female",
+          nationality: "Permanent Resident",
+          preferredLanguage: "English",
+          addressLine: "Blk 502 Bishan Street 11 #06-1402",
+          postalCode: "570502",
+          emergencyName: "Kumar Raj",
+          emergencyPhone: "8188 3344",
+          contactPref: "SMS",
+          referral: "Other",
+          sexualActivity: "Yes",
+          lastPap: "NA",
+          lastMenses: "2026-04-01",
+        },
+        visit: {
+          slot: 14 * 60,
+          stage: "no_test",
+          attended: false,
+          doctorNotes: "Did not attend — called twice, left voicemail.",
+          referralRec: "None",
+          reviewInterval: "",
+          resultLabel: "",
+          nextApt: "",
+        },
+      },
+      {
+        patient: {
+          name: "Hannah Yeo",
+          dob: "1971-08-14",
+          nric: "S7108142I",
+          age: "54",
+          phone: "9777 8899",
+          email: "hannah.yeo@email.sg",
+          type: "mammogram",
+          gender: "Female",
+          nationality: "Singapore Citizen",
+          preferredLanguage: "English",
+          addressLine: "Blk 155 Bishan Street 13 #05-771",
+          postalCode: "570155",
+          emergencyName: "Yeo Han Wei",
+          emergencyPhone: "9333 1020",
+          contactPref: "WhatsApp",
+          referral: "Social Media",
+          sexualActivity: "Yes",
+          lastPap: "",
+          lastMenses: "",
+        },
+        visit: {
+          slot: 14 * 60 + 30,
+          stage: "no_test",
+          attended: false,
+          doctorNotes: "No-show for booked slot; SMS sent for rebooking.",
+          referralRec: "None",
+          reviewInterval: "",
+          resultLabel: "",
+          nextApt: "",
+        },
+      },
+      {
+        patient: {
+          name: "Chloe Ng",
+          dob: "1987-10-03",
+          nric: "S8710034J",
+          age: "38",
+          phone: "9444 5566",
+          email: "chloe.ng@email.sg",
+          type: "pap",
+          gender: "Female",
+          nationality: "Singapore Citizen",
+          preferredLanguage: "English",
+          addressLine: "Blk 273 Bishan Street 24 #08-1903",
+          postalCode: "570273",
+          emergencyName: "Ng Zhi Hao",
+          emergencyPhone: "9011 7788",
+          contactPref: "SMS",
+          referral: "Doctor Referral",
+          sexualActivity: "Yes",
+          lastPap: "1-3 years ago",
+          lastMenses: "2026-04-14",
+        },
+        visit: {
+          slot: 15 * 60,
+          stage: "no_test",
+          attended: false,
+          doctorNotes: "DNA — patient message received citing work conflict.",
+          referralRec: "None",
+          reviewInterval: "",
+          resultLabel: "",
+          nextApt: "",
+        },
+      },
+      {
+        patient: {
+          name: "Geraldine Ho",
+          dob: "1963-06-25",
+          nric: "S6306257K",
+          age: "62",
+          phone: "9231 4400",
+          email: "geraldine.ho@email.sg",
+          type: "mammogram",
+          gender: "Female",
+          nationality: "Singapore Citizen",
+          preferredLanguage: "English, Mandarin",
+          addressLine: "Blk 190 Bishan Street 13 #11-405",
+          postalCode: "570190",
+          emergencyName: "Ho Jin An",
+          emergencyPhone: "9876 3210",
+          contactPref: "Call",
+          referral: "Friend / Family",
+          sexualActivity: "Yes",
+          lastPap: "",
+          lastMenses: "",
+        },
+        visit: {
+          slot: 15 * 60 + 30,
+          stage: "pending_result",
+          attended: true,
+          doctorNotes: "Awaiting radiologist report upload.",
+          referralRec: "None",
+          reviewInterval: "",
+          resultLabel: "",
+          nextApt: "",
+        },
+      },
+      {
+        patient: {
+          name: "Mary Ong",
+          dob: "1977-02-11",
+          nric: "S7702118L",
+          age: "49",
+          phone: "9112 5560",
+          email: "mary.ong@email.sg",
+          type: "pap",
+          gender: "Female",
+          nationality: "Singapore Citizen",
+          preferredLanguage: "English",
+          addressLine: "Blk 440 Shunfu Road #14-62",
+          postalCode: "570440",
+          emergencyName: "Ong Li Shan",
+          emergencyPhone: "8200 1199",
+          contactPref: "Email",
+          referral: "Poster / Flyer",
+          sexualActivity: "Yes",
+          lastPap: "More than 3 years ago",
+          lastMenses: "2026-04-06",
+        },
+        visit: { slot: 16 * 60, stage: "appointment", attended: false, doctorNotes: "", referralRec: "None" },
+      },
+      {
+        patient: {
+          name: "Esther Chua",
+          dob: "1993-12-20",
+          nric: "S9312205M",
+          age: "32",
+          phone: "8788 9900",
+          email: "esther.chua@email.sg",
+          type: "hpv",
+          gender: "Female",
+          nationality: "Singapore Citizen",
+          preferredLanguage: "English",
+          addressLine: "Blk 257 Bishan Street 22 #07-118",
+          postalCode: "570257",
+          emergencyName: "Chua Li Ying",
+          emergencyPhone: "9344 2211",
+          contactPref: "WhatsApp",
+          referral: "Social Media",
+          sexualActivity: "Yes",
+          lastPap: "Less than 1 year ago",
+          lastMenses: "2026-04-11",
+        },
+        visit: {
+          slot: 16 * 60 + 30,
+          stage: "doctor_input",
+          attended: true,
+          doctorNotes: "HPV result pending verification; discussed colposcopy pathway if positive.",
+          referralRec: "None",
+          reviewInterval: "",
+          resultLabel: "Changes Detected (Positive)",
+          nextApt: "",
+        },
+      },
+    ];
+
+    const showcasePids = new Set();
+    roster.forEach((entry, i) => {
+      if (i >= pts.length) return;
+      showcasePids.add(pts[i].id);
+    });
+    for (let i = vis.length - 1; i >= 0; i--) {
+      const v = vis[i];
+      if (v.date === todayIso && showcasePids.has(v.patientId)) vis.splice(i, 1);
+    }
+
+    roster.forEach((entry, i) => {
+      if (i >= pts.length) return;
+      const pid = pts[i].id;
+      Object.assign(pts[i], entry.patient);
+      pts[i].id = pid;
+      pts[i].bishanCode = "BSH-" + String(i + 1).padStart(3, "0");
+      const ov = entry.visit || {};
+      vis.push({
+        id: "v-" + pid + "-roster",
+        patientId: pid,
+        date: todayIso,
+        slot: ov.slot,
+        stage: ov.stage,
+        doctorNotes: ov.doctorNotes != null ? ov.doctorNotes : "",
+        referralRec: ov.referralRec != null ? ov.referralRec : "None",
+        reviewInterval: ov.reviewInterval != null ? ov.reviewInterval : "",
+        labFile: ov.labFile != null ? ov.labFile : null,
+        resultLabel: ov.resultLabel != null ? ov.resultLabel : "",
+        nextApt: ov.nextApt != null ? ov.nextApt : "",
+        attended: !!ov.attended,
+      });
+      if (entry.detailSeed && detailSeedsOut) detailSeedsOut[pid] = entry.detailSeed;
+    });
+  }
+
+  function initBishanDetailFormSeeds(bc) {
+    const seeds = bc._bishanDetailSeeds || {};
+    const dm = bc._detailDefaults?.medicalHistory || {};
+    const dd = bc._detailDefaults?.otherDetails || {};
+    Object.keys(seeds).forEach((pid) => {
+      const s = seeds[pid];
+      const mh = JSON.parse(JSON.stringify(dm));
+      const od = JSON.parse(JSON.stringify(dd));
+      if (s.medicalHistory) Object.assign(mh, s.medicalHistory);
+      if (s.otherDetails) Object.assign(od, s.otherDetails);
+      if (!bc.detailFormsByPatientId) bc.detailFormsByPatientId = {};
+      bc.detailFormsByPatientId[pid] = { medicalHistory: mh, otherDetails: od };
+    });
+  }
+
   function genLetter(v, p) {
     const isPos = v.resultLabel && v.resultLabel.includes("Positive");
     const st = p.type === "mammogram" ? "Mammogram" : p.type === "pap" ? "Pap Test" : "HPV Test";
@@ -275,6 +952,9 @@
     refresh:
       '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>',
   };
+  /** Same path as `icons.back` in app.js — prospect detail hero back control. */
+  const DETAIL_BACK_ICON =
+    '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>';
 
   function typeBadgeHtml(type) {
     const c = TYPE_CHIP[type] || TYPE_CHIP.pap;
@@ -285,6 +965,16 @@
     return `<span class="bc-chip bc-chip--stage" style="background:${escAttr(s.bg)};color:${escAttr(s.tx)}"><span class="bc-chip__dot" style="background:${escAttr(
       s.dot
     )}"></span>${esc(SLABELS[stage] || stage)}</span>`;
+  }
+  /** Type / stage pills — match werkdone staging `.bsh-type-badge` / `.bsh-stage-pill`. */
+  function typeBadgeStagingHtml(type) {
+    const t = type === "mammogram" || type === "hpv" || type === "pap" ? type : "pap";
+    const labels = { mammogram: "Mammogram", hpv: "HPV Test", pap: "Pap Test" };
+    return `<span class="bc-type-badge bc-type-badge--${t}">${esc(labels[t])}</span>`;
+  }
+  function stagePillStagingHtml(stage) {
+    const safe = /^[a-z_]+$/.test(String(stage || "")) ? stage : "appointment";
+    return `<span class="bc-stage-pill bc-stage-pill--${safe}">${esc(stageUiLabel(stage))}</span>`;
   }
   function avatarHtml(name, size) {
     const cols = [
@@ -378,7 +1068,9 @@
 
   function createInitialState() {
     TODAY = todaySGT();
+    const detailSeeds = {};
     const { pts, vis } = buildData();
+    applyBishanShowcaseData(pts, vis, TODAY, detailSeeds);
     const defaults = global.WD_DETAIL_FORM_DEFAULTS || {};
     const clone = (obj) => {
       try {
@@ -387,7 +1079,7 @@
         return {};
       }
     };
-    return {
+    const st = {
       patients: pts,
       visits: vis,
       view: "worklist",
@@ -404,10 +1096,16 @@
         medicalHistory: clone(defaults.medicalHistory),
         otherDetails: clone(defaults.otherDetails),
       },
+      /** Per-patient Medical History / Other Details seeds for showcase profiles (merged at init). */
+      _bishanDetailSeeds: detailSeeds,
       detailFormEdit: null,
       detailFormDraft: null,
+      /** "queue" = card queue board, "worklist" = table (staging Bishan). */
+      worklistMode: "queue",
       _toastTimer: null,
     };
+    initBishanDetailFormSeeds(st);
+    return st;
   }
 
   function ensurePatientDetailForms(bc, patientId) {
@@ -453,85 +1151,225 @@
     }, 2800);
   }
 
-  function renderWorklist(bc) {
-    const rows = bc.visits
+  function getFilteredDayRows(bc) {
+    return bc.visits
       .filter((v) => v.date === bc.calDate)
       .map((v) => ({ ...v, patient: bc.patients.find((x) => x.id === v.patientId) }))
       .filter((r) => bc.filterType === "all" || (r.patient && r.patient.type === bc.filterType));
+  }
 
+  /** Kanban column key for staging-style queue board. */
+  function visitKanbanColumn(stage) {
+    if (stage === "no_test") return "dna";
+    if (stage === "complete") return "done";
+    if (stage === "appointment") return "waiting";
+    if (stage === "pending_result" || stage === "doctor_input" || stage === "pending_print") return "ongoing";
+    return "waiting";
+  }
+
+  /** Minutes since slot start (SGT) for wait label on cards. */
+  function waitLabelSinceSlot(v) {
+    try {
+      const [y, m, d] = String(v.date).split("-").map(Number);
+      const hh = Math.floor(v.slot / 60);
+      const mm = v.slot % 60;
+      const start = new Date(y, m - 1, d, hh, mm, 0);
+      const now = nowSGT();
+      const diffMin = Math.floor((now.getTime() - start.getTime()) / 60000);
+      if (diffMin < 1) return "< 1m";
+      const h = Math.floor(diffMin / 60);
+      const mi = diffMin % 60;
+      if (h > 0) return `${h}h ${mi}m`;
+      return `${mi}m`;
+    } catch {
+      return "—";
+    }
+  }
+
+  function sortRowsBySlot(rows) {
+    return [...rows].sort((a, b) => a.slot - b.slot);
+  }
+
+  function renderWorklistFilters(bc) {
     const typeFilters = [
       ["all", "All"],
       ["mammogram", "Mammogram"],
-      ["hpv", "HPV"],
-      ["pap", "Pap"],
+      ["hpv", "HPV Test"],
+      ["pap", "Pap Test"],
     ];
-    const filtBtns = typeFilters
+    return typeFilters
       .map(
         ([k, l]) =>
-          `<button type="button" class="bc-pill${bc.filterType === k ? " bc-pill--on" : ""}" data-bc-filter-type="${escAttr(k)}">${esc(l)}</button>`
+          `<button type="button" class="bc-type-tab${bc.filterType === k ? " bc-type-tab--active" : ""}" data-bc-filter-type="${escAttr(k)}">${esc(l)}</button>`
       )
       .join("");
+  }
 
+  function renderViewToggle(bc) {
+    return `<div class="bc-view-toggle" role="tablist" aria-label="View mode">
+      <button type="button" role="tab" class="bc-view-toggle__btn${bc.worklistMode === "queue" ? " bc-view-toggle__btn--active" : ""}" data-bc-wl-mode="queue" aria-selected="${bc.worklistMode === "queue"}">Queue Board</button>
+      <button type="button" role="tab" class="bc-view-toggle__btn${bc.worklistMode === "worklist" ? " bc-view-toggle__btn--active" : ""}" data-bc-wl-mode="worklist" aria-selected="${bc.worklistMode === "worklist"}">Worklist</button>
+    </div>`;
+  }
+
+  function renderWorklistFiltersBar(bc) {
+    const filtBtns = renderWorklistFilters(bc);
+    return `<div class="bc-bsh-filters">
+      <div class="bc-date-wrap">
+        <button type="button" class="bc-date-btn" aria-label="Choose date">${esc(fmtCalHeading(bc.calDate))}</button>
+        <input type="date" class="bc-date-input-hidden" data-bc-cal-date value="${escAttr(bc.calDate)}" />
+      </div>
+      <div class="bc-type-tabs">${filtBtns}</div>
+      ${renderViewToggle(bc)}
+    </div>`;
+  }
+
+  function renderKanbanCard(r) {
+    const p = r.patient;
+    const idLine = p ? esc(p.nric || p.phone || "—") : "—";
+    const wait = esc(waitLabelSinceSlot(r));
+    const startBtn =
+      r.stage === "appointment"
+        ? `<button type="button" class="bc-kanban__btn-start" data-bc-queue-start="${escAttr(r.id)}">→ Start</button>`
+        : "";
+    const doneBtn =
+      r.stage === "pending_result" || r.stage === "doctor_input" || r.stage === "pending_print"
+        ? `<button type="button" class="bc-kanban__btn-done" data-bc-queue-done="${escAttr(r.id)}">✓ Done</button>`
+        : "";
+    const actions = startBtn || doneBtn ? `<div class="bc-kanban__card-actions">${startBtn}${doneBtn}</div>` : "";
+    return `<div class="bc-kanban__card">
+      <div class="bc-kanban__card-top">
+        <span class="bc-kanban__drag" aria-hidden="true" title="Reorder"></span>
+        <button type="button" class="bc-kanban__menu" data-bc-profile="${escAttr(r.patientId)}" aria-label="More options" title="Open profile">⋮</button>
+      </div>
+      <div class="bc-kanban__card-body">
+        <div class="bc-kanban__card-hit" role="button" tabindex="0" data-bc-open-patient="${escAttr(r.patientId)}" aria-label="Open patient ${escAttr(
+          (p && p.name) || "record"
+        )}">
+          <div class="bc-kanban__patient-name">${esc(p && p.name)}</div>
+          <div class="bc-kanban__patient-id">${idLine}</div>
+          <div class="bc-kanban__card-meta">
+            ${typeBadgeStagingHtml(p && p.type)}
+            <span class="bc-kanban__appt-pill">Appt</span>
+          </div>
+          <div class="bc-kanban__wait">${wait}</div>
+        </div>
+        ${actions}
+      </div>
+    </div>`;
+  }
+
+  function renderQueueBoard(bc, rows) {
+    const buckets = { waiting: [], ongoing: [], done: [], dna: [] };
+    rows.forEach((r) => {
+      const col = visitKanbanColumn(r.stage);
+      buckets[col].push(r);
+    });
+    const cols = [
+      ["waiting", "Waiting", buckets.waiting],
+      ["ongoing", "Ongoing / Screening", buckets.ongoing],
+      ["done", "Done", buckets.done],
+      ["dna", "DNA", buckets.dna],
+    ];
+    const board = cols
+      .map(([key, label, list]) => {
+        const sorted = sortRowsBySlot(list);
+        const count = sorted.length;
+        const inner =
+          count === 0
+            ? `<div class="bc-kanban__empty">No patients</div>`
+            : sorted.map((r) => renderKanbanCard(r)).join("");
+        const dnaNote = key === "dna" ? ` title="${esc("Did not attend")}"` : "";
+        return `<div class="bc-kanban__col bc-kanban__col--${key}" data-bc-kanban-col="${escAttr(key)}"${dnaNote}>
+          <div class="bc-kanban__col-head">
+            <span class="bc-kanban__col-label">${esc(label)}</span>
+            <span class="bc-kanban__count" aria-label="${esc(String(count))} in column">${esc(String(count))}</span>
+          </div>
+          <div class="bc-kanban__col-body">${inner}</div>
+        </div>`;
+      })
+      .join("");
+    return `<div class="bc-bsh-worklist-wrap bc-bsh-worklist-wrap--queue">
+      ${renderWorklistFiltersBar(bc)}
+      <div class="bc-kanban">${board}</div>
+    </div>`;
+  }
+
+  function renderWorklistTable(bc, rows) {
     const slotRows = allSlots()
       .map((s) => {
         const br = rows.filter((r) => r.slot === s);
         const isL = s >= 720 && s < 780;
         if (!br.length) {
-          return `<div class="bc-wl-row bc-wl-row--empty${isL ? " bc-wl-row--lunch" : ""}">
-          <span class="bc-wl-time">${esc(slotLbl(s))}</span>
-          <span class="bc-wl-empty">${isL ? "Lunch break" : "—"}</span>
-          <span></span><span></span><span></span>
-          ${
-            isL
-              ? ""
-              : `<button type="button" class="bc-wl-walkin" data-bc-new-apt-slot="${s}">+ Walk-in</button>`
+          if (isL) {
+            return `<tr class="bc-wl-tr bc-wl-tr--lunch"><td class="bc-wl-lunch-label" colspan="6">Lunch break</td></tr>`;
           }
-        </div>`;
+          return `<tr class="bc-wl-tr bc-wl-tr--empty">
+          <td class="bc-wl-td-time">${esc(slotLbl(s))}</td>
+          <td class="bc-wl-td-patient"><span class="bc-available-text">Available</span></td>
+          <td></td><td></td>
+          <td class="bc-wl-td-attend">—</td>
+          <td class="bc-wl-td-action"><button type="button" class="bc-walkin-btn" data-bc-new-apt-slot="${s}">+ Walk-in</button></td>
+        </tr>`;
         }
         return br
           .map(
-            (r) => `
-        <div class="bc-wl-row" data-bc-open-patient="${escAttr(r.patientId)}">
-          <span class="bc-wl-time">${esc(slotLbl(s))}</span>
-          <div><div class="bc-wl-name">${esc(r.patient && r.patient.name)}</div><div class="bc-wl-phone">${esc(
+            (r) => `<tr class="bc-wl-tr bc-wl-tr--booked" data-bc-open-patient="${escAttr(r.patientId)}">
+          <td class="bc-wl-td-time">${esc(slotLbl(s))}</td>
+          <td class="bc-wl-td-patient"><span class="bc-wl-name">${esc(r.patient && r.patient.name)}</span><span class="bc-wl-phone">${esc(
             r.patient && r.patient.phone
-          )}</div></div>
-          <div>${typeBadgeHtml(r.patient && r.patient.type)}</div>
-          <div>${stageBadgeHtml(r.stage)}</div>
-          <span class="bc-wl-att${r.attended ? " bc-wl-att--yes" : ""}">${r.attended ? "Yes" : "—"}</span>
-          <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-bc-profile="${escAttr(r.patientId)}">Profile →</button>
-        </div>`
+          )}</span></td>
+          <td>${typeBadgeStagingHtml(r.patient && r.patient.type)}</td>
+          <td>${stagePillStagingHtml(r.stage)}</td>
+          <td class="bc-wl-td-attend"><input type="checkbox" class="bc-wl-attend-cb" ${r.attended ? "checked" : ""} disabled aria-label="Attended" /></td>
+          <td class="bc-wl-td-action"><button type="button" class="bc-btn-profile" data-bc-profile="${escAttr(r.patientId)}">Open profile</button></td>
+        </tr>`
           )
           .join("");
       })
       .join("");
-
-    return `<div class="bc-worklist">
-      <div class="bc-worklist__bar">
-        <input type="date" class="bc-input bc-input--date" data-bc-cal-date value="${escAttr(bc.calDate)}" />
-        <div class="bc-pill-row">${filtBtns}</div>
-        <div class="bc-spacer"></div>
-        <button type="button" class="ui-btn ui-btn--default ui-btn--sm" data-bc-new-apt>Open calendar slot</button>
-      </div>
-      <div class="bc-wl-table">
-        <div class="bc-wl-head">
-          <span>Time</span><span>Patient</span><span>Type</span><span>Stage</span><span>Attended</span><span>Action</span>
-        </div>
-        <div class="bc-wl-body">${slotRows}</div>
+    return `<div class="bc-bsh-worklist-wrap">
+      ${renderWorklistFiltersBar(bc)}
+      <div class="bc-wl-shell">
+        <table class="bc-wl-table">
+          <thead>
+            <tr>
+              <th class="bc-wl-th-time" scope="col">Time</th>
+              <th scope="col">Patient</th>
+              <th scope="col">Type</th>
+              <th scope="col">Stage</th>
+              <th scope="col">Attended</th>
+              <th class="bc-wl-th-action" scope="col">Action</th>
+            </tr>
+          </thead>
+          <tbody>${slotRows}</tbody>
+        </table>
       </div>
     </div>`;
   }
 
+  function renderWorklist(bc) {
+    const rows = getFilteredDayRows(bc);
+    if (bc.worklistMode === "queue") return renderQueueBoard(bc, rows);
+    return renderWorklistTable(bc, rows);
+  }
+
   function renderPatientLeft(bc, p, nextApt, pVisits) {
     const clin = isClin(p.type);
-    const intervalBtns = INTERVALS.filter((iv) => iv !== "Not Required")
-      .map(
-        (iv) =>
-          `<button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-bc-next-apt-interval="${escAttr(iv)}" data-bc-visit-id="${escAttr(
-            nextApt.id
-          )}">+ ${esc(iv)}</button>`
-      )
-      .join("");
+    const emName = p.emergencyName || "";
+    const emPhone = p.emergencyPhone || "";
+    const emergencyLine =
+      emName || emPhone ? `${emName}${emName && emPhone ? " · " : ""}${emPhone}` : "—";
+    const intervalBtns = nextApt
+      ? INTERVALS.filter((iv) => iv !== "Not Required")
+          .map(
+            (iv) =>
+              `<button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-bc-next-apt-interval="${escAttr(iv)}" data-bc-visit-id="${escAttr(
+                nextApt.id
+              )}">+ ${esc(iv)}</button>`
+          )
+          .join("")
+      : "";
     const nextBlock = nextApt
       ? `<div class="bc-next-apt">
           <div class="bc-st">Next appointment</div>
@@ -558,10 +1396,16 @@
           <div><div class="bc-card__name">${esc(p.name)}</div><div class="bc-card__badges">${typeBadgeHtml(p.type)}</div></div>
         </div>
         <div class="bc-fr"><span class="bc-fr__l">NRIC / FIN</span><span class="bc-fr__v">${esc(p.nric)}</span></div>
+        <div class="bc-fr"><span class="bc-fr__l">Gender</span><span class="bc-fr__v">${esc(p.gender || "—")}</span></div>
+        <div class="bc-fr"><span class="bc-fr__l">Nationality / status</span><span class="bc-fr__v">${esc(p.nationality || "—")}</span></div>
+        <div class="bc-fr"><span class="bc-fr__l">Preferred language</span><span class="bc-fr__v">${esc(p.preferredLanguage || "—")}</span></div>
         <div class="bc-fr"><span class="bc-fr__l">Date of Birth</span><span class="bc-fr__v">${esc(fmtDate(p.dob))}</span></div>
         <div class="bc-fr"><span class="bc-fr__l">Age</span><span class="bc-fr__v">${esc(p.age)}</span></div>
+        <div class="bc-fr"><span class="bc-fr__l">Residential address</span><span class="bc-fr__v">${esc(p.addressLine || "—")}</span></div>
+        <div class="bc-fr"><span class="bc-fr__l">Postal code</span><span class="bc-fr__v">${esc(p.postalCode || "—")}</span></div>
         <div class="bc-fr"><span class="bc-fr__l">Mobile</span><span class="bc-fr__v">${esc(p.phone)}</span></div>
         <div class="bc-fr"><span class="bc-fr__l">Email</span><span class="bc-fr__v">${esc(p.email)}</span></div>
+        <div class="bc-fr"><span class="bc-fr__l">Emergency contact</span><span class="bc-fr__v">${esc(emergencyLine)}</span></div>
         <div class="bc-fr"><span class="bc-fr__l">Contact via</span><span class="bc-fr__v">${esc(p.contactPref)}</span></div>
         <div class="bc-fr"><span class="bc-fr__l">Referral</span><span class="bc-fr__v">${esc(p.referral)}</span></div>
         ${
@@ -956,22 +1800,21 @@
 
   function renderMarkup(bc) {
     TODAY = todaySGT();
-    const tdV = bc.visits.filter((v) => v.date === TODAY);
+    const dayVis = bc.visits.filter((v) => v.date === bc.calDate);
+    const pt = (v) => bc.patients.find((x) => x.id === v.patientId);
+    const isComplete = (v) => v.stage === "complete";
     const stats = {
-      total: tdV.length,
-      mammo: tdV.filter((v) => {
-        const p = bc.patients.find((x) => x.id === v.patientId);
-        return p && p.type === "mammogram";
-      }).length,
-      hpv: tdV.filter((v) => {
-        const p = bc.patients.find((x) => x.id === v.patientId);
-        return p && p.type === "hpv";
-      }).length,
-      pap: tdV.filter((v) => {
-        const p = bc.patients.find((x) => x.id === v.patientId);
-        return p && p.type === "pap";
-      }).length,
-      pending: bc.visits.filter((v) => v.stage === "pending_result" || v.stage === "doctor_input").length,
+      total: dayVis.length,
+      mammo: dayVis.filter((v) => pt(v) && pt(v).type === "mammogram").length,
+      hpv: dayVis.filter((v) => pt(v) && pt(v).type === "hpv").length,
+      pap: dayVis.filter((v) => pt(v) && pt(v).type === "pap").length,
+      completedTotal: dayVis.filter(isComplete).length,
+      completedMammo: dayVis.filter((v) => isComplete(v) && pt(v) && pt(v).type === "mammogram").length,
+      completedHpv: dayVis.filter((v) => isComplete(v) && pt(v) && pt(v).type === "hpv").length,
+      completedPap: dayVis.filter((v) => isComplete(v) && pt(v) && pt(v).type === "pap").length,
+      actionNeeded: dayVis.filter((v) =>
+        ["pending_result", "doctor_input", "pending_print"].includes(v.stage)
+      ).length,
     };
     const sq = bc.search.toLowerCase().trim();
     const searchResults = sq
@@ -986,18 +1829,20 @@
       : [];
     const nextApt = pVisits.filter((v) => !isSlotPast(v.date, v.slot))[0];
 
-    const statsRow = [
-      ["Today", stats.total, "var(--color-primary)"],
-      ["Mammogram", stats.mammo, "#2255A4"],
-      ["HPV", stats.hpv, "#C2185B"],
-      ["Pap Test", stats.pap, "#5B2D8E"],
-      ["Action needed", stats.pending, "#B45309"],
-    ]
-      .map(
-        ([l, n, c]) =>
-          `<div class="bc-stat-mini"><span class="bc-stat-mini__n" style="color:${escAttr(c)}">${n}</span><span class="bc-stat-mini__l">${esc(l)}</span></div>`
-      )
-      .join("");
+    const statCard = (mod, label, value, sub) =>
+      `<div class="bc-stat-card ${mod}">
+        <div class="bc-stat-card__label">${esc(label)}</div>
+        <div class="bc-stat-card__value">${esc(String(value))}</div>
+        <div class="bc-stat-card__sub">${esc(sub)}</div>
+      </div>`;
+    const statsRow = `
+      <div class="bc-bsh-stats-row" aria-label="Today's summary">
+        ${statCard("bc-stat-card--total", "Today's Total", stats.total, `${stats.completedTotal} completed`)}
+        ${statCard("bc-stat-card--mammo", "Mammogram", stats.mammo, `${stats.completedMammo} completed`)}
+        ${statCard("bc-stat-card--hpv", "HPV Test", stats.hpv, `${stats.completedHpv} completed`)}
+        ${statCard("bc-stat-card--pap", "Pap Test", stats.pap, `${stats.completedPap} completed`)}
+        ${statCard("bc-stat-card--action", "Action Needed", stats.actionNeeded, "pending lab · review")}
+      </div>`;
 
     const searchDrop =
       sq && searchResults.length
@@ -1031,25 +1876,45 @@
 
     const toast = bc.toast ? `<div class="bc-toast" role="status">${esc(bc.toast)}</div>` : "";
 
-    return `<section class="bc-screening" id="bishan-screening-root" aria-label="Bishan cancer screening clinic">
-      <div class="bc-page-intro">
-        <h1 class="bc-page-title">Bishan Clinics</h1>
-        <p class="bc-page-lead">Cancer screening worklist and patient chart — Singapore Cancer Society workflow (demo data).</p>
-      </div>
-      <div class="bc-subbar">
-        ${statsRow}
-        <div class="bc-spacer"></div>
-        <div class="bc-search-wrap">
-          <div class="bc-search-field">
-            <span class="bc-search-icon" aria-hidden="true">⌕</span>
-            <input type="search" placeholder="Name, NRIC or mobile…" value="${escAttr(bc.search)}" data-bc-search />
-            ${bc.search ? `<button type="button" class="bc-search-clear" data-bc-search-clear aria-label="Clear">×</button>` : ""}
-          </div>
-          ${searchDrop}
+    const searchField = `<div class="bc-search-wrap">
+            <div class="bc-search-field">
+              <span class="bc-search-icon" aria-hidden="true">⌕</span>
+              <input type="search" placeholder="Name, NRIC or mobile…" value="${escAttr(bc.search)}" data-bc-search />
+              ${bc.search ? `<button type="button" class="bc-search-clear" data-bc-search-clear aria-label="Clear">×</button>` : ""}
+            </div>
+            ${searchDrop}
+          </div>`;
+
+    const isPatientRoute = bc.view === "patient" && selPat;
+    const clinicToolbar = `<header class="bc-bsh-toolbar">
+        <div class="bc-bsh-toolbar__title-group">
+          <h1 class="bc-bsh-toolbar__title">Bishan Clinic</h1>
+          <p class="bc-bsh-toolbar__clock"><span data-bc-live-clock>${esc(formatNowSGTClock())}</span></p>
         </div>
-        <button type="button" class="ui-btn ui-btn--default ui-btn--sm" data-bc-new-patient>+ Add patient</button>
-      </div>
-      ${bc.view === "patient" && selPat ? `<div class="bc-back-row"><button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-bc-back-worklist>← Worklist</button></div>` : ""}
+        <div class="bc-bsh-toolbar__actions">
+          ${searchField}
+          <button type="button" class="ui-btn ui-btn--default ui-btn--sm" data-bc-new-apt>+ New Appointment</button>
+          <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-bc-new-patient>+ Add patient</button>
+        </div>
+      </header>`;
+    const patientBar = isPatientRoute
+      ? `<header class="bc-bsh-patient-bar" aria-label="Patient record">
+        <div class="detail-hero bc-bsh-patient-hero">
+          <div class="registration__toolbar-row detail-hero__toolbar-row">
+            <a href="#/bishan-clinics" class="detail-hero__back" aria-label="Back to Bishan Clinic">${DETAIL_BACK_ICON}</a>
+            <div class="registration__toolbar-titles">
+              <h1 class="registration__title">${esc(selPat.name)}</h1>
+              <p class="registration__subtitle">${esc(selPat.bishanCode || selPat.id)} · ${esc(selPat.nric || "—")}</p>
+            </div>
+          </div>
+          <div class="detail-hero__meta detail-hero__meta--tags">${typeBadgeHtml(selPat.type)}</div>
+        </div>
+      </header>`
+      : "";
+
+    return `<section class="bc-screening${isPatientRoute ? " bc-screening--patient-route" : ""}" id="bishan-screening-root" aria-label="Bishan cancer screening clinic">
+      ${isPatientRoute ? patientBar : clinicToolbar}
+      ${isPatientRoute ? "" : statsRow}
       <div class="bc-main">${main}</div>
       ${renderModal(bc)}
       ${toast}
@@ -1060,13 +1925,22 @@
     const get = api.getState;
     const commit = api.commit;
 
-    function openPatient(bc, p) {
-      bc.selPatId = p.id;
-      bc.patTab = "overview";
-      bc.view = "patient";
+    function navigateToBishanPatient(bc, p) {
+      const code = encodeURIComponent(p.bishanCode || p.id);
+      const next = `#/bishan-clinics/patient/${code}`;
       bc.search = "";
-      bc.detailFormEdit = null;
-      bc.detailFormDraft = null;
+      if (location.hash === next) {
+        if (bc.selPatId !== p.id || bc.view !== "patient") {
+          bc.selPatId = p.id;
+          bc.view = "patient";
+          bc.patTab = "overview";
+          bc.detailFormEdit = null;
+          bc.detailFormDraft = null;
+        }
+        commit();
+      } else {
+        location.hash = next;
+      }
     }
 
     function collectDetailFormDom(root) {
@@ -1115,6 +1989,20 @@
       }
     });
 
+    root.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      const raw = e.target;
+      const hit = raw instanceof Element ? raw.closest(".bc-kanban__card-hit") : null;
+      if (!hit || !hit.hasAttribute("data-bc-open-patient")) return;
+      e.preventDefault();
+      const bc = get();
+      const id = hit.getAttribute("data-bc-open-patient");
+      const p = bc.patients.find((x) => x.id === id);
+      if (p) {
+        navigateToBishanPatient(bc, p);
+      }
+    });
+
     root.addEventListener("click", (e) => {
       const raw = e.target;
       const el = raw instanceof Element ? raw : null;
@@ -1128,13 +2016,24 @@
         return;
       }
 
-      if (el.closest("[data-bc-back-worklist]")) {
+      if (el.closest("[data-bc-wl-mode]")) {
         e.preventDefault();
-        bc.view = "worklist";
-        bc.selPatId = null;
-        bc.detailFormEdit = null;
-        bc.detailFormDraft = null;
-        commit();
+        const mode = el.closest("[data-bc-wl-mode]").getAttribute("data-bc-wl-mode");
+        if (mode === "queue" || mode === "worklist") {
+          bc.worklistMode = mode;
+          commit();
+        }
+        return;
+      }
+
+      if (el.closest(".bc-date-btn")) {
+        e.preventDefault();
+        const wrap = el.closest(".bc-date-wrap");
+        const inp = wrap && wrap.querySelector("[data-bc-cal-date]");
+        if (inp instanceof HTMLInputElement) {
+          if (typeof inp.showPicker === "function") inp.showPicker();
+          else inp.click();
+        }
         return;
       }
 
@@ -1186,12 +2085,27 @@
         return;
       }
 
-      if (el.closest("[data-bc-open-patient]")) {
+      if (el.closest("[data-bc-queue-start]")) {
         e.preventDefault();
-        const id = el.closest("[data-bc-open-patient]").getAttribute("data-bc-open-patient");
-        const p = bc.patients.find((x) => x.id === id);
-        if (p) {
-          openPatient(bc, p);
+        e.stopPropagation();
+        const id = el.closest("[data-bc-queue-start]").getAttribute("data-bc-queue-start");
+        const v = bc.visits.find((x) => x.id === id);
+        if (v && v.stage === "appointment") {
+          bc.visits = bc.visits.map((x) =>
+            x.id === id ? { ...x, attended: true, stage: "pending_result" } : x
+          );
+          showToast(bc, "Screening started.", commit);
+        }
+        return;
+      }
+
+      if (el.closest("[data-bc-queue-done]")) {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = el.closest("[data-bc-queue-done]").getAttribute("data-bc-queue-done");
+        const v = bc.visits.find((x) => x.id === id);
+        if (v) {
+          bc.modal = { type: "editVisit", visit: { ...v }, fp: v.labFile || null, letterMode: false };
           commit();
         }
         return;
@@ -1202,8 +2116,17 @@
         const id = el.closest("[data-bc-profile]").getAttribute("data-bc-profile");
         const p = bc.patients.find((x) => x.id === id);
         if (p) {
-          openPatient(bc, p);
-          commit();
+          navigateToBishanPatient(bc, p);
+        }
+        return;
+      }
+
+      if (el.closest("[data-bc-open-patient]")) {
+        e.preventDefault();
+        const id = el.closest("[data-bc-open-patient]").getAttribute("data-bc-open-patient");
+        const p = bc.patients.find((x) => x.id === id);
+        if (p) {
+          navigateToBishanPatient(bc, p);
         }
         return;
       }
@@ -1211,12 +2134,22 @@
       if (el.closest("[data-bc-pat-tab]")) {
         e.preventDefault();
         const next = el.closest("[data-bc-pat-tab]").getAttribute("data-bc-pat-tab");
-        if (next && next !== bc.patTab) {
+        if (!next) return;
+        if (next !== bc.patTab) {
           bc.detailFormEdit = null;
           bc.detailFormDraft = null;
         }
         bc.patTab = next;
-        commit();
+        const sel = bc.selPatId ? bc.patients.find((x) => x.id === bc.selPatId) : null;
+        if (sel && bc.view === "patient" && next) {
+          const code = encodeURIComponent(sel.bishanCode || sel.id);
+          const base = `#/bishan-clinics/patient/${code}`;
+          const want = next !== "overview" ? `${base}/${encodeURIComponent(next)}` : base;
+          if (location.hash !== want) location.hash = want;
+          else commit();
+        } else {
+          commit();
+        }
         return;
       }
 
@@ -1504,7 +2437,12 @@
         if (!data.name || !data.nric || !data.phone || !data.email) return;
         bc.modal = null;
         if (m.type === "newPatient") {
-          bc.patients.push({ id: "p" + gid(), ...data });
+          const maxBsh = bc.patients.reduce((n, p) => {
+            const mm = /^BSH-(\d+)$/i.exec(String(p.bishanCode || "").trim());
+            return mm ? Math.max(n, parseInt(mm[1], 10)) : n;
+          }, 0);
+          const bishanCode = "BSH-" + String(maxBsh + 1).padStart(3, "0");
+          bc.patients.push({ id: "p" + gid(), bishanCode, ...data });
           showToast(bc, "Patient added.", commit);
         } else {
           bc.patients = bc.patients.map((x) => (x.id === m.id ? { ...x, ...data } : x));
@@ -1685,11 +2623,33 @@
         bc.modal.text = t.value;
       }
     });
+
+    if (root._bcLiveClockId) {
+      clearInterval(root._bcLiveClockId);
+      root._bcLiveClockId = null;
+    }
+    const tickClock = () => {
+      const el = root.querySelector("[data-bc-live-clock]");
+      if (!el) {
+        if (root._bcLiveClockId) {
+          clearInterval(root._bcLiveClockId);
+          root._bcLiveClockId = null;
+        }
+        return;
+      }
+      el.textContent = formatNowSGTClock();
+    };
+    tickClock();
+    root._bcLiveClockId = setInterval(tickClock, 1000);
   }
+
+  /** Hash segment validation — keep in sync with `parseRoute` in app.js. */
+  const BISHAN_PAT_TAB_IDS = ["overview", "visits", "results", "medical-history", "other-details"];
 
   global.WD_bishanScreening = {
     createInitialState,
     renderMarkup,
     bindScreening,
+    BISHAN_PAT_TAB_IDS,
   };
 })(window);

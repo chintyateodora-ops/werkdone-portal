@@ -409,7 +409,7 @@
     )}</span></div>`;
   }
 
-  /** Multi-select dropdown — values joined with ", " on save (`data-detail-multi-select` on the &lt;select&gt; in app.js). */
+  /** Multi-select — same checkbox dropdown as screening registration; save via `data-detail-multi-select` + checkboxes in app.js. */
   function fieldCheckboxMulti(e, label, key, tabKey, merged, editing, optionList) {
     const valsRaw = merged[key] != null ? String(merged[key]) : "";
     const selected = new Set(
@@ -420,7 +420,29 @@
     );
     const fid = `df-${tabKey}-${key}-multi`;
     const hintId = `${fid}-hint`;
+    const triggerId = `${fid}-trigger`;
     if (editing) {
+      const build =
+        typeof window !== "undefined" && typeof window.WD_buildPreferredLanguagesMultiHtml === "function"
+          ? window.WD_buildPreferredLanguagesMultiHtml
+          : null;
+      if (build) {
+        const inner = build({
+          escapeFn: e,
+          idPrefix: fid,
+          selected,
+          formFieldName: null,
+          triggerId,
+          hintId,
+          v3MultiAttr: false,
+          detailMultiSelectKey: key,
+          optionList: optionList || [],
+        });
+        return `<div class="field field--full">
+        <label for="${e(triggerId)}">${e(label)}</label>
+        ${inner}
+      </div>`;
+      }
       const options = (optionList || [])
         .map((opt) => `<option value="${e(opt)}"${selected.has(opt) ? " selected" : ""}>${e(opt)}</option>`)
         .join("");

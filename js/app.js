@@ -1064,7 +1064,7 @@
       uploadModalStage: null,
       uploadState: { preview: null, errors: null, parsedRows: null },
     },
-    /** Bishan Clinics — screening worklist + patient chart (see `js/bishan-screening-portal.js`). */
+    /** Bishan Clinic — screening worklist + patient chart (see `js/bishan-screening-portal.js`). */
     bishanScreening: null,
   };
 
@@ -2422,7 +2422,7 @@
     return `
       <nav class="app-header__primary-nav" aria-label="Main navigation">
         ${link("prospects", "#/list", "Prospect Management")}
-        ${link("bishan", "#/bishan-clinics", "Bishan Clinics")}
+        ${link("bishan", "#/bishan-clinics", "Bishan Clinic")}
         ${link("fit", "#/fit-kit-tracker", "FIT Kit Tracker")}
       </nav>`;
   }
@@ -2448,7 +2448,7 @@
       return window.WD_bishanScreening.renderMarkup(state.bishanScreening);
     }
     return renderPortalPlaceholderPage(
-      "Bishan Clinics",
+      "Bishan Clinic",
       "Screening portal could not load. Ensure js/bishan-screening-portal.js is included before app.js."
     );
   }
@@ -3355,26 +3355,34 @@
       .join("");
 
     return `
-      <section class="fit-kit">
-        ${renderFitKitSummarySection()}
-        <div class="fit-kit__top">
-          <div>
-            <h1 class="fit-kit__title">FIT Kit Tracker</h1>
-            <p class="fit-kit__subtitle">Faecal Immunochemical Test — Colorectal Cancer Screening</p>
+      <section class="bc-screening fit-kit-page-module" id="fit-kit-module-root" aria-label="FIT kit tracker">
+        <header class="bc-bsh-toolbar fit-kit-page-toolbar" aria-label="FIT Kit Tracker header">
+          <div class="bc-bsh-toolbar__title-group">
+            <h1 class="bc-bsh-toolbar__title">FIT Kit Tracker</h1>
+            <p class="fit-kit__toolbar-lead">Faecal Immunochemical Test — Colorectal Cancer Screening</p>
           </div>
-          <div class="fit-kit__actions">
-            <div class="field fit-kit__search">
-              <label class="sr-only" for="fit-search">Search patient</label>
-              <input id="fit-search" type="text" placeholder="Search patient..." value="${e(fit?.search || "")}" />
-            </div>
+          <div class="bc-bsh-toolbar__actions">
             <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" id="fit-export">Export CSV</button>
           </div>
+        </header>
+        <div class="prospects-kpi-shell fit-kit-kpi-shell">
+          ${renderFitKitSummarySection()}
         </div>
-
-        <div class="fit-kit__stagebar" role="tablist" aria-label="FIT pipeline">
-          ${stageNav}
+        <div class="bc-main fit-kit-main">
+          <div class="bc-bsh-filters fit-kit-filters-bar" role="toolbar" aria-label="Search patients">
+            <div class="toolbar-search fit-kit-filters-bar__search">
+              <label class="sr-only" for="fit-search">Search patient</label>
+              <span class="toolbar-search__icon" aria-hidden="true">${icons.search}</span>
+              <input id="fit-search" type="search" placeholder="Search by name, NCSS ref, or mobile…" value="${e(
+                fit?.search || ""
+              )}" autocomplete="off" />
+            </div>
+          </div>
+          <div class="fit-kit__stagebar" role="tablist" aria-label="FIT pipeline">
+            ${stageNav}
+          </div>
+          ${stageSections}
         </div>
-        ${stageSections}
       </section>
       ${renderFitKitTrackerModals()}
     `;
@@ -3596,53 +3604,64 @@
       </section>`;
   }
 
-  function renderListToolbar() {
-    const listPressed = state.view === "list";
-    const kanbanPressed = state.view === "kanban";
+  /** Bishan-style toolbar: title + Export / Add only (search row is below KPI strip). */
+  function renderProspectListPageHeader() {
     const exportOpen = state.exportMenuOpen ? "is-open" : "";
     return `
-      <div class="page-toolbar page-toolbar--split">
-        ${renderProgramTitleDropdown()}
-        <div class="view-toggle" role="group" aria-label="View mode">
-          <button type="button" class="btn btn--icon" aria-pressed="${kanbanPressed}" aria-label="Kanban view" data-view="kanban">${icons.grid}</button>
-          <button type="button" class="btn btn--icon" aria-pressed="${listPressed}" aria-label="List view" data-view="list">${icons.list}</button>
+      <header class="bc-bsh-toolbar prospects-page-toolbar" aria-label="Prospect list header">
+        <div class="bc-bsh-toolbar__title-group">
+          ${renderProgramTitleDropdown()}
         </div>
-      </div>
-      <div class="page-toolbar page-toolbar--tools">
-        <div class="toolbar-search">
+        <div class="bc-bsh-toolbar__actions">
+          <div class="title-dropdown title-dropdown--align-end ${exportOpen}" id="export-dropdown">
+            <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-export-menu-toggle aria-expanded="${state.exportMenuOpen}" aria-haspopup="true">
+              Export
+            </button>
+            <div class="title-dropdown__panel" role="menu">
+              <button type="button" class="title-dropdown__option" role="menuitem" data-export-option="csv">Export CSV</button>
+              <button type="button" class="title-dropdown__option" role="menuitem" data-export-option="excel">Export Excel</button>
+            </div>
+          </div>
+          <div class="title-dropdown title-dropdown--align-end ${state.addProspectMenuOpen ? "is-open" : ""}" id="add-prospect-dropdown">
+            <button type="button" class="btn btn--primary" data-add-prospect-toggle aria-expanded="${state.addProspectMenuOpen}" aria-haspopup="true">
+              ${icons.plus} Add Prospect
+            </button>
+            <div class="title-dropdown__panel" role="menu">
+              <a href="#/register/mammobus" class="title-dropdown__option" role="menuitem">Mammogram Screening Registration</a>
+              <a href="#/register/hpv" class="title-dropdown__option" role="menuitem">HPV Screening Programme</a>
+              <a href="#/register/fit" class="title-dropdown__option" role="menuitem">FIT Screening Programme</a>
+            </div>
+          </div>
+        </div>
+      </header>`;
+  }
+
+  /** Same visual treatment as Bishan `bc-bsh-filters` (rounded bar below KPI strip). */
+  function renderProspectListFiltersBar() {
+    const listPressed = state.view === "list";
+    const kanbanPressed = state.view === "kanban";
+    return `
+      <div class="bc-bsh-filters prospects-filters-bar" role="toolbar" aria-label="Search and filters">
+        <div class="toolbar-search prospects-filters-bar__search">
           <span class="toolbar-search__icon" aria-hidden="true">${icons.search}</span>
           <input type="search" id="prospect-search" placeholder="Search by Name, NRIC, or Phone Number" value="${escapeAttr(state.search)}" autocomplete="off" />
         </div>
-        <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" id="btn-list-filters" aria-haspopup="dialog" aria-expanded="${state.filterModal}">
-          <span class="ui-btn__icon" aria-hidden="true">${icons.filter}</span>
-          Filters
-          ${
-            listFilterCategoryCount() > 0
-              ? `<span class="ui-badge" aria-label="${listFilterCategoryCount()} filter categories active">${listFilterCategoryCount()}</span>`
-              : ""
-          }
-        </button>
-        <div class="title-dropdown title-dropdown--align-end ${exportOpen}" id="export-dropdown">
-          <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-export-menu-toggle aria-expanded="${state.exportMenuOpen}" aria-haspopup="true">
-            Export
+        <div class="prospects-filters-bar__end">
+          <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" id="btn-list-filters" aria-haspopup="dialog" aria-expanded="${state.filterModal}">
+            <span class="ui-btn__icon" aria-hidden="true">${icons.filter}</span>
+            Filters
+            ${
+              listFilterCategoryCount() > 0
+                ? `<span class="ui-badge" aria-label="${listFilterCategoryCount()} filter categories active">${listFilterCategoryCount()}</span>`
+                : ""
+            }
           </button>
-          <div class="title-dropdown__panel" role="menu">
-            <button type="button" class="title-dropdown__option" role="menuitem" data-export-option="csv">Export CSV</button>
-            <button type="button" class="title-dropdown__option" role="menuitem" data-export-option="excel">Export Excel</button>
+          <div class="view-toggle" role="group" aria-label="View mode">
+            <button type="button" class="btn btn--icon" aria-pressed="${kanbanPressed}" aria-label="Kanban view" data-view="kanban">${icons.grid}</button>
+            <button type="button" class="btn btn--icon" aria-pressed="${listPressed}" aria-label="List view" data-view="list">${icons.list}</button>
           </div>
         </div>
-        <div class="title-dropdown title-dropdown--align-end ${state.addProspectMenuOpen ? "is-open" : ""}" id="add-prospect-dropdown">
-          <button type="button" class="btn btn--primary" data-add-prospect-toggle aria-expanded="${state.addProspectMenuOpen}" aria-haspopup="true">
-            ${icons.plus} Add Prospect
-          </button>
-          <div class="title-dropdown__panel" role="menu">
-            <a href="#/register/mammobus" class="title-dropdown__option" role="menuitem">Mammogram Screening Registration</a>
-            <a href="#/register/hpv" class="title-dropdown__option" role="menuitem">HPV Screening Programme</a>
-            <a href="#/register/fit" class="title-dropdown__option" role="menuitem">FIT Screening Programme</a>
-          </div>
-        </div>
-      </div>
-    `;
+      </div>`;
   }
 
   function exportProspectsDatasetForSheet() {
@@ -4003,12 +4022,20 @@
   function renderListPage() {
     const summaryRows = getProspectsForSummaryCounts();
     const summary = renderProspectSummarySection(summaryRows, { ariaLabel: "Prospect summary" });
-    const toolbar = renderListToolbar();
     const body =
       state.view === "kanban"
         ? `<div class="kanban">${renderKanbanFromProspects()}</div>`
         : renderTable(getListTableRows());
-    return `${summary}${toolbar}${body}`;
+    return `<section class="bc-screening prospects-page-module" id="prospects-module-root" aria-label="Prospect management">
+      ${renderProspectListPageHeader()}
+      <div class="prospects-kpi-shell">
+        ${summary}
+      </div>
+      <div class="bc-main prospects-main">
+        ${renderProspectListFiltersBar()}
+        ${body}
+      </div>
+    </section>`;
   }
 
   function normalizeDetailTab() {
@@ -4224,14 +4251,15 @@
         .map((s) => s.trim())
         .filter(Boolean)
     );
-    const options = V3_BIODATA_OPTIONS.preferredLanguages.map((opt) => {
-      const sel = selected.has(opt) ? " selected" : "";
-      return `<option value="${e(opt)}"${sel}>${e(opt)}</option>`;
-    }).join("");
     const hintId = "v3bio-inline-pref-lang-hint";
-    return `<span class="bio-v bio-v--control bio-v--control--pref-lang"><select class="bio-select bio-select--multi" multiple size="5" data-v3-biodata-multi="preferredLanguages" aria-describedby="${e(
-      hintId
-    )}">${options}</select><p class="field__hint" id="${e(hintId)}">Hold Ctrl (Windows) or ⌘ (Mac) to select multiple.</p></span>`;
+    return `<span class="bio-v bio-v--control bio-v--control--pref-lang">${buildPreferredLanguagesMultiHtml({
+      escapeFn: e,
+      idPrefix: "v3bio-inline-pref",
+      selected,
+      formFieldName: null,
+      hintId,
+      v3MultiAttr: true,
+    })}</span>`;
   }
 
   function v3BiodataDobEdit(e, details) {
@@ -4268,14 +4296,16 @@
         .map((s) => s.trim())
         .filter(Boolean)
     );
-    const options = V3_BIODATA_OPTIONS.preferredLanguages.map((opt) => {
-      const sel = selected.has(opt) ? " selected" : "";
-      return `<option value="${e(opt)}"${sel}>${e(opt)}</option>`;
-    }).join("");
     const hintId = "v3bio-mod-pref-lang-hint";
-    return `<select id="v3bio-pref-lang" class="registration__select registration__select--multi" multiple size="5" data-v3-biodata-multi="preferredLanguages" aria-describedby="${e(
-      hintId
-    )}">${options}</select><p class="field__hint" id="${e(hintId)}">Hold Ctrl (Windows) or ⌘ (Mac) to select multiple.</p>`;
+    return buildPreferredLanguagesMultiHtml({
+      escapeFn: e,
+      idPrefix: "v3bio-pref-lang",
+      selected,
+      formFieldName: null,
+      triggerId: "v3bio-pref-lang",
+      hintId,
+      v3MultiAttr: true,
+    });
   }
 
   /** Same masking as `detail-panels.js` `maskNricForProfileDisplay` (classic prospect profile). */
@@ -5967,21 +5997,198 @@
       .join("");
   }
 
+  function registrationPrefLangOrderedValues(wrap) {
+    const out = [];
+    if (!wrap) return out;
+    wrap.querySelectorAll("[data-registration-preflang-opt]").forEach((row) => {
+      const cb = row.querySelector('input[type="checkbox"]');
+      if (cb instanceof HTMLInputElement && cb.checked) out.push(cb.value);
+    });
+    return out;
+  }
+
+  function registrationPrefLangSync(wrap) {
+    if (!wrap) return;
+    const store = wrap.querySelector("[data-registration-preflang-store]");
+    const display = wrap.querySelector("[data-registration-preflang-display]");
+    const vals = registrationPrefLangOrderedValues(wrap);
+    const str = vals.join(", ");
+    if (store instanceof HTMLInputElement) store.value = str;
+    if (display) {
+      const ph = display.getAttribute("data-placeholder") || "Select languages";
+      display.textContent = str || ph;
+      display.classList.toggle("registration__preflang-display--placeholder", !str);
+    }
+  }
+
+  function registrationPrefLangApplyCsv(wrap, csv) {
+    if (!wrap) return;
+    const set = new Set(
+      String(csv || "")
+        .split(/[,;]+/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+    );
+    wrap.querySelectorAll('[data-registration-preflang-opt] input[type="checkbox"]').forEach((inp) => {
+      if (inp instanceof HTMLInputElement) inp.checked = set.has(inp.value);
+    });
+    registrationPrefLangSync(wrap);
+  }
+
+  function registrationPrefLangCloseAll() {
+    document.querySelectorAll("[data-registration-preflang].is-open").forEach((w) => {
+      w.classList.remove("is-open");
+      const panel = w.querySelector("[data-registration-preflang-panel]");
+      const trig = w.querySelector("[data-registration-preflang-trigger]");
+      if (panel instanceof HTMLElement) panel.hidden = true;
+      if (trig instanceof HTMLElement) trig.setAttribute("aria-expanded", "false");
+    });
+  }
+
+  function initRegistrationPrefLangWidgets(root) {
+    if (!root) return;
+    root.querySelectorAll("[data-registration-preflang]").forEach((wrap) => {
+      const store = wrap.querySelector("[data-registration-preflang-store]");
+      if (store instanceof HTMLInputElement && String(store.value || "").trim() !== "") {
+        registrationPrefLangApplyCsv(wrap, store.value);
+      } else {
+        registrationPrefLangSync(wrap);
+      }
+    });
+  }
+
+  /**
+   * Comma-separated multi-select for preferred languages (registration + V3 biodata).
+   * @param {object} cfg
+   * @param {function(string): string} cfg.escapeFn
+   * @param {string} cfg.idPrefix
+   * @param {Set<string>|string} cfg.selected
+   * @param {string|null|undefined} cfg.formFieldName — if set, hidden input is included for form submit
+   * @param {string|null|undefined} cfg.triggerId
+   * @param {string|null|undefined} cfg.hintId
+   * @param {string|undefined} cfg.hintText
+   * @param {boolean|undefined} cfg.v3MultiAttr
+   * @param {string|undefined} cfg.detailMultiSelectKey — `data-detail-multi-select` (classic prospect edit save)
+   * @param {string[]|undefined} cfg.optionList — override option labels (defaults to V3 preferredLanguages)
+   * @param {string|undefined} cfg.rootClass
+   */
+  function buildPreferredLanguagesMultiHtml(cfg) {
+    const eFn = cfg.escapeFn || escapeAttr;
+    const idPrefix = cfg.idPrefix;
+    const hintId = cfg.hintId;
+    const hintAttr = hintId ? ` aria-describedby="${eFn(hintId)}"` : "";
+    const listboxId = `${idPrefix}-listbox`;
+    const trigIdAttr = cfg.triggerId ? ` id="${eFn(cfg.triggerId)}"` : "";
+
+    let selected = cfg.selected;
+    if (!(selected instanceof Set)) {
+      selected = new Set(
+        String(selected || "")
+          .split(/[,;]+/)
+          .map((s) => s.trim())
+          .filter(Boolean)
+      );
+    }
+
+    const langOpts = (
+      Array.isArray(cfg.optionList) && cfg.optionList.length
+        ? cfg.optionList
+        : V3_BIODATA_OPTIONS && Array.isArray(V3_BIODATA_OPTIONS.preferredLanguages)
+          ? V3_BIODATA_OPTIONS.preferredLanguages
+          : []
+    )
+      .map((x) => String(x || "").trim())
+      .filter(Boolean);
+
+    const hidden =
+      cfg.formFieldName != null && String(cfg.formFieldName).trim() !== ""
+        ? `<input type="hidden" name="${eFn(cfg.formFieldName)}" value="" data-registration-preflang-store autocomplete="off" />`
+        : "";
+
+    const rows = langOpts
+      .map((lbl, idx) => {
+        const oid = `${idPrefix}-opt-${idx}`;
+        const checked = selected.has(lbl) ? " checked" : "";
+        return `<label class="registration__preflang-row" data-registration-preflang-opt><input type="checkbox" id="${eFn(oid)}" value="${eFn(
+          lbl
+        )}"${checked} /><span class="registration__preflang-row-text">${eFn(lbl)}</span></label>`;
+      })
+      .join("");
+
+    const rootClass = ["registration__preflang", cfg.rootClass].filter(Boolean).join(" ");
+    let rootExtras = "";
+    if (cfg.v3MultiAttr) rootExtras = ' data-v3-biodata-multi="preferredLanguages"';
+    else if (cfg.detailMultiSelectKey != null && String(cfg.detailMultiSelectKey).trim() !== "")
+      rootExtras = ` data-detail-multi-select="${eFn(String(cfg.detailMultiSelectKey).trim())}"`;
+    const hintHtml = hintId
+      ? `<p class="field__hint" id="${eFn(hintId)}">${eFn(cfg.hintText != null ? cfg.hintText : "Select one or more languages.")}</p>`
+      : "";
+
+    return (
+      `<div class="${eFn(rootClass)}" data-registration-preflang${rootExtras}>` +
+      hidden +
+      `<button type="button" class="registration__preflang-trigger" data-registration-preflang-trigger${trigIdAttr}${hintAttr} aria-haspopup="listbox" aria-expanded="false" aria-controls="${eFn(
+        listboxId
+      )}"><span class="registration__preflang-display registration__preflang-display--placeholder" data-registration-preflang-display data-placeholder="Select languages"></span><span class="registration__preflang-chevron" aria-hidden="true"></span></button>` +
+      `<div class="registration__preflang-panel" id="${eFn(listboxId)}" data-registration-preflang-panel hidden role="group" aria-label="Preferred languages">${rows}</div></div>` +
+      hintHtml
+    );
+  }
+
+  let registrationPrefLangDocBound = false;
+
+  function ensureRegistrationPrefLangGlobalUi() {
+    if (registrationPrefLangDocBound) return;
+    registrationPrefLangDocBound = true;
+    document.addEventListener("click", (ev) => {
+      const t = ev.target;
+      if (!(t instanceof Element)) return;
+      const trig = t.closest("[data-registration-preflang-trigger]");
+      const wrapFromTrig = trig?.closest?.("[data-registration-preflang]") ?? null;
+      if (trig && wrapFromTrig) {
+        ev.preventDefault();
+        const willOpen = !wrapFromTrig.classList.contains("is-open");
+        registrationPrefLangCloseAll();
+        if (willOpen) {
+          wrapFromTrig.classList.add("is-open");
+          const panel = wrapFromTrig.querySelector("[data-registration-preflang-panel]");
+          if (panel instanceof HTMLElement) panel.hidden = false;
+          trig.setAttribute("aria-expanded", "true");
+        }
+        return;
+      }
+      if (t.closest("[data-registration-preflang-panel]")) return;
+      registrationPrefLangCloseAll();
+    });
+    document.addEventListener("change", (ev) => {
+      const el = ev.target;
+      if (!(el instanceof HTMLInputElement) || el.type !== "checkbox") return;
+      const wrap = el.closest("[data-registration-preflang]");
+      if (!wrap) return;
+      registrationPrefLangSync(wrap);
+    });
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key !== "Escape") return;
+      registrationPrefLangCloseAll();
+    });
+  }
+
   function registrationPreferredLanguagesField(idPrefix, name) {
-    const opts = (V3_BIODATA_OPTIONS && Array.isArray(V3_BIODATA_OPTIONS.preferredLanguages) ? V3_BIODATA_OPTIONS.preferredLanguages : []).filter(Boolean);
-    const sid = `${idPrefix}-select`;
     const hintId = `${idPrefix}-hint`;
-    const optionHtml = opts.map((lbl) => `<option value="${escapeAttr(lbl)}">${escapeAttr(lbl)}</option>`).join("");
+    const triggerId = `${idPrefix}-trigger`;
     return `
-      <fieldset class="registration__fieldset field field--full">
-        <legend class="registration__fieldset-legend registration__fieldset-legend--field">Preferred Language</legend>
-        <select id="${escapeAttr(sid)}" name="${escapeAttr(name)}" class="registration__select registration__select--multi" multiple size="5" aria-describedby="${escapeAttr(
-      hintId
-    )}">
-          ${optionHtml || ""}
-        </select>
-        <p class="field__hint" id="${escapeAttr(hintId)}">Hold Ctrl (Windows) or ⌘ (Mac) to select more than one language.</p>
-      </fieldset>
+      <div class="field">
+        <label for="${escapeAttr(triggerId)}">Preferred Language</label>
+        ${buildPreferredLanguagesMultiHtml({
+          escapeFn: escapeAttr,
+          idPrefix,
+          selected: new Set(),
+          formFieldName: name,
+          triggerId,
+          hintId,
+          v3MultiAttr: false,
+        })}
+      </div>
     `;
   }
 
@@ -6472,8 +6679,8 @@
                     <label for="email">Email</label>
                     <input id="email" name="email" type="email" placeholder="Enter your email" />
                   </div>
+                  ${registrationPreferredLanguagesField("pref-lang", "preferredLanguages")}
                 </div>
-                ${registrationPreferredLanguagesField("pref-lang", "preferredLanguages")}
               </section>
 
               <section id="reg-address" class="registration-card" tabindex="-1">
@@ -6816,8 +7023,8 @@
                     <label for="hpvEmail">Email</label>
                     <input id="hpvEmail" name="hpvEmail" type="email" placeholder="Enter your email" />
                   </div>
+                  ${registrationPreferredLanguagesField("hpv-pref-lang", "hpvPreferredLanguages")}
                 </div>
-                ${registrationPreferredLanguagesField("hpv-pref-lang", "hpvPreferredLanguages")}
               </section>
 
               <section id="reg-hpv-address" class="registration-card" tabindex="-1">
@@ -7086,8 +7293,8 @@
                     <label for="fitEmail">Email</label>
                     <input id="fitEmail" name="fitEmail" type="email" placeholder="Enter your email" />
                   </div>
+                  ${registrationPreferredLanguagesField("fit-pref-lang", "fitPreferredLanguages")}
                 </div>
-                ${registrationPreferredLanguagesField("fit-pref-lang", "fitPreferredLanguages")}
               </section>
 
               <section id="reg-fit-address" class="registration-card" tabindex="-1">
@@ -7564,6 +7771,46 @@
     } else if (head === "bishan-clinics") {
       state.route = "bishanClinics";
       state.routeId = null;
+      ensureBishanScreeningState();
+      const bc = state.bishanScreening;
+      const patTabs =
+        typeof window.WD_bishanScreening !== "undefined" && Array.isArray(window.WD_bishanScreening.BISHAN_PAT_TAB_IDS)
+          ? window.WD_bishanScreening.BISHAN_PAT_TAB_IDS
+          : ["overview", "visits", "results", "medical-history", "other-details"];
+      if (bc) {
+        const seg1 = parts[1] ? String(parts[1]).toLowerCase() : "";
+        if (seg1 === "patient" && parts[2]) {
+          const slug = decodeURIComponent(parts[2]).trim();
+          const p =
+            bc.patients.find((x) => String(x.bishanCode || "").toUpperCase() === slug.toUpperCase()) ||
+            bc.patients.find((x) => x.id === slug);
+          if (!p) {
+            location.replace("#/bishan-clinics");
+            applyDerivedRouteState();
+            return;
+          } else {
+            const prevSel = bc.selPatId;
+            bc.selPatId = p.id;
+            bc.view = "patient";
+            bc.search = "";
+            if (parts[3]) {
+              const tab = decodeURIComponent(parts[3]).trim().toLowerCase();
+              bc.patTab = patTabs.includes(tab) ? tab : "overview";
+            } else {
+              bc.patTab = "overview";
+            }
+            if (prevSel !== p.id) {
+              bc.detailFormEdit = null;
+              bc.detailFormDraft = null;
+            }
+          }
+        } else {
+          bc.view = "worklist";
+          bc.selPatId = null;
+          bc.detailFormEdit = null;
+          bc.detailFormDraft = null;
+        }
+      }
     } else if (head === "fit-kit-tracker") {
       state.route = "fitKitTracker";
       state.routeId = null;
@@ -8013,11 +8260,17 @@
       return;
     }
 
+    const mainCls =
+      state.route === "bishanClinics"
+        ? "app-main app-main--bishan-fullbleed"
+        : state.route === "list" || state.route === "fitKitTracker"
+          ? "app-main app-main--prospects-fullbleed"
+          : "app-main";
     app.innerHTML = `
       <div class="app-shell">
         ${renderHeader()}
         <div class="app-content">
-          <main class="app-main">${main}</main>
+          <main class="${mainCls}">${main}</main>
           ${renderAppFooter()}
         </div>
       </div>
@@ -9067,6 +9320,8 @@
     if (typeof window.WD_initNricFields === "function") {
       window.WD_initNricFields(document.getElementById("app"));
     }
+    ensureRegistrationPrefLangGlobalUi();
+    initRegistrationPrefLangWidgets(document.getElementById("app"));
     const regForm = document.getElementById("registration-form");
     bindRegistrationClientLookup(regForm instanceof HTMLFormElement ? regForm : null);
   }
@@ -9715,6 +9970,8 @@
     state.registrationMobileNavOpen = false;
     syncRegistrationMobileNavDom();
   });
+
+  window.WD_buildPreferredLanguagesMultiHtml = buildPreferredLanguagesMultiHtml;
 
   renderApp();
 
