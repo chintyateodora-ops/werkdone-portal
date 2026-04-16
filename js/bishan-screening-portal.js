@@ -955,6 +955,9 @@
   /** Same path as `icons.back` in app.js — prospect detail hero back control. */
   const DETAIL_BACK_ICON =
     '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>';
+  /** Same as `icons.search` in app.js — prospect filters/search bar icon. */
+  const DETAIL_SEARCH_ICON =
+    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>';
 
   function typeBadgeHtml(type) {
     const c = TYPE_CHIP[type] || TYPE_CHIP.pap;
@@ -1152,10 +1155,20 @@
   }
 
   function getFilteredDayRows(bc) {
+    const qRaw = String(bc.search || "").trim().toLowerCase();
+    const qPhone = qRaw.replace(/\s+/g, "");
+    const matchPatient = (p) => {
+      if (!qRaw) return true;
+      const name = String(p?.name || "").toLowerCase();
+      const nric = String(p?.nric || "").toLowerCase();
+      const phone = String(p?.phone || "").replace(/\s+/g, "").toLowerCase();
+      return name.includes(qRaw) || nric.includes(qRaw) || (qPhone && phone.includes(qPhone));
+    };
     return bc.visits
       .filter((v) => v.date === bc.calDate)
       .map((v) => ({ ...v, patient: bc.patients.find((x) => x.id === v.patientId) }))
-      .filter((r) => bc.filterType === "all" || (r.patient && r.patient.type === bc.filterType));
+      .filter((r) => bc.filterType === "all" || (r.patient && r.patient.type === bc.filterType))
+      .filter((r) => (r.patient ? matchPatient(r.patient) : !qRaw));
   }
 
   /** Kanban column key for staging-style queue board. */
@@ -1215,6 +1228,12 @@
   function renderWorklistFiltersBar(bc) {
     const filtBtns = renderWorklistFilters(bc);
     return `<div class="bc-bsh-filters">
+      <div class="toolbar-search bc-bsh-filters__search" role="search">
+        <span class="toolbar-search__icon" aria-hidden="true">${DETAIL_SEARCH_ICON}</span>
+        <input type="search" placeholder="Search by Name, NRIC, or Phone Number" value="${escAttr(
+          bc.search
+        )}" autocomplete="off" data-bc-search />
+      </div>
       <div class="bc-date-wrap">
         <button type="button" class="bc-date-btn" aria-label="Choose date">${esc(fmtCalHeading(bc.calDate))}</button>
         <input type="date" class="bc-date-input-hidden" data-bc-cal-date value="${escAttr(bc.calDate)}" />
@@ -1877,10 +1896,11 @@
     const toast = bc.toast ? `<div class="bc-toast" role="status">${esc(bc.toast)}</div>` : "";
 
     const searchField = `<div class="bc-search-wrap">
-            <div class="bc-search-field">
-              <span class="bc-search-icon" aria-hidden="true">⌕</span>
-              <input type="search" placeholder="Name, NRIC or mobile…" value="${escAttr(bc.search)}" data-bc-search />
-              ${bc.search ? `<button type="button" class="bc-search-clear" data-bc-search-clear aria-label="Clear">×</button>` : ""}
+            <div class="toolbar-search bc-bsh-toolbar-search" role="search">
+              <span class="toolbar-search__icon" aria-hidden="true">${DETAIL_SEARCH_ICON}</span>
+              <input type="search" placeholder="Search by Name, NRIC, or Phone Number" value="${escAttr(
+                bc.search
+              )}" autocomplete="off" data-bc-search />
             </div>
             ${searchDrop}
           </div>`;
@@ -1892,7 +1912,6 @@
           <p class="bc-bsh-toolbar__clock"><span data-bc-live-clock>${esc(formatNowSGTClock())}</span></p>
         </div>
         <div class="bc-bsh-toolbar__actions">
-          ${searchField}
           <button type="button" class="ui-btn ui-btn--default ui-btn--sm" data-bc-new-apt>+ New Appointment</button>
           <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-bc-new-patient>+ Add patient</button>
         </div>

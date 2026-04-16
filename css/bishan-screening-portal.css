@@ -47,7 +47,7 @@
 
 /* —— Patient record route — prospect-style detail hero (see .detail-hero in app.css) —— */
 .bc-screening--patient-route .bc-main {
-  padding-top: 0.25rem;
+  padding: var(--space-page);
 }
 .bc-bsh-patient-bar {
   padding: 1rem var(--space-page) 0;
@@ -146,6 +146,16 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
+}
+.bc-bsh-filters .bc-bsh-filters__search {
+  /* Match Prospect listing: compact search left of date. */
+  flex: 0 1 340px;
+  min-width: 220px;
+  max-width: 420px;
+}
+.bc-bsh-toolbar-search {
+  /* When used (search dropdown anchor), don't grow too wide. */
+  max-width: 420px;
 }
 .bc-bsh-worklist-wrap--queue .bc-bsh-filters {
   margin-bottom: 0.5rem;

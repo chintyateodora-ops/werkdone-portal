@@ -3362,6 +3362,13 @@
             <p class="fit-kit__toolbar-lead">Faecal Immunochemical Test — Colorectal Cancer Screening</p>
           </div>
           <div class="bc-bsh-toolbar__actions">
+            <div class="toolbar-search fit-kit-toolbar__search">
+              <label class="sr-only" for="fit-search">Search patient</label>
+              <span class="toolbar-search__icon" aria-hidden="true">${icons.search}</span>
+              <input id="fit-search" type="search" placeholder="Search by name, NCSS ref, or mobile…" value="${e(
+                fit?.search || ""
+              )}" autocomplete="off" />
+            </div>
             <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" id="fit-export">Export CSV</button>
           </div>
         </header>
@@ -3369,15 +3376,6 @@
           ${renderFitKitSummarySection()}
         </div>
         <div class="bc-main fit-kit-main">
-          <div class="bc-bsh-filters fit-kit-filters-bar" role="toolbar" aria-label="Search patients">
-            <div class="toolbar-search fit-kit-filters-bar__search">
-              <label class="sr-only" for="fit-search">Search patient</label>
-              <span class="toolbar-search__icon" aria-hidden="true">${icons.search}</span>
-              <input id="fit-search" type="search" placeholder="Search by name, NCSS ref, or mobile…" value="${e(
-                fit?.search || ""
-              )}" autocomplete="off" />
-            </div>
-          </div>
           <div class="fit-kit__stagebar" role="tablist" aria-label="FIT pipeline">
             ${stageNav}
           </div>
@@ -8942,8 +8940,25 @@
       const searchInp = byId("fit-search");
       if (searchInp && searchInp instanceof HTMLInputElement) {
         searchInp.addEventListener("input", () => {
-          fit.search = searchInp.value;
+          const val = searchInp.value;
+          const wasActive = document.activeElement === searchInp;
+          const selStart = searchInp.selectionStart;
+          const selEnd = searchInp.selectionEnd;
+          fit.search = val;
           renderApp();
+          if (!wasActive) return;
+          requestAnimationFrame(() => {
+            const nextInp = byId("fit-search");
+            if (!(nextInp instanceof HTMLInputElement)) return;
+            nextInp.focus();
+            if (selStart != null && selEnd != null) {
+              try {
+                nextInp.setSelectionRange(selStart, selEnd);
+              } catch (_) {
+                /* ignore */
+              }
+            }
+          });
         });
       }
 
@@ -9290,10 +9305,42 @@
     if (state.route === "bishanClinics" && typeof window.WD_bishanScreening !== "undefined" && state.bishanScreening) {
       const bcRoot = document.getElementById("bishan-screening-root");
       if (bcRoot) {
+        const commitBishan = () => {
+          const ae = document.activeElement;
+          const wasTypingInSearch = ae instanceof HTMLInputElement && ae.hasAttribute("data-bc-search");
+          const selStart = wasTypingInSearch ? ae.selectionStart : null;
+          const selEnd = wasTypingInSearch ? ae.selectionEnd : null;
+
+          renderApp();
+
+          if (wasTypingInSearch) {
+            requestAnimationFrame(() => {
+              const root = document.getElementById("bishan-screening-root");
+              const next = root?.querySelector?.("[data-bc-search]");
+              if (!(next instanceof HTMLInputElement)) return;
+              next.focus();
+              if (selStart != null && selEnd != null) {
+                try {
+                  next.setSelectionRange(selStart, selEnd);
+                } catch {}
+              }
+            });
+          }
+        };
         window.WD_bishanScreening.bindScreening(bcRoot, {
           getState: () => state.bishanScreening,
-          commit: () => renderApp(),
+          commit: commitBishan,
         });
+
+        // Defensive: ensure the toolbar search always updates state even if delegated handlers miss the event.
+        const bcSearch = bcRoot.querySelector("[data-bc-search]");
+        if (bcSearch instanceof HTMLInputElement && bcSearch.dataset.wdBound !== "1") {
+          bcSearch.dataset.wdBound = "1";
+          bcSearch.addEventListener("input", () => {
+            state.bishanScreening.search = bcSearch.value;
+            commitBishan();
+          });
+        }
       }
     }
 

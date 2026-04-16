@@ -173,6 +173,29 @@ button {
   max-width: none;
 }
 
+.fit-kit-page-module .fit-kit-page-toolbar .fit-kit-toolbar__search {
+  flex: 0 1 360px;
+  min-width: 220px;
+  max-width: 420px;
+}
+
+.fit-kit-page-module .fit-kit-page-toolbar .bc-bsh-toolbar__actions {
+  flex-wrap: nowrap;
+  gap: 0.75rem;
+}
+.fit-kit-page-module .fit-kit-page-toolbar #fit-export {
+  flex-shrink: 0;
+}
+@media (max-width: 640px) {
+  .fit-kit-page-module .fit-kit-page-toolbar .bc-bsh-toolbar__actions {
+    flex-wrap: wrap;
+  }
+  .fit-kit-page-module .fit-kit-page-toolbar .fit-kit-toolbar__search {
+    flex: 1 1 100%;
+    max-width: none;
+  }
+}
+
 .fit-kit-page-module .fit-kit-main > .fit-kit__stagebar {
   margin: 0 var(--space-page) 0.75rem;
 }
@@ -1130,9 +1153,10 @@ button {
 }
 
 .prospects-page-module .prospects-filters-bar .prospects-filters-bar__search {
-  flex: 1 1 280px;
+  /* Keep search compact on wide screens (doesn't expand to fill). */
+  flex: 0 1 340px;
   min-width: 200px;
-  max-width: none;
+  max-width: 380px;
 }
 
 .prospects-page-module .prospects-filters-bar__end {
@@ -1202,7 +1226,7 @@ button {
 }
 
 .prospect-summary-card__value {
-  margin: 0 0 0.75rem;
+  margin: 0;
   font-size: 1.75rem;
   line-height: 1.2;
   font-weight: var(--weight-bold);
