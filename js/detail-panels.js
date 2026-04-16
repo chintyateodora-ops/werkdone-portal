@@ -1147,7 +1147,17 @@
 
     if (tab === "notes") {
       const notes = Array.isArray(ctx.detailNotes) ? ctx.detailNotes : [];
-      const noteCardsHtml = notes
+      const rowKey = ctx?.d?.rowKey || ctx?.d?.id || "";
+      const qRaw = String(ctx?.state?.detailNotesSearchByProspect?.[rowKey] || "").trim().toLowerCase();
+      const filtered = qRaw ? notes.filter((n) => String(n?.body || "").toLowerCase().includes(qRaw)) : notes;
+      const PAGE_SIZE = 5;
+      const rawPage = Number(ctx?.state?.detailNotesPageByProspect?.[rowKey] || 1);
+      const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+      const page = Math.min(pageCount, Math.max(1, Number.isFinite(rawPage) ? rawPage : 1));
+      const start = (page - 1) * PAGE_SIZE;
+      const pageItems = filtered.slice(start, start + PAGE_SIZE);
+
+      const noteCardsHtml = pageItems
         .map(
           (note) => `
             <article class="note-card">
@@ -1165,18 +1175,67 @@
             </article>`
         )
         .join("");
+      const emptyState = qRaw && !filtered.length ? `<p class="cell-muted" style="margin:0">No notes match your search.</p>` : "";
+
+      const pagerBtn = (p, label, opts) => {
+        opts = opts || {};
+        const active = !!opts.active;
+        const disabled = !!opts.disabled;
+        const aria = label != null ? ` aria-label="${e(label)}"` : "";
+        const disAttr = disabled ? ' disabled aria-disabled="true"' : "";
+        const cls = `detail-page-btn${active ? " detail-page-btn--active" : ""}`;
+        const data = disabled ? "" : ` data-detail-notes-page="${e(String(p))}"`;
+        const type = opts.type === "icon" ? "icon" : "num";
+        const inner = type === "icon" ? opts.iconHtml || "" : e(String(p));
+        return `<button type="button" class="${cls}"${aria}${disAttr}${data}>${inner}</button>`;
+      };
+
+      const pagerEllipsis = () => `<span class="detail-page-ellipsis">…</span>`;
+
+      const buildPager = () => {
+        if (pageCount <= 1) return "";
+        const chunks = [];
+        chunks.push(
+          pagerBtn(page - 1, "Previous page", { type: "icon", iconHtml: icons.chevronLeftSm, disabled: page <= 1 })
+        );
+
+        if (pageCount <= 7) {
+          for (let p = 1; p <= pageCount; p++) chunks.push(pagerBtn(p, `Page ${p}`, { active: p === page }));
+        } else {
+          const show = new Set([1, pageCount, page - 1, page, page + 1].filter((p) => p >= 1 && p <= pageCount));
+          const ordered = Array.from(show).sort((a, b) => a - b);
+          let last = 0;
+          ordered.forEach((p) => {
+            if (p - last > 1) chunks.push(pagerEllipsis());
+            chunks.push(pagerBtn(p, `Page ${p}`, { active: p === page }));
+            last = p;
+          });
+        }
+
+        chunks.push(pagerBtn(page + 1, "Next page", { type: "icon", iconHtml: icons.chevronRightSm, disabled: page >= pageCount }));
+        return `<div class="detail-pagination" aria-label="Pagination">${chunks.join("")}</div>`;
+      };
+
+      const pagerHtml = buildPager();
       return `
         <div class="detail-panel detail-panel--stack" id="panel-notes">
+          <div class="detail-notes-search-row">
+            <div class="toolbar-search detail-notes-search">
+              <span class="toolbar-search__icon" aria-hidden="true">${icons.search}</span>
+              <input type="search" placeholder="Search notes…" value="${e(
+                ctx?.state?.detailNotesSearchByProspect?.[rowKey] || ""
+              )}" autocomplete="off" data-detail-notes-search />
+            </div>
+            ${
+              qRaw
+                ? `<button type="button" class="btn btn--outline detail-notes-search-clear" data-detail-notes-search-clear>Clear</button>`
+                : ""
+            }
+          </div>
           <div class="detail-note-cards">
-            ${noteCardsHtml}
+            ${emptyState}${noteCardsHtml}
           </div>
-          <div class="detail-pagination">
-            <button type="button" class="detail-page-btn" aria-label="Previous page">${icons.chevronLeftSm}</button>
-            <button type="button" class="detail-page-btn detail-page-btn--active">1</button>
-            <button type="button" class="detail-page-btn">2</button>
-            <span class="detail-page-ellipsis">…</span>
-            <button type="button" class="detail-page-btn" aria-label="Next page">${icons.chevronRightSm}</button>
-          </div>
+          ${pagerHtml}
         </div>`;
     }
 

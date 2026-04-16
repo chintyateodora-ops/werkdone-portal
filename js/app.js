@@ -490,6 +490,10 @@
     detailDocumentsByProspect: {},
     /** Prospect detail Notes tab: rowKey → user-added { id, body, submittedAt, authorName, authorRole }[] (session prototype) */
     detailNotesByProspect: {},
+    /** Prospect detail Notes tab: rowKey → search query (filters note body). */
+    detailNotesSearchByProspect: {},
+    /** Prospect detail Notes tab: rowKey → current page (1-indexed). */
+    detailNotesPageByProspect: {},
     /** Add-note / edit-note dialog on prospect Notes tab */
     detailAddNoteModalOpen: false,
     /** When set, note dialog is editing this note id (seed or user-added). */
@@ -8613,6 +8617,45 @@
       });
     });
 
+    // Prospect detail Notes tab: in-panel search (filters note body text)
+    if (state.route === "detail" && state.detailTab === "notes") {
+      const rowKey = state.detail?.rowKey || state.detail?.id || "";
+      const inp = document.querySelector("[data-detail-notes-search]");
+      if (rowKey && inp instanceof HTMLInputElement) {
+        inp.addEventListener("input", () => {
+          const val = inp.value;
+          const wasActive = document.activeElement === inp;
+          const selStart = inp.selectionStart;
+          const selEnd = inp.selectionEnd;
+          state.detailNotesSearchByProspect[rowKey] = val;
+          state.detailNotesPageByProspect[rowKey] = 1;
+          renderApp();
+          if (!wasActive) return;
+          requestAnimationFrame(() => {
+            const nextInp = document.querySelector("[data-detail-notes-search]");
+            if (!(nextInp instanceof HTMLInputElement)) return;
+            nextInp.focus();
+            if (selStart != null && selEnd != null) {
+              try {
+                nextInp.setSelectionRange(selStart, selEnd);
+              } catch (_) {}
+            }
+          });
+        });
+      }
+      document.querySelector("[data-detail-notes-search-clear]")?.addEventListener("click", (e) => {
+        e.preventDefault();
+        if (!rowKey) return;
+        state.detailNotesSearchByProspect[rowKey] = "";
+        state.detailNotesPageByProspect[rowKey] = 1;
+        renderApp();
+        requestAnimationFrame(() => {
+          const nextInp = document.querySelector("[data-detail-notes-search]");
+          if (nextInp instanceof HTMLInputElement) nextInp.focus();
+        });
+      });
+    }
+
     document.getElementById("reg-landing-singpass")?.addEventListener("click", () => {
       state.registerSelfServiceEntry = "form";
       state.registerSingpassLocked = true;
@@ -9618,6 +9661,19 @@
     }
 
     if (state.route === "detail" || state.route === "prospectv3") {
+      const notesPageBtn = el?.closest?.("[data-detail-notes-page]");
+      if (notesPageBtn && state.detailTab === "notes") {
+        e.preventDefault();
+        const rowKey = state.detail?.rowKey || state.detail?.id || "";
+        if (!rowKey) return;
+        const raw = notesPageBtn.getAttribute("data-detail-notes-page");
+        const p = Number(raw || 1);
+        if (!Number.isFinite(p) || p < 1) return;
+        state.detailNotesPageByProspect[rowKey] = p;
+        renderApp();
+        return;
+      }
+
       if (el?.closest("[data-detail-add-note-open]")) {
         e.preventDefault();
         state.detailNoteEditId = null;
@@ -9672,7 +9728,11 @@
       if (el?.closest("[data-detail-delete-note-confirm]")) {
         e.preventDefault();
         const nid = state.detailDeleteNoteId;
-        if (nid) deleteDetailNote(state.detail.rowKey, nid);
+        if (nid) {
+          const rk = state.detail.rowKey;
+          deleteDetailNote(rk, nid);
+          state.detailNotesPageByProspect[rk] = 1;
+        }
         state.detailDeleteNoteId = null;
         state.detailScrollPreservePending = true;
         renderApp();
@@ -9712,6 +9772,7 @@
           addDetailNote(rk, text);
           showToast("Note added.");
         }
+        state.detailNotesPageByProspect[rk] = 1;
         state.detailAddNoteModalOpen = false;
         state.detailNoteEditId = null;
         state.detailScrollPreservePending = true;
