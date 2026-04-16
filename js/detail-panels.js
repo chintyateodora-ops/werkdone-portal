@@ -507,10 +507,10 @@
 
   function detailFormToolbar(e, panelAttr, editing) {
     if (editing) {
-      return `<button type="button" class="btn btn--outline" data-detail-form-action="cancel" data-detail-form-panel="${e(panelAttr)}">Cancel</button>
-        <button type="button" class="btn btn--primary" data-detail-form-action="save" data-detail-form-panel="${e(panelAttr)}">Save</button>`;
+      return `<button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-detail-form-action="cancel" data-detail-form-panel="${e(panelAttr)}">Cancel</button>
+        <button type="button" class="ui-btn ui-btn--default ui-btn--sm" data-detail-form-action="save" data-detail-form-panel="${e(panelAttr)}">Save</button>`;
     }
-    return `<button type="button" class="btn btn--outline" data-detail-form-action="edit" data-detail-form-panel="${e(panelAttr)}">Edit</button>`;
+    return `<button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-detail-form-action="edit" data-detail-form-panel="${e(panelAttr)}">Edit</button>`;
   }
 
   function df(e, label, value) {
@@ -1147,10 +1147,6 @@
 
     if (tab === "notes") {
       const notes = Array.isArray(ctx.detailNotes) ? ctx.detailNotes : [];
-      const lastUpdatedLine =
-        notes.length > 0
-          ? `Last updated on ${formatDocUploaded(notes[0].submittedAt)} by ${e(notes[0].authorName)}`
-          : "No notes yet.";
       const noteCardsHtml = notes
         .map(
           (note) => `
@@ -1171,10 +1167,6 @@
         .join("");
       return `
         <div class="detail-panel detail-panel--stack" id="panel-notes">
-          <div class="detail-notes-toolbar">
-            <span class="detail-notes-updated"><span class="detail-notes-updated__icon" aria-hidden="true">${icons.refresh}</span><span>${lastUpdatedLine}</span></span>
-            <button type="button" class="btn btn--outline detail-notes-add" data-detail-add-note-open>${icons.plus} Add Notes</button>
-          </div>
           <div class="detail-note-cards">
             ${noteCardsHtml}
           </div>
@@ -1206,10 +1198,13 @@
     const editing = ctx.detailFormEdit === panelAttr;
     const actions = detailFormToolbar(e, panelAttr, editing);
     const ic = ctx.icons;
+    const metaLine =
+      (ctx && typeof ctx.detailLastUpdatedLine === "string" && ctx.detailLastUpdatedLine.trim()) ||
+      "Last updated on 17 July 2025 by John Smith";
     return `<div class="detail-form-sticky-toolbar" role="region" aria-label="Form toolbar">
       <span class="detail-form-sticky-toolbar__meta">
         <span class="detail-notes-updated__icon" aria-hidden="true">${ic.refresh}</span>
-        <span>Last updated on 17 July 2025 by John Smith</span>
+        <span>${e(metaLine)}</span>
       </span>
       <div class="detail-form-sticky-toolbar__actions">${actions}</div>
     </div>`;

@@ -4071,6 +4071,9 @@
   function renderDetailFormStickyToolbarHtml() {
     const fn = typeof window.WD_renderDetailFormStickyToolbar === "function" ? window.WD_renderDetailFormStickyToolbar : null;
     if (!fn) return "";
+    const d = state.detail;
+    const tab = state.detailTab;
+    const detailLastUpdatedLine = detailLastUpdatedLineForTab(tab, d);
     const ctx = {
       d: state.detail,
       state,
@@ -4079,8 +4082,58 @@
       detailFormEdit: state.detailFormEdit,
       detailNavSection: state.detailNavSection,
       formValues: state.detailFormValues,
+      detailLastUpdatedLine,
     };
     return fn(state.detailTab, ctx);
+  }
+
+  function formatDetailMetaDateTime(iso) {
+    try {
+      const dt = new Date(iso);
+      if (Number.isNaN(dt.getTime())) return "";
+      return dt.toLocaleString("en-SG", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function detailLastUpdatedLineForTab(tab, d) {
+    if (tab === "notes") {
+      const notes = detailNotesForRender(d.rowKey);
+      if (Array.isArray(notes) && notes.length > 0) {
+        const when = formatDetailMetaDateTime(notes[0].submittedAt) || "—";
+        return `Last updated on ${when} by ${notes[0].authorName || "—"}`;
+      }
+      return "No notes yet.";
+    }
+
+    const when = formatDetailMetaDateTime(d.lastUpdated || d.updatedAt) || (d.lastUpdated || d.updatedAt || "");
+    const by = d.lastUpdatedBy || d.updatedBy || "";
+    if (when && by) return `Last updated on ${when} by ${by}`;
+    if (when) return `Last updated on ${when}`;
+    if (by) return `Last updated by ${by}`;
+    return "Last updated —";
+  }
+
+  function renderDetailNotesStickyToolbarHtml() {
+    if (state.detailTab !== "notes") return "";
+    const d = state.detail;
+    const metaLine = detailLastUpdatedLineForTab("notes", d);
+    return `<div class="detail-form-sticky-toolbar" role="region" aria-label="Notes toolbar">
+      <span class="detail-form-sticky-toolbar__meta">
+        <span class="detail-notes-updated__icon" aria-hidden="true">${icons.refresh}</span>
+        <span>${escapeAttr(metaLine)}</span>
+      </span>
+      <div class="detail-form-sticky-toolbar__actions">
+        <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-detail-add-note-open>${icons.plus} Add Notes</button>
+      </div>
+    </div>`;
   }
 
   function renderActivityTimelineDrawer() {
@@ -4125,22 +4178,24 @@
         ],
         "registration"
       )}
-      <div class="detail-hero">
-        <div class="registration__toolbar-row detail-hero__toolbar-row">
-          <a href="#/list" class="detail-hero__back" aria-label="Back to list">${icons.back}</a>
-          <div class="registration__toolbar-titles">
-            <h1 class="registration__title">${escapeAttr(d.name)}</h1>
-            <p class="registration__subtitle">${escapeAttr(d.subtitle)}</p>
+      <section class="detail-hero-bar" aria-label="Prospect header">
+        <div class="detail-hero">
+          <div class="registration__toolbar-row detail-hero__toolbar-row">
+            <a href="#/list" class="detail-hero__back" aria-label="Back to list">${icons.back}</a>
+            <div class="registration__toolbar-titles">
+              <h1 class="registration__title">${escapeAttr(d.name)}</h1>
+              <p class="registration__subtitle">${escapeAttr(d.subtitle)}</p>
+            </div>
+            <div class="registration__toolbar-actions">
+              <button type="button" class="btn btn--outline" data-detail-activity-timeline>Activity timeline</button>
+            </div>
           </div>
-          <div class="registration__toolbar-actions">
-            <button type="button" class="btn btn--outline" data-detail-activity-timeline>Activity timeline</button>
+          <div class="detail-hero__meta detail-hero__meta--tags">
+            ${programTagsHtml.trim() ? programTagsHtml : ""}
+            <span class="detail-hero__risk-inline">${riskLevelIndicator(d.risk)}</span>
           </div>
         </div>
-        <div class="detail-hero__meta detail-hero__meta--tags">
-          ${programTagsHtml.trim() ? programTagsHtml : ""}
-          <span class="detail-hero__risk-inline">${riskLevelIndicator(d.risk)}</span>
-        </div>
-      </div>
+      </section>
       <div class="detail-sticky-chrome detail-sticky-chrome--primary-bundle">
         <div class="detail-tabs" role="tablist">
           ${tabs
@@ -4152,6 +4207,7 @@
             .join("")}
         </div>
         ${renderDetailFormStickyToolbarHtml()}
+        ${renderDetailNotesStickyToolbarHtml()}
       </div>
       <div class="detail-panels">
         ${renderDetailPanel()}
