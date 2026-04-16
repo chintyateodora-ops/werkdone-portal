@@ -1143,10 +1143,21 @@
   box-shadow: 0 16px 48px rgba(30, 10, 70, 0.18);
 }
 .bc-modal-title {
-  margin: 0 0 0.75rem;
+  margin: 0;
   font-size: 0.95rem;
   font-weight: var(--weight-semibold);
   color: var(--color-primary);
+}
+
+/* Patient / visit modals: 24px rhythm between fields */
+.bc-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.bc-modal-form .field {
+  margin: 0;
 }
 .bc-modal-meta {
   font-size: var(--text-body-m);
@@ -1169,15 +1180,45 @@
 .bc-input {
   display: block;
   width: 100%;
-  padding: 0.45rem 0.5rem;
-  border: 1px solid var(--color-input-border);
-  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-neutral-5);
+  border-radius: var(--radius-md);
   font: inherit;
   font-size: var(--text-body-m);
   margin-bottom: 0.5rem;
+  background: var(--color-white);
+}
+
+/* Match portal `.field` focus treatment */
+.bc-input:focus {
+  outline: 2px solid var(--color-primary-200);
+  border-color: var(--color-primary-400);
+}
+
+/* Match portal `.field select` chevron styling */
+select.bc-input {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.65rem center;
+  background-size: 1rem 1rem;
+  padding-right: 2.25rem;
+  cursor: pointer;
+}
+
+.bc-input:disabled {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid var(--color-neutral-5);
+  outline: none;
+  box-shadow: none;
+  cursor: not-allowed;
+  color: var(--color-neutral-7);
+  background: var(--color-gray-50);
 }
 .bc-input--err {
-  border-color: #f09595;
+  border-color: color-mix(in srgb, var(--color-destructive, #dc2626) 25%, var(--color-neutral-5));
   background: #fff5f5;
 }
 .bc-err {
@@ -1192,13 +1233,28 @@
 .bc-textarea {
   display: block;
   width: 100%;
-  padding: 0.45rem 0.5rem;
-  border: 1px solid var(--color-input-border);
-  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-neutral-5);
+  border-radius: var(--radius-md);
   font: inherit;
   font-size: var(--text-body-m);
   margin-bottom: 0.5rem;
   resize: vertical;
+  background: var(--color-white);
+}
+
+.bc-textarea:focus {
+  outline: 2px solid var(--color-primary-200);
+  border-color: var(--color-primary-400);
+}
+
+.bc-textarea:disabled {
+  border: 1px solid var(--color-neutral-5);
+  outline: none;
+  box-shadow: none;
+  cursor: not-allowed;
+  color: var(--color-neutral-7);
+  background: var(--color-gray-50);
 }
 .bc-textarea--letter {
   font-family: Georgia, serif;
@@ -1209,8 +1265,44 @@
   display: flex;
   gap: 0.45rem;
   justify-content: flex-end;
-  margin-top: 0.5rem;
+  margin-top: 0;
   flex-wrap: wrap;
+}
+
+/* —— New appointment: patient search dropdown —— */
+.bc-apt-search {
+  position: relative;
+}
+.bc-apt-search__drop {
+  margin-top: 0.5rem;
+  border: 1px solid var(--color-gray-200, #e5e7eb);
+  background: var(--color-white, #fff);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.bc-apt-search__drop--empty {
+  padding: 0.75rem 0.875rem;
+  color: var(--color-neutral-7, #6a7178);
+  font-size: 0.875rem;
+}
+.bc-apt-search__item {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 0.75rem 0.875rem;
+  cursor: pointer;
+  font: inherit;
+  color: var(--color-neutral-9, #272b30);
+}
+.bc-apt-search__item + .bc-apt-search__item {
+  border-top: 1px solid var(--color-gray-100, #f3f4f6);
+}
+.bc-apt-search__item:hover {
+  background: var(--color-gray-50, #f9fafb);
+}
+.bc-apt-search__item.is-active {
+  background: var(--bc-violet-lt, #f2eef6);
 }
 
 .bc-stage-track {

@@ -1606,9 +1606,43 @@
         return `<option value="${s}"${taken ? " disabled" : ""}${sel}>${esc(slotLbl(s))}${taken ? " (booked)" : ""}</option>`;
       })
       .join("");
-    const patOpts =
-      `<option value="">— Select —</option>` +
-      bc.patients.map((p) => `<option value="${escAttr(p.id)}"${m.patientId === p.id ? " selected" : ""}>${esc(p.name)} (${esc(TLABELS[p.type])})</option>`).join("");
+    const maskNric = (raw) => {
+      const s = String(raw || "").trim();
+      if (!s) return "—";
+      if (s.length <= 4) return s;
+      const keepStart = s.slice(0, 1);
+      const keepEnd = s.slice(-2);
+      return `${keepStart}${"*".repeat(Math.max(0, s.length - 3))}${keepEnd}`;
+    };
+    const qRaw = String(m.patientQuery || "").trim().toLowerCase();
+    const qPhone = qRaw.replace(/\s+/g, "");
+    const matches = qRaw
+      ? bc.patients
+          .filter((p) => {
+            const name = String(p?.name || "").toLowerCase();
+            const nric = String(p?.nric || "").toLowerCase();
+            const phone = String(p?.phone || "").replace(/\s+/g, "").toLowerCase();
+            return name.includes(qRaw) || nric.includes(qRaw) || (qPhone && phone.includes(qPhone));
+          })
+          .slice(0, 8)
+      : [];
+    const selected = m.patientId ? bc.patients.find((p) => p.id === m.patientId) : null;
+    const hideDrop = !!(selected && qRaw && String(selected.name || "").trim().toLowerCase() === qRaw);
+    const searchResults =
+      qRaw && !hideDrop && matches.length
+        ? `<div class="bc-apt-search__drop" role="listbox" aria-label="Patient search results">
+          ${matches
+            .map((p) => {
+              const isSel = selected && selected.id === p.id;
+              return `<button type="button" class="bc-apt-search__item${isSel ? " is-active" : ""}" role="option" aria-selected="${isSel}" data-bc-apt-pick="${escAttr(
+                p.id
+              )}">${esc(p.name)} — ${esc(maskNric(p.nric))}</button>`;
+            })
+            .join("")}
+        </div>`
+        : qRaw && !hideDrop
+          ? `<div class="bc-apt-search__drop bc-apt-search__drop--empty" aria-label="No results">No patients found.</div>`
+          : "";
     return `<div>
       <h3 class="bc-modal-title">${isNew ? "New appointment" : "Reschedule"}</h3>
       <label class="bc-lbl">Date</label>
@@ -1619,7 +1653,17 @@
         `value="${slot}" selected`
       )}</select>
       ${isConflict ? `<div class="bc-err">This slot is already booked. Choose another time.</div>` : ""}
-      ${isNew ? `<label class="bc-lbl">Patient</label><select class="bc-input" data-bc-apt-field="patientId">${patOpts}</select>` : ""}
+      ${
+        isNew
+          ? `<label class="bc-lbl">Patient Search</label>
+        <div class="bc-apt-search">
+          <input class="bc-input" autocomplete="off" placeholder="Search by Name, NRIC, or Phone Number" data-bc-apt-search value="${escAttr(
+            m.patientQuery || ""
+          )}" />
+          ${searchResults}
+        </div>`
+          : ""
+      }
       <div class="bc-modal-actions">
         <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-bc-modal-close>Cancel</button>
         <button type="button" class="ui-btn ui-btn--default ui-btn--sm" data-bc-apt-save>Save</button>
@@ -1649,38 +1693,98 @@
     const papOpts = PAP_LAST_OPTS.map((o) => `<option value="${escAttr(o)}"${m.lastPap === o ? " selected" : ""}>${esc(o)}</option>`).join("");
     const contactOpts = CONTACT_OPTS.map((o) => `<option value="${escAttr(o)}"${m.contactPref === o ? " selected" : ""}>${esc(o)}</option>`).join("");
     const refOpts = REFERRAL_OPTS.map((o) => `<option value="${escAttr(o)}"${m.referral === o ? " selected" : ""}>${esc(o)}</option>`).join("");
-    return `<div>
+
+    const nricToggleIcons =
+      '<span class="field__nric-toggle-icons" aria-hidden="true">' +
+      '<i class="fi fi-rr-eye-crossed field__nric-toggle-ico field__nric-toggle-ico--when-masked"></i>' +
+      '<i class="fi fi-rr-eye field__nric-toggle-ico field__nric-toggle-ico--when-revealed"></i>' +
+      "</span>";
+    return `<div class="bc-modal-form">
       <h3 class="bc-modal-title">${isNew ? "Add patient" : "Edit patient"}</h3>
-      <label class="bc-lbl req">Screening type</label>
-      <select class="bc-input" data-bc-pat-form="ptype">${typeSel}</select>
-      <label class="bc-lbl req">Name (as per NRIC)</label>
-      <input class="bc-input" data-bc-pat-form="name" value="${escAttr(m.name)}" />
-      <label class="bc-lbl req">NRIC / FIN</label>
-      <input class="bc-input" data-bc-pat-form="nric" value="${escAttr(m.nric)}" />
-      <label class="bc-lbl">Date of birth</label>
-      <input type="date" class="bc-input" data-bc-pat-form="dob" value="${escAttr(m.dob)}" />
-      <label class="bc-lbl req">Age</label>
-      <input type="number" class="bc-input" data-bc-pat-form="age" value="${escAttr(m.age)}" />
-      <label class="bc-lbl req">Mobile</label>
-      <input class="bc-input" data-bc-pat-form="phone" value="${escAttr(m.phone)}" />
-      <label class="bc-lbl req">Email</label>
-      <input type="email" class="bc-input" data-bc-pat-form="email" value="${escAttr(m.email)}" />
-      <label class="bc-lbl">Sexual activity?</label>
-      <select class="bc-input" data-bc-pat-form="sexualActivity">
+      <div class="field">
+        <label for="bc-pat-ptype">Screening type<span class="field__req" aria-hidden="true">*</span></label>
+        <select id="bc-pat-ptype" data-bc-pat-form="ptype">${typeSel}</select>
+      </div>
+      <div class="field">
+        <label for="bc-pat-name">Name (as per NRIC)<span class="field__req" aria-hidden="true">*</span></label>
+        <input id="bc-pat-name" data-bc-pat-form="name" value="${escAttr(
+          m.name
+        )}" placeholder="Enter full name as in NRIC" autocomplete="name" required />
+      </div>
+      <div class="field">
+        <label for="bc-pat-nric">NRIC / FIN Number<span class="field__req" aria-hidden="true">*</span></label>
+        <div class="field__nric field__nric--revealed">
+          <input type="hidden" id="bc-pat-nric" class="field__nric-store" autocomplete="off" value="${escAttr(
+            m.nric
+          )}" data-bc-pat-form="nric" required />
+          <div class="field__nric-face">
+            <span class="field__nric-asterisks" aria-hidden="true"></span>
+            <input type="text" class="field__nric-edit" autocomplete="off" maxlength="20" placeholder="Enter NRIC No." required />
+          </div>
+          <button type="button" class="field__nric-toggle" aria-label="Hide NRIC" aria-pressed="true" title="Hide NRIC" data-nric-toggle>
+            ${nricToggleIcons}
+          </button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="bc-pat-dob-text">Date of Birth<span class="field__req" aria-hidden="true">*</span></label>
+        <div class="field__date">
+          <input class="field__date-text" id="bc-pat-dob-text" type="text" value="${escAttr(
+            m.dob
+          )}" placeholder="DD-MM-YYYY" inputmode="numeric" autocomplete="bday" maxlength="10" required />
+          <button type="button" class="field__date-btn" aria-label="Choose date" title="Choose date"></button>
+          <input type="date" class="field__date-native" tabindex="-1" aria-hidden="true" data-bc-pat-form="dob" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="bc-pat-age">Age<span class="field__req" aria-hidden="true">*</span></label>
+        <input id="bc-pat-age" type="number" data-bc-pat-form="age" value="${escAttr(m.age)}" required />
+      </div>
+      <div class="field">
+        <label for="bc-pat-phone">Contact Number<span class="field__req" aria-hidden="true">*</span></label>
+        <div class="field__inline">
+          <input type="text" class="field__prefix" value="+65" disabled aria-label="Country code" />
+          <input id="bc-pat-phone" data-bc-pat-form="phone" value="${escAttr(m.phone)}" placeholder="E.g. 8123 4567" inputmode="tel" autocomplete="tel" required />
+        </div>
+      </div>
+      <div class="field">
+        <label for="bc-pat-email">Email<span class="field__req" aria-hidden="true">*</span></label>
+        <input id="bc-pat-email" type="email" data-bc-pat-form="email" value="${escAttr(m.email)}" placeholder="e.g. name@email.com" autocomplete="email" required />
+      </div>
+      <div class="field">
+        <label for="bc-pat-sexual-activity">Sexual activity?</label>
+        <select id="bc-pat-sexual-activity" data-bc-pat-form="sexualActivity">
         <option value="">— Select —</option>
         <option value="Yes"${m.sexualActivity === "Yes" ? " selected" : ""}>Yes</option>
         <option value="No"${m.sexualActivity === "No" ? " selected" : ""}>No</option>
       </select>
+      </div>
       ${
         nc
-          ? `<label class="bc-lbl">First day of last menstruation</label><input type="date" class="bc-input" data-bc-pat-form="lastMenses" value="${escAttr(m.lastMenses)}" />
-         <label class="bc-lbl">Last Pap / HPV test</label><select class="bc-input" data-bc-pat-form="lastPap">${papOpts}</select>`
+          ? `<div class="field">
+              <label for="bc-pat-last-menses">First day of last menstruation</label>
+              <div class="field__date">
+                <input class="field__date-text" id="bc-pat-last-menses" type="text" value="${escAttr(
+                  m.lastMenses
+                )}" placeholder="DD-MM-YYYY" inputmode="numeric" autocomplete="off" maxlength="10" />
+                <button type="button" class="field__date-btn" aria-label="Choose date" title="Choose date"></button>
+                <input type="date" class="field__date-native" tabindex="-1" aria-hidden="true" data-bc-pat-form="lastMenses" />
+              </div>
+            </div>
+            <div class="field">
+              <label for="bc-pat-last-pap">Last Pap / HPV test</label>
+              <select id="bc-pat-last-pap" data-bc-pat-form="lastPap">${papOpts}</select>
+            </div>`
           : ""
       }
-      <label class="bc-lbl">Contact method</label>
-      <select class="bc-input" data-bc-pat-form="contactPref">${contactOpts}</select>
-      <label class="bc-lbl">Referral source</label>
-      <select class="bc-input" data-bc-pat-form="referral">${refOpts}</select>
+      <div class="field">
+        <label for="bc-pat-contact-pref">Contact method</label>
+        <select id="bc-pat-contact-pref" data-bc-pat-form="contactPref">${contactOpts}</select>
+      </div>
+      <div class="field">
+        <label for="bc-pat-referral">Referral source</label>
+        <select id="bc-pat-referral" data-bc-pat-form="referral">${refOpts}</select>
+      </div>
       <div class="bc-modal-actions">
         <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-bc-modal-close>Cancel</button>
         <button type="button" class="ui-btn ui-btn--default ui-btn--sm" data-bc-pat-save>Save</button>
@@ -2121,7 +2225,7 @@
 
       if (el.closest("[data-bc-new-apt]")) {
         e.preventDefault();
-        bc.modal = { type: "newApt", date: bc.calDate, slot: 480, patientId: "" };
+        bc.modal = { type: "newApt", date: bc.calDate, slot: 480, patientId: "", patientQuery: "" };
         commit();
         return;
       }
@@ -2129,7 +2233,7 @@
       if (el.closest("[data-bc-new-apt-slot]")) {
         e.preventDefault();
         const s = Number(el.closest("[data-bc-new-apt-slot]").getAttribute("data-bc-new-apt-slot"));
-        bc.modal = { type: "newApt", date: bc.calDate, slot: s, patientId: "" };
+        bc.modal = { type: "newApt", date: bc.calDate, slot: s, patientId: "", patientQuery: "" };
         commit();
         return;
       }
@@ -2460,6 +2564,19 @@
         return;
       }
 
+      if (el.closest("[data-bc-apt-pick]")) {
+        e.preventDefault();
+        const m = bc.modal;
+        if (!m || m.type !== "newApt") return;
+        const id = el.closest("[data-bc-apt-pick]").getAttribute("data-bc-apt-pick");
+        if (!id) return;
+        m.patientId = id;
+        const p = bc.patients.find((x) => x.id === id);
+        m.patientQuery = p ? p.name : m.patientQuery;
+        commit();
+        return;
+      }
+
       if (el.closest("[data-bc-pat-save]")) {
         e.preventDefault();
         const m = bc.modal;
@@ -2630,7 +2747,6 @@
         const val = f === "slot" ? Number(t.value) : t.value;
         if (m.type === "newApt") {
           if (f === "slot") m.slot = val;
-          else if (f === "patientId") m.patientId = val;
         } else if (m.type === "reschedule" && f === "slot") {
           m.visit = { ...m.visit, slot: val };
         }
@@ -2662,6 +2778,18 @@
     root.addEventListener("input", (e) => {
       const t = e.target;
       const bc = get();
+      if (bc.modal && bc.modal.type === "newApt" && t instanceof HTMLInputElement && t.hasAttribute("data-bc-apt-search")) {
+        bc.modal.patientQuery = t.value;
+        const pid = bc.modal.patientId;
+        if (pid) {
+          const p = bc.patients.find((x) => x.id === pid);
+          const q = String(t.value || "").trim().toLowerCase();
+          const nm = String(p?.name || "").trim().toLowerCase();
+          if (q !== nm) bc.modal.patientId = "";
+        }
+        commit();
+        return;
+      }
       if (!bc.modal) return;
       if (
         (bc.modal.type === "letter" || bc.modal.letterMode) &&
