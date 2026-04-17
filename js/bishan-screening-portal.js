@@ -1228,7 +1228,7 @@
     return `<div class="bc-bsh-filters">
       <div class="toolbar-search bc-bsh-filters__search" role="search">
         <span class="toolbar-search__icon" aria-hidden="true">${DETAIL_SEARCH_ICON}</span>
-        <input type="search" placeholder="Search by Name, NRIC, or Phone Number" value="${escAttr(
+        <input type="search" placeholder="Search by name, NRIC, phone no." value="${escAttr(
           bc.search
         )}" autocomplete="off" data-bc-search />
       </div>
@@ -1657,7 +1657,7 @@
         isNew
           ? `<label class="bc-lbl">Patient Search</label>
         <div class="bc-apt-search">
-          <input class="bc-input" autocomplete="off" placeholder="Search by Name, NRIC, or Phone Number" data-bc-apt-search value="${escAttr(
+          <input class="bc-input" autocomplete="off" placeholder="Search by name, NRIC, phone no." data-bc-apt-search value="${escAttr(
             m.patientQuery || ""
           )}" />
           ${searchResults}
@@ -2004,7 +2004,7 @@
     const searchField = `<div class="bc-search-wrap">
             <div class="toolbar-search bc-bsh-toolbar-search" role="search">
               <span class="toolbar-search__icon" aria-hidden="true">${DETAIL_SEARCH_ICON}</span>
-              <input type="search" placeholder="Search by Name, NRIC, or Phone Number" value="${escAttr(
+              <input type="search" placeholder="Search by name, NRIC, phone no." value="${escAttr(
                 bc.search
               )}" autocomplete="off" data-bc-search />
             </div>

@@ -209,6 +209,8 @@
       name: "Nurul Huda",
       maskedNric: "S****782A",
       program: "Mammobus",
+      /** Mammogram venue: `mammobus` | `scs-clinic` | `healthier-sg` (matches screening form). */
+      appointmentType: "mammobus",
       ageGender: "Female, 37 years",
       phone: "9421 0785",
       email: "nurul.huda@gmail.com",
@@ -302,6 +304,7 @@
       name: "Chen Wei Ning",
       maskedNric: "S****901C",
       program: "Mammobus",
+      appointmentType: "scs-clinic",
       ageGender: "Female, 45 years",
       phone: "9781 2345",
       email: "chenweining@outlook.com",
@@ -354,6 +357,7 @@
       name: "Adam Sim Wei Wen",
       maskedNric: "S****223E",
       program: "Mammobus",
+      appointmentType: "healthier-sg",
       ageGender: "Male, 62 years",
       phone: "8246 3791",
       email: "adamsim@example.net",
@@ -440,8 +444,21 @@
     search: "",
     filterModal: false,
     exportMenuOpen: false,
-    /** List view: empty array = no restriction for that dimension */
-    listFilters: { stages: [], genders: [], risks: [], ageMin: 18, ageMax: 100 },
+    /** List view: empty array = no restriction for that dimension; date fields are YYYY-MM-DD or "". */
+    listFilters: {
+      stages: [],
+      genders: [],
+      risks: [],
+      ageMin: 18,
+      ageMax: 100,
+      dateRegisteredFrom: "",
+      dateRegisteredTo: "",
+      nextReviewFrom: "",
+      nextReviewTo: "",
+      appointmentTypes: [],
+      attendances: [],
+      sourceTypes: [],
+    },
     /** Table sort */
     listSort: { key: "name", dir: "asc" },
     /** Listing KPI strip: active quick filter key (null = none). */
@@ -467,6 +484,8 @@
     pipeline: DETAIL_DEFAULT.pipeline,
     detail: structuredClone(DETAIL_DEFAULT),
     programMenuOpen: false,
+    /** Prospect list table: which row's Actions menu is open (rowKey). */
+    prospectListActionsOpenRowKey: null,
     /** mammobus | hpv | fit — set from #/register/... */
     registerProgram: "mammobus",
     /** Left nav active section id on registration page */
@@ -1438,13 +1457,15 @@
       const email = String(r.email || "").toLowerCase();
       const nric = String(r.maskedNric || "").toLowerCase();
       const phone = String(r.phone || "").replace(/\s+/g, "").toLowerCase();
+      const apptLabel = String(prospectAppointmentTypeDisplayLabel(r) || "").toLowerCase();
       return (
         name.includes(q) ||
         id.includes(q) ||
         rowKey.includes(q) ||
         email.includes(q) ||
         nric.includes(q) ||
-        (qPhone.length > 0 && phone.includes(qPhone))
+        (qPhone.length > 0 && phone.includes(qPhone)) ||
+        (apptLabel && apptLabel !== "—" && apptLabel.includes(q))
       );
     });
   }
@@ -1763,12 +1784,43 @@
     ];
   }
 
-  /** Mammogram registration `name="appointmentType"` values → card titles (Screening Form). */
-  const CLASSIC_MAMMOGRAM_APPOINTMENT_TYPE_LABELS = Object.freeze({
+  /** Registration `name="appointmentType"` values → labels (shared across MMG / HPV / FIT forms). */
+  const SCREENING_APPOINTMENT_TYPE_LABELS = Object.freeze({
     mammobus: "Mammobus",
     "scs-clinic": "SCS Clinic @ Bishan",
     "healthier-sg": "Healthier SG",
   });
+
+  /** Options shown in screening update modal per record type (FIT form only offers Healthier SG). */
+  function screeningAppointmentTypeSelectOptions(typeKey) {
+    const L = SCREENING_APPOINTMENT_TYPE_LABELS;
+    if (typeKey === "MMG") {
+      return [
+        ["mammobus", L.mammobus],
+        ["scs-clinic", L["scs-clinic"]],
+        ["healthier-sg", L["healthier-sg"]],
+      ];
+    }
+    if (typeKey === "PAP") {
+      return [
+        ["scs-clinic", L["scs-clinic"]],
+        ["healthier-sg", L["healthier-sg"]],
+      ];
+    }
+    if (typeKey === "FIT") {
+      return [["healthier-sg", L["healthier-sg"]]];
+    }
+    return [];
+  }
+
+  /** When `appointmentType` is absent on a prospect row, match registration form defaults. */
+  function defaultAppointmentTypeKeyForListProgram(programRaw) {
+    const p = String(programRaw || "");
+    if (p === "Mammobus") return "mammobus";
+    if (p === "HPV") return "scs-clinic";
+    if (p === "FIT") return "healthier-sg";
+    return "";
+  }
 
   const CLASSIC_SCREENING_STATUS_BY_KEY = Object.freeze({
     booked: { key: "booked", label: "Booked", tone: "sr-status--booked" },
@@ -1793,7 +1845,7 @@
       appointment: r.appointment == null ? null : r.appointment,
       venue: r.venue != null ? String(r.venue) : "—",
       attendance: r.attendance != null ? String(r.attendance).trim() : "",
-      /** Form field value: `mammobus` | `scs-clinic` | `healthier-sg` (mammogram only). */
+      /** Form value: `mammobus` | `scs-clinic` | `healthier-sg` (subset per screening type). */
       appointmentType: r.appointmentType != null ? String(r.appointmentType).trim() : "",
       /** Legacy demo seed only; used as fallback when `appointmentType` is missing (MMG). */
       apptType: r.apptType != null ? String(r.apptType) : "",
@@ -1809,25 +1861,54 @@
     return hit || raw;
   }
 
-  /** "Appointment Type" column: mammogram labels from screening form; other types show —. */
+  /** "Appointment Type" column — labels from screening forms for MMG, HPV/PAP, and FIT. */
   function classicScreeningAppointmentTypeDisplay(r) {
-    if (!r || r.type?.key !== "MMG") return "—";
+    if (!r?.type?.key) return "—";
+    const typeKey = r.type.key;
+    if (typeKey !== "MMG" && typeKey !== "PAP" && typeKey !== "FIT") return "—";
     const at = String(r.appointmentType || "").trim().toLowerCase();
-    if (at && CLASSIC_MAMMOGRAM_APPOINTMENT_TYPE_LABELS[at]) {
-      return CLASSIC_MAMMOGRAM_APPOINTMENT_TYPE_LABELS[at];
+    if (at && SCREENING_APPOINTMENT_TYPE_LABELS[at]) {
+      return SCREENING_APPOINTMENT_TYPE_LABELS[at];
     }
-    const legacy = String(r.apptType || "").trim().toLowerCase();
-    if (!legacy) return "—";
-    if (legacy === "mammobus" || legacy.includes("community mammobus")) {
-      return CLASSIC_MAMMOGRAM_APPOINTMENT_TYPE_LABELS.mammobus;
+    if (typeKey === "MMG") {
+      const legacy = String(r.apptType || "").trim().toLowerCase();
+      if (legacy === "mammobus" || legacy.includes("community mammobus")) {
+        return SCREENING_APPOINTMENT_TYPE_LABELS.mammobus;
+      }
+      if (legacy.includes("bishan") || legacy.includes("scs clinic")) {
+        return SCREENING_APPOINTMENT_TYPE_LABELS["scs-clinic"];
+      }
+      if (legacy.includes("healthiersg") || legacy.includes("healthier sg")) {
+        return SCREENING_APPOINTMENT_TYPE_LABELS["healthier-sg"];
+      }
+      return SCREENING_APPOINTMENT_TYPE_LABELS.mammobus;
     }
-    if (legacy.includes("bishan") || legacy.includes("scs clinic")) {
-      return CLASSIC_MAMMOGRAM_APPOINTMENT_TYPE_LABELS["scs-clinic"];
+    if (typeKey === "FIT") return SCREENING_APPOINTMENT_TYPE_LABELS["healthier-sg"];
+    if (typeKey === "PAP") return SCREENING_APPOINTMENT_TYPE_LABELS["scs-clinic"];
+    return "—";
+  }
+
+  /** Prospect list / Kanban / export — human-readable appointment type for any screening programme row. */
+  function prospectAppointmentTypeDisplayLabel(p) {
+    if (!p) return "—";
+    const prog = String(p.program || "");
+    const at = String(p.appointmentType || "").trim().toLowerCase();
+    if (at && SCREENING_APPOINTMENT_TYPE_LABELS[at]) {
+      return SCREENING_APPOINTMENT_TYPE_LABELS[at];
     }
-    if (legacy.includes("healthiersg") || legacy.includes("healthier sg")) {
-      return CLASSIC_MAMMOGRAM_APPOINTMENT_TYPE_LABELS["healthier-sg"];
+    const def = defaultAppointmentTypeKeyForListProgram(prog);
+    if (def && SCREENING_APPOINTMENT_TYPE_LABELS[def]) {
+      return SCREENING_APPOINTMENT_TYPE_LABELS[def];
     }
     return "—";
+  }
+
+  /** Kanban program strip: `[Program] • [Appointment Type]` for all screening types. */
+  function kanbanProgramPillText(p) {
+    const prog = programDisplayLabel(p.program);
+    const appt = prospectAppointmentTypeDisplayLabel(p);
+    if (appt && appt !== "—") return `${prog} • ${appt}`;
+    return prog;
   }
 
   /**
@@ -1888,7 +1969,14 @@
         status: toStatusObj(statusKey),
         appointment: null,
         venue: dash,
-        appointmentType: typeKey === "MMG" ? "mammobus" : "",
+        appointmentType: (() => {
+          const raw = String(p.appointmentType || "").trim();
+          if (raw) return raw;
+          if (typeKey === "MMG") return "mammobus";
+          if (typeKey === "PAP") return "scs-clinic";
+          if (typeKey === "FIT") return "healthier-sg";
+          return "";
+        })(),
         action: null,
         attendance: p.attendance || "",
         result: dash,
@@ -1973,7 +2061,7 @@
     if (!id) return false;
     const merged = getClassicScreeningMergedRawById(id);
     if (!merged) return false;
-    const isMmg = merged.type?.key === "MMG";
+    const screeningTypeKey = merged.type?.key;
     const submitted = document.getElementById("csu-submitted")?.value?.trim() || "—";
     const statusKey =
       document.getElementById("csu-status-value")?.value?.trim() ||
@@ -2000,7 +2088,7 @@
       nextReviewDate,
       lastUpdatedBy: PORTAL_CURRENT_USER.name,
     };
-    if (isMmg) {
+    if (screeningTypeKey === "MMG" || screeningTypeKey === "PAP" || screeningTypeKey === "FIT") {
       patch.appointmentType = String(document.getElementById("csu-appointment-type")?.value || "").trim();
     }
     state.classicScreeningEditById[id] = { ...(state.classicScreeningEditById[id] || {}), ...patch };
@@ -2292,7 +2380,37 @@
     if (f.genders.length) n++;
     if (f.risks.length) n++;
     if (f.ageMin > 18 || f.ageMax < 100) n++;
+    if (f.dateRegisteredFrom || f.dateRegisteredTo) n++;
+    if (f.nextReviewFrom || f.nextReviewTo) n++;
+    if (f.appointmentTypes.length) n++;
+    if (f.attendances.length) n++;
+    if (f.sourceTypes.length) n++;
     return n;
+  }
+
+  /** Prospect row → appointment type key for filtering (`appointmentType` or programme default). */
+  function prospectAppointmentTypeFilterKey(r) {
+    const at = String(r?.appointmentType || "").trim().toLowerCase();
+    if (at && SCREENING_APPOINTMENT_TYPE_LABELS[at]) return at;
+    return defaultAppointmentTypeKeyForListProgram(String(r?.program || ""));
+  }
+
+  /** `fieldIso` within optional inclusive bounds (YYYY-MM-DD); empty bounds = open. */
+  function isoDateInFilterRange(fieldIso, fromStr, toStr) {
+    const fromS = String(fromStr || "").trim();
+    const toS = String(toStr || "").trim();
+    if (!fromS && !toS) return true;
+    const t = dateRegisteredSortValue(fieldIso);
+    if (!t) return false;
+    if (fromS) {
+      const fromT = dateRegisteredSortValue(fromS);
+      if (t < fromT) return false;
+    }
+    if (toS) {
+      const toT = dateRegisteredSortValue(toS);
+      if (t > toT) return false;
+    }
+    return true;
   }
 
   function filterByListFilters(rows) {
@@ -2309,6 +2427,21 @@
         if (age == null || age < f.ageMin || age > f.ageMax) return false;
       }
       if (f.risks.length && !f.risks.includes(r.risk)) return false;
+      if (f.dateRegisteredFrom || f.dateRegisteredTo) {
+        if (!isoDateInFilterRange(r.dateRegistered, f.dateRegisteredFrom, f.dateRegisteredTo)) return false;
+      }
+      if (f.nextReviewFrom || f.nextReviewTo) {
+        if (!isoDateInFilterRange(r.nextReview, f.nextReviewFrom, f.nextReviewTo)) return false;
+      }
+      if (f.appointmentTypes.length) {
+        const apk = prospectAppointmentTypeFilterKey(r);
+        if (!f.appointmentTypes.includes(apk)) return false;
+      }
+      if (f.attendances.length) {
+        const ad = classicScreeningAttendanceDisplay({ attendance: r.attendance });
+        if (!f.attendances.includes(ad)) return false;
+      }
+      if (f.sourceTypes.length && !f.sourceTypes.includes(String(r.sourceType || ""))) return false;
       return true;
     });
   }
@@ -2327,6 +2460,9 @@
           break;
         case "program":
           cmp = a.program.localeCompare(b.program);
+          break;
+        case "appointmentType":
+          cmp = prospectAppointmentTypeDisplayLabel(a).localeCompare(prospectAppointmentTypeDisplayLabel(b));
           break;
         case "dateRegistered":
           cmp = dateRegisteredSortValue(a.dateRegistered) - dateRegisteredSortValue(b.dateRegistered);
@@ -3398,7 +3534,7 @@
             <div class="toolbar-search fit-kit-toolbar__search">
               <label class="sr-only" for="fit-search">Search patient</label>
               <span class="toolbar-search__icon" aria-hidden="true">${icons.search}</span>
-              <input id="fit-search" type="search" placeholder="Search by name, NCSS ref, or mobile…" value="${e(
+              <input id="fit-search" type="search" placeholder="Search by name, ref no., NRIC, mobile no." value="${e(
                 fit?.search || ""
               )}" autocomplete="off" />
             </div>
@@ -3676,7 +3812,7 @@
       <div class="bc-bsh-filters prospects-filters-bar" role="toolbar" aria-label="Search and filters">
         <div class="toolbar-search prospects-filters-bar__search">
           <span class="toolbar-search__icon" aria-hidden="true">${icons.search}</span>
-          <input type="search" id="prospect-search" placeholder="Search by Name, NRIC, or Phone Number" value="${escapeAttr(state.search)}" autocomplete="off" />
+          <input type="search" id="prospect-search" placeholder="Search by name, NRIC, phone no." value="${escapeAttr(state.search)}" autocomplete="off" />
         </div>
         <div class="prospects-filters-bar__end">
           <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" id="btn-list-filters" aria-haspopup="dialog" aria-expanded="${state.filterModal}">
@@ -3707,6 +3843,7 @@
         "Prospect Ref": r.id || r.rowKey,
         "NRIC (masked)": masked,
         Program: programDisplayLabel(r.program),
+        "Appointment type": prospectAppointmentTypeDisplayLabel(r),
         "Date registered": formatDateRegisteredDisplay(r.dateRegistered),
         Phone: r.phone,
         Email: r.email,
@@ -3737,6 +3874,7 @@
       "Prospect Ref",
       "NRIC (masked)",
       "Program",
+      "Appointment type",
       "Date registered",
       "Phone",
       "Email",
@@ -3775,6 +3913,7 @@
       "Prospect Ref",
       "NRIC (masked)",
       "Program",
+      "Appointment type",
       "Date registered",
       "Phone",
       "Email",
@@ -3839,6 +3978,7 @@
             <tr>
               ${renderSortableTh("Name", "name")}
               ${renderSortableTh("Program", "program")}
+              ${renderSortableTh("Appointment type", "appointmentType")}
               ${renderSortableTh("Date registered", "dateRegistered")}
               <th scope="col">Contact</th>
               ${renderSortableTh("Status", "status")}
@@ -3855,10 +3995,30 @@
               .map((r) => {
                 const nr = kanbanCardNextReview(r);
                 const reviewPeriod = nr?.period ? String(nr.period) : "—";
+                const listScrId = pickClassicScreeningRecordIdForListProgram(r.program, r.rowKey);
+                const listActionsOpen = state.prospectListActionsOpenRowKey === r.rowKey;
+                const listActionsCell = listScrId
+                  ? `<div class="title-dropdown title-dropdown--align-end prospect-list-actions${
+                      listActionsOpen ? " is-open" : ""
+                    }" data-prospect-list-actions data-table-row-stop>
+                    <button type="button" class="title-dropdown__trigger prospect-list-actions__trigger" data-prospect-list-actions-toggle="${escapeAttr(
+                      r.rowKey
+                    )}" aria-expanded="${listActionsOpen}" aria-haspopup="true" aria-label="Actions for ${escapeAttr(r.name)}">${icons.more}</button>
+                    <div class="title-dropdown__panel" role="menu">
+                      <button type="button" role="menuitem" class="title-dropdown__option" data-table-row-stop data-classic-screening-tasks="${escapeAttr(
+                        listScrId
+                      )}">Tasks</button>
+                      <button type="button" role="menuitem" class="title-dropdown__option" data-table-row-stop data-classic-screening-update="${escapeAttr(
+                        listScrId
+                      )}">Update</button>
+                    </div>
+                  </div>`
+                  : `<span class="cell-muted">—</span>`;
                 return `
               <tr tabindex="0" data-nav-prospect="${escapeAttr(r.rowKey)}">
                 ${renderProspectNameCell(r)}
                 <td>${escapeAttr(programDisplayLabel(r.program))}</td>
+                <td>${escapeAttr(prospectAppointmentTypeDisplayLabel(r))}</td>
                 <td>${escapeAttr(formatDateRegisteredDisplay(r.dateRegistered))}</td>
                 <td>
                   <div class="cell-stack">
@@ -3877,7 +4037,7 @@
                 <td>${escapeAttr(formatDateRegisteredDisplay(r.nextReview))}</td>
                 <td>${escapeAttr(reviewPeriod)}</td>
                 <td>${riskPill(r.risk)}</td>
-                <td><button type="button" class="btn btn--icon" aria-label="Actions for ${escapeAttr(r.name)}">${icons.more}</button></td>
+                <td class="data-table__td--actions">${listActionsCell}</td>
               </tr>
             `
               })
@@ -4023,7 +4183,7 @@
             const riskHtml = `<div class="kanban-card__risk">${riskLevelIndicator(r.risk)}${firstTimeTag}${attendanceTag}</div>`;
             return `
         <article class="kanban-card" tabindex="0" data-kanban-card data-kanban-prospect="${escapeAttr(r.rowKey)}">
-          <div class="kanban-card__program"><span class="pill">${escapeAttr(programDisplayLabel(r.program))}</span></div>
+          <div class="kanban-card__program"><span class="pill">${escapeAttr(kanbanProgramPillText(r))}</span></div>
           <h2 class="kanban-card__name">${escapeAttr(r.name)}</h2>
           <p class="kanban-card__meta">${escapeAttr(kanbanCardMetaLine(r))}</p>
           ${riskHtml}
@@ -4724,7 +4884,8 @@
     const record = getClassicScreeningMergedRawById(state.classicScreeningUpdateModalId);
     if (!record) return "";
     const e = escapeAttr;
-    const isMmg = record.type?.key === "MMG";
+    const recordTypeKey = record.type?.key;
+    const isMmg = recordTypeKey === "MMG";
     const st = record.status?.key && CLASSIC_SCREENING_STATUS_BY_KEY[record.status.key] ? record.status.key : "qualified";
     const appt = record.appointment;
     const apptDate = appt && appt.date != null ? String(appt.date) : "";
@@ -7555,12 +7716,30 @@
     if (!state.filterModal) return "";
     const f = state.listFilters;
     const chip = (group, value, label) => {
-      const key = group === "stage" ? "stages" : group === "gender" ? "genders" : "risks";
-      const sel = f[key].includes(value);
+      const map = {
+        stage: "stages",
+        gender: "genders",
+        risk: "risks",
+        appointmentType: "appointmentTypes",
+        attendance: "attendances",
+        sourceType: "sourceTypes",
+      };
+      const arrKey = map[group];
+      const arr = f[arrKey] || [];
+      const sel = arr.includes(value);
       return `<button type="button" class="ui-chip${sel ? " is-selected" : ""}" data-lf-chip data-lf-group="${group}" data-value="${escapeAttr(value)}" aria-pressed="${sel}">${escapeAttr(label)}</button>`;
     };
-    const amin = Number.isFinite(f.ageMin) ? f.ageMin : 18;
-    const amax = Number.isFinite(f.ageMax) ? f.ageMax : 100;
+    const ageWideOpen = Number(f.ageMin) === 18 && Number(f.ageMax) === 100;
+    const amin = ageWideOpen ? "" : String(Math.round(Number.isFinite(f.ageMin) ? f.ageMin : 18));
+    const amax = ageWideOpen ? "" : String(Math.round(Number.isFinite(f.ageMax) ? f.ageMax : 100));
+    const drFrom = escapeAttr(f.dateRegisteredFrom || "");
+    const drTo = escapeAttr(f.dateRegisteredTo || "");
+    const nrFrom = escapeAttr(f.nextReviewFrom || "");
+    const nrTo = escapeAttr(f.nextReviewTo || "");
+    const apptTypeChips = Object.entries(SCREENING_APPOINTMENT_TYPE_LABELS)
+      .map(([val, lbl]) => chip("appointmentType", val, lbl))
+      .join("");
+    const attendanceChips = CLASSIC_SCREENING_ATTENDANCE_OPTIONS.map((opt) => chip("attendance", opt, opt)).join("");
     return `
       <div class="ui-dialog-overlay" id="filter-modal" role="presentation">
         <div class="ui-dialog" role="dialog" aria-modal="true" aria-labelledby="filter-title">
@@ -7577,6 +7756,52 @@
                 ${chip("stage", "qualified", "Qualified")}
                 ${chip("stage", "booked", "Booked")}
                 ${chip("stage", "screened", "Screened")}
+              </div>
+            </div>
+            <div class="ui-filter-section">
+              <p class="ui-filter-section__label">Date registered</p>
+              <div class="form-grid form-grid--reg form-grid--filter-age">
+                <div class="field">
+                  <label for="lf-dr-from">From</label>
+                  <input type="date" id="lf-dr-from" name="lf-dr-from" value="${drFrom}" autocomplete="off" />
+                </div>
+                <div class="field">
+                  <label for="lf-dr-to">To</label>
+                  <input type="date" id="lf-dr-to" name="lf-dr-to" value="${drTo}" autocomplete="off" />
+                </div>
+              </div>
+            </div>
+            <div class="ui-filter-section">
+              <p class="ui-filter-section__label">Next review</p>
+              <div class="form-grid form-grid--reg form-grid--filter-age">
+                <div class="field">
+                  <label for="lf-nr-from">From</label>
+                  <input type="date" id="lf-nr-from" name="lf-nr-from" value="${nrFrom}" autocomplete="off" />
+                </div>
+                <div class="field">
+                  <label for="lf-nr-to">To</label>
+                  <input type="date" id="lf-nr-to" name="lf-nr-to" value="${nrTo}" autocomplete="off" />
+                </div>
+              </div>
+            </div>
+            <div class="ui-filter-section">
+              <p class="ui-filter-section__label">Appointment type</p>
+              <div class="ui-chip-group" role="group" aria-label="Appointment type">
+                ${apptTypeChips}
+              </div>
+            </div>
+            <div class="ui-filter-section">
+              <p class="ui-filter-section__label">Attendance</p>
+              <div class="ui-chip-group" role="group" aria-label="Attendance">
+                ${attendanceChips}
+              </div>
+            </div>
+            <div class="ui-filter-section">
+              <p class="ui-filter-section__label">Source type</p>
+              <div class="ui-chip-group" role="group" aria-label="Source type">
+                ${chip("sourceType", "Event", "Event")}
+                ${chip("sourceType", "Campaign", "Campaign")}
+                ${chip("sourceType", "Manual", "Manual")}
               </div>
             </div>
             <div class="ui-filter-section">
@@ -7599,7 +7824,7 @@
                     max="100"
                     step="1"
                     inputmode="numeric"
-                    value="${amin}"
+                    value="${escapeAttr(amin)}"
                   />
                 </div>
                 <div class="field">
@@ -7612,7 +7837,7 @@
                     max="100"
                     step="1"
                     inputmode="numeric"
-                    value="${amax}"
+                    value="${escapeAttr(amax)}"
                   />
                 </div>
               </div>
@@ -7762,8 +7987,13 @@
     const onClassicScreenings =
       (state.route === "detail" && state.detailTab === "screening") ||
       (state.route === "prospectv3" && state.prospectV3Tab === "screenings");
-    if (!onClassicScreenings) {
+    const classicModalsOkOnList = state.route === "list";
+    if (!onClassicScreenings && !classicModalsOkOnList) {
       state.classicScreeningUpdateModalId = null;
+    }
+
+    if (state.route !== "list") {
+      state.prospectListActionsOpenRowKey = null;
     }
   }
 
@@ -8504,6 +8734,20 @@
     });
   }
 
+  /** Swap date inputs if from &gt; to (YYYY-MM-DD). */
+  function normalizeListFilterDateRangeEl(fromEl, toEl) {
+    let a = fromEl && "value" in fromEl ? String(fromEl.value || "").trim() : "";
+    let b = toEl && "value" in toEl ? String(toEl.value || "").trim() : "";
+    if (a && b && a > b) {
+      const t = a;
+      a = b;
+      b = t;
+      if (fromEl) fromEl.value = a;
+      if (toEl) toEl.value = b;
+    }
+    return { from: a, to: b };
+  }
+
   /** Clamp list-filter age fields to 18–100 and min ≤ max; writes back to inputs. */
   function normalizeAgeFilterValues(minEl, maxEl) {
     let min = minEl ? parseInt(minEl.value, 10) : NaN;
@@ -8518,8 +8762,15 @@
       min = lo;
       max = hi;
     }
-    if (minEl) minEl.value = String(min);
-    if (maxEl) maxEl.value = String(max);
+    if (minEl && maxEl) {
+      if (min === 18 && max === 100) {
+        minEl.value = "";
+        maxEl.value = "";
+      } else {
+        minEl.value = String(min);
+        maxEl.value = String(max);
+      }
+    }
     return { ageMin: min, ageMax: max };
   }
 
@@ -8695,6 +8946,16 @@
       });
     });
 
+    document.querySelectorAll("[data-prospect-list-actions-toggle]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const rk = btn.getAttribute("data-prospect-list-actions-toggle");
+        if (!rk) return;
+        state.prospectListActionsOpenRowKey = state.prospectListActionsOpenRowKey === rk ? null : rk;
+        renderApp();
+      });
+    });
+
     document.querySelectorAll("[data-view]").forEach((btn) => {
       btn.addEventListener("click", () => {
         state.view = btn.getAttribute("data-view");
@@ -8780,12 +9041,21 @@
       const minEl = document.getElementById("lf-age-min");
       const maxEl = document.getElementById("lf-age-max");
       const { ageMin, ageMax } = normalizeAgeFilterValues(minEl, maxEl);
+      const dr = normalizeListFilterDateRangeEl(document.getElementById("lf-dr-from"), document.getElementById("lf-dr-to"));
+      const nr = normalizeListFilterDateRangeEl(document.getElementById("lf-nr-from"), document.getElementById("lf-nr-to"));
       state.listFilters = {
         stages: chips("stage"),
         genders: chips("gender"),
         risks: chips("risk"),
         ageMin,
         ageMax,
+        dateRegisteredFrom: dr.from,
+        dateRegisteredTo: dr.to,
+        nextReviewFrom: nr.from,
+        nextReviewTo: nr.to,
+        appointmentTypes: chips("appointmentType"),
+        attendances: chips("attendance"),
+        sourceTypes: chips("sourceType"),
       };
     }
 
@@ -8796,7 +9066,20 @@
     });
 
     document.getElementById("list-filter-clear")?.addEventListener("click", () => {
-      state.listFilters = { stages: [], genders: [], risks: [], ageMin: 18, ageMax: 100 };
+      state.listFilters = {
+        stages: [],
+        genders: [],
+        risks: [],
+        ageMin: 18,
+        ageMax: 100,
+        dateRegisteredFrom: "",
+        dateRegisteredTo: "",
+        nextReviewFrom: "",
+        nextReviewTo: "",
+        appointmentTypes: [],
+        attendances: [],
+        sourceTypes: [],
+      };
       state.filterModal = false;
       renderApp();
     });
@@ -9870,12 +10153,14 @@
 
     const classicScrTable =
       (state.route === "detail" && state.detailTab === "screening") ||
-      (state.route === "prospectv3" && state.prospectV3Tab === "screenings");
+      (state.route === "prospectv3" && state.prospectV3Tab === "screenings") ||
+      state.route === "list";
     const classicUpdBtn = el?.closest("[data-classic-screening-update]");
-    if (classicUpdBtn && classicScrTable && (state.route === "detail" || state.route === "prospectv3")) {
+    if (classicUpdBtn && classicScrTable) {
       e.preventDefault();
       const sid = classicUpdBtn.getAttribute("data-classic-screening-update");
       if (!sid) return;
+      state.prospectListActionsOpenRowKey = null;
       state.classicScreeningTasksModalId = null;
       state.classicScreeningUpdateModalId = sid;
       renderApp();
@@ -9890,10 +10175,11 @@
     }
 
     const classicTasksBtn = el?.closest("[data-classic-screening-tasks]");
-    if (classicTasksBtn && classicScrTable && (state.route === "detail" || state.route === "prospectv3")) {
+    if (classicTasksBtn && classicScrTable) {
       e.preventDefault();
       const sid = classicTasksBtn.getAttribute("data-classic-screening-tasks");
       if (!sid) return;
+      state.prospectListActionsOpenRowKey = null;
       state.classicScreeningUpdateModalId = null;
       state.classicScreeningTasksModalId = sid;
       ensureClassicScreeningTaskBucket(sid);
@@ -10125,6 +10411,14 @@
       state.addProspectMenuOpen = false;
       renderApp();
     }
+    if (state.prospectListActionsOpenRowKey) {
+      const t = e.target;
+      const inside = t instanceof Element && t.closest("[data-prospect-list-actions]");
+      if (!inside) {
+        state.prospectListActionsOpenRowKey = null;
+        renderApp();
+      }
+    }
   });
 
   (function bootstrapDefaultHash() {
@@ -10159,6 +10453,11 @@
 
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
+    if (state.prospectListActionsOpenRowKey) {
+      state.prospectListActionsOpenRowKey = null;
+      renderApp();
+      return;
+    }
     if (state.exportMenuOpen) {
       state.exportMenuOpen = false;
       renderApp();
