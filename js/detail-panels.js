@@ -682,7 +682,7 @@
                       merged,
                       editing,
                       ["Singapore Citizen", "Permanent Resident", "Foreigner"],
-                      { required: false, placeholderLabel: "Select Residential Status" }
+                      { required: true, placeholderLabel: "Select Residential Status" }
                     )}
                     ${fieldNric(e, "NRIC / FIN Number", "nric", "details", merged, editing, { required: true })}
                     ${fieldDateInput(e, "Date of Birth", "dob", "details", merged, editing, {
@@ -761,18 +761,23 @@
                   "Residential Address",
                   `<div class="detail-fields detail-fields--2 detail-fields--address">
                     ${fieldInput(e, "Block", "block", "details", merged, editing, {
+                      required: true,
                       placeholder: "E.g. 202",
                     })}
                     ${fieldInput(e, "Street Name", "street", "details", merged, editing, {
+                      required: true,
                       placeholder: "E.g. Pasir Drive",
                     })}
                     ${fieldInput(e, "Floor", "floor", "details", merged, editing, {
+                      required: true,
                       placeholder: "E.g. 50",
                     })}
                     ${fieldInput(e, "Unit No", "unit", "details", merged, editing, {
+                      required: true,
                       placeholder: "E.g. 101 or 345",
                     })}
                     ${fieldInput(e, "Postal Code", "postal", "details", merged, editing, {
+                      required: true,
                       inputType: "text",
                       placeholder: "E.g. 123456",
                     })}
@@ -784,7 +789,7 @@
                       merged,
                       editing,
                       ["Singapore", "Malaysia", "Indonesia", "Other"],
-                      { required: false, placeholderLabel: "Select Country" }
+                      { required: true, placeholderLabel: "Select Country" }
                     )}
                   </div>`,
                   "detail-address"
@@ -801,7 +806,7 @@
                       merged,
                       editing,
                       ["Blue", "Orange", "Green", "Not Applicable"],
-                      { required: false, placeholderLabel: "Select CHAS Card Type" }
+                      { required: true, placeholderLabel: "Select CHAS Card Type" }
                     )}
                     ${fieldSelectValueLabel(
                       e,

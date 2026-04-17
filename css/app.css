@@ -5258,6 +5258,7 @@ button {
 /* Single-shell controls: focus ring on wrapper */
 .field .field__date:focus-within,
 .field .field__inline:focus-within,
+.field .field__time:focus-within,
 .detail-field .field__date:focus-within {
   outline: 2px solid var(--color-primary-200);
   border-color: var(--color-primary-400);
@@ -5265,6 +5266,7 @@ button {
 
 .field__date .field__date-text:focus,
 .detail-field .field__date .field__date-text:focus,
+.field__time .field__time-text:focus,
 .field__inline input:focus {
   outline: none;
 }
@@ -5282,8 +5284,29 @@ button {
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+.field__time {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  position: relative;
+  border: 1px solid var(--color-neutral-5);
+  border-radius: var(--radius-md);
+  background: var(--color-white);
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
 .field .field__date-text,
 .detail-field .field__date .detail-field__input.field__date-text {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+  border: none !important;
+  border-radius: 0;
+  box-shadow: none !important;
+}
+
+.field .field__time-text {
   flex: 1;
   min-width: 0;
   width: auto;
@@ -5308,7 +5331,27 @@ button {
   background-position: center;
 }
 
+.field__time-btn {
+  flex-shrink: 0;
+  width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-left: 1px solid var(--color-neutral-5);
+  border-radius: 0;
+  background-color: var(--color-white);
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' fill='none' stroke='%2364748b' stroke-width='1.5'%3E%3Ccircle cx='10' cy='10' r='7'/%3E%3Cpath d='M10 6v4l3 2'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
 .field__date-btn:hover:not(:disabled) {
+  background-color: var(--color-gray-50);
+}
+
+.field__time-btn:hover:not(:disabled) {
   background-color: var(--color-gray-50);
 }
 
@@ -5318,8 +5361,29 @@ button {
   background-color: var(--color-gray-100);
 }
 
+.field__time-btn:disabled {
+  opacity: 1;
+  cursor: not-allowed;
+  background-color: var(--color-gray-100);
+}
+
 /* Anchor native picker to bottom edge so OS calendar tends to open below the field */
 .field__date-native {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: auto;
+  width: 100%;
+  height: 1px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.field__time-native {
   position: absolute;
   left: 0;
   right: 0;

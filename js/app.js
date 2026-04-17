@@ -4923,7 +4923,7 @@
     const isMmg = recordTypeKey === "MMG";
     const st = record.status?.key && CLASSIC_SCREENING_STATUS_BY_KEY[record.status.key] ? record.status.key : "qualified";
     const appt = record.appointment;
-    const apptDate = appt && appt.date != null ? String(appt.date) : "";
+    const apptDate = normalizeClassicApptDateForPicker(appt && appt.date != null ? String(appt.date) : "");
     const apptTime = appt && appt.time != null ? String(appt.time) : "";
     const venueVal = record.venue != null ? String(record.venue) : "";
     const attVal = record.attendance != null ? String(record.attendance).trim() : "";
@@ -4991,11 +4991,19 @@
           </div>
           <div class="field">
             <label for="csu-appt-date">Appointment date</label>
-            <input id="csu-appt-date" type="text" value="${e(apptDate)}" placeholder="e.g. 19 Aug 2026" autocomplete="off" />
+            <div class="field__date">
+              <input class="field__date-text" id="csu-appt-date" type="text" value="${e(apptDate)}" placeholder="DD-MM-YYYY" inputmode="numeric" autocomplete="off" maxlength="10" />
+              <button type="button" class="field__date-btn" aria-label="Choose date" title="Choose date"></button>
+              <input type="date" class="field__date-native" tabindex="-1" aria-hidden="true" />
+            </div>
           </div>
           <div class="field">
             <label for="csu-appt-time">Appointment time</label>
-            <input id="csu-appt-time" type="text" value="${e(apptTime)}" placeholder="e.g. 10:30am" autocomplete="off" />
+            <div class="field__time">
+              <input class="field__time-text" id="csu-appt-time" type="text" value="${e(apptTime)}" placeholder="HH:MM" autocomplete="off" />
+              <button type="button" class="field__time-btn" aria-label="Choose time" title="Choose time"></button>
+              <input type="time" class="field__time-native" tabindex="-1" aria-hidden="true" />
+            </div>
           </div>
           <div class="field field--full">
             <label for="csu-venue">Venue</label>
@@ -6926,8 +6934,8 @@
                     <input id="fullName" name="fullName" type="text" required autocomplete="name" placeholder="Enter full name as in NRIC" />
                   </div>
                   <div class="field">
-                    <label for="residential">Residential Status</label>
-                    <select id="residential" name="residential">
+                    <label for="residential">Residential Status<span class="field__req" aria-hidden="true">*</span></label>
+                    <select id="residential" name="residential" required>
                       <option value="">Select Residential Status</option>
                       <option value="Citizen">Singapore Citizen</option>
                       <option value="PR">Permanent Resident</option>
@@ -6994,12 +7002,12 @@
                     <input id="street" name="street" required placeholder="E.g. Pasir Drive" />
                   </div>
                   <div class="field">
-                    <label for="floor">Floor</label>
-                    <input id="floor" name="floor" placeholder="E.g. 50" />
+                    <label for="floor">Floor<span class="field__req" aria-hidden="true">*</span></label>
+                    <input id="floor" name="floor" required placeholder="E.g. 50" />
                   </div>
                   <div class="field">
-                    <label for="unit">Unit No</label>
-                    <input id="unit" name="unit" placeholder="E.g. 101 or 345" />
+                    <label for="unit">Unit No<span class="field__req" aria-hidden="true">*</span></label>
+                    <input id="unit" name="unit" required placeholder="E.g. 101 or 345" />
                   </div>
                   <div class="field">
                     <label for="postal">Postal Code<span class="field__req" aria-hidden="true">*</span></label>
@@ -7017,8 +7025,8 @@
                 <h2 class="registration__section-label">Healthier SG &amp; Subsidies</h2>
                 <div class="form-grid form-grid--reg form-grid--subsidies">
                   <div class="field">
-                    <label for="chasCardType">CHAS Card Type</label>
-                    <select id="chasCardType" name="chasCardType">${REG_SUBSIDIES_CHAS_OPTIONS}
+                    <label for="chasCardType">CHAS Card Type<span class="field__req" aria-hidden="true">*</span></label>
+                    <select id="chasCardType" name="chasCardType" required>${REG_SUBSIDIES_CHAS_OPTIONS}
                     </select>
                   </div>
                   <div class="field">
@@ -7270,8 +7278,8 @@
                     <input id="hpvFullName" name="hpvFullName" type="text" required autocomplete="name" placeholder="Enter full name as in NRIC" />
                   </div>
                   <div class="field">
-                    <label for="hpvResidential">Residential Status</label>
-                    <select id="hpvResidential" name="hpvResidential">
+                    <label for="hpvResidential">Residential Status<span class="field__req" aria-hidden="true">*</span></label>
+                    <select id="hpvResidential" name="hpvResidential" required>
                       <option value="">Select Residential Status</option>
                       <option value="Citizen">Singapore Citizen</option>
                       <option value="PR">Permanent Resident</option>
@@ -7338,12 +7346,12 @@
                     <input id="hpvStreet" name="hpvStreet" placeholder="E.g. Pasir Drive" />
                   </div>
                   <div class="field">
-                    <label for="hpvFloor">Floor</label>
-                    <input id="hpvFloor" name="hpvFloor" placeholder="E.g. 50" />
+                    <label for="hpvFloor">Floor<span class="field__req" aria-hidden="true">*</span></label>
+                    <input id="hpvFloor" name="hpvFloor" required placeholder="E.g. 50" />
                   </div>
                   <div class="field">
-                    <label for="hpvUnit">Unit No</label>
-                    <input id="hpvUnit" name="hpvUnit" placeholder="E.g. 101 or 345" />
+                    <label for="hpvUnit">Unit No<span class="field__req" aria-hidden="true">*</span></label>
+                    <input id="hpvUnit" name="hpvUnit" required placeholder="E.g. 101 or 345" />
                   </div>
                   <div class="field">
                     <label for="hpvPostal">Postal Code<span class="field__req" aria-hidden="true">*</span></label>
@@ -7361,8 +7369,8 @@
                 <h2 class="registration__section-label">Healthier SG &amp; Subsidies</h2>
                 <div class="form-grid form-grid--reg form-grid--subsidies">
                   <div class="field">
-                    <label for="hpvChasCardType">CHAS Card Type</label>
-                    <select id="hpvChasCardType" name="hpvChasCardType">${REG_SUBSIDIES_CHAS_OPTIONS}
+                    <label for="hpvChasCardType">CHAS Card Type<span class="field__req" aria-hidden="true">*</span></label>
+                    <select id="hpvChasCardType" name="hpvChasCardType" required>${REG_SUBSIDIES_CHAS_OPTIONS}
                     </select>
                   </div>
                   <div class="field">
@@ -7540,8 +7548,8 @@
                     <input id="fitFullName" name="fitFullName" type="text" required autocomplete="name" placeholder="Enter full name as in NRIC" />
                   </div>
                   <div class="field">
-                    <label for="fitResidential">Residential Status</label>
-                    <select id="fitResidential" name="fitResidential">
+                    <label for="fitResidential">Residential Status<span class="field__req" aria-hidden="true">*</span></label>
+                    <select id="fitResidential" name="fitResidential" required>
                       <option value="">Select Residential Status</option>
                       <option value="Citizen">Singapore Citizen</option>
                       <option value="PR">Permanent Resident</option>
@@ -7608,12 +7616,12 @@
                     <input id="fitStreet" name="fitStreet" placeholder="E.g. Pasir Drive" />
                   </div>
                   <div class="field">
-                    <label for="fitFloor">Floor</label>
-                    <input id="fitFloor" name="fitFloor" placeholder="E.g. 50" />
+                    <label for="fitFloor">Floor<span class="field__req" aria-hidden="true">*</span></label>
+                    <input id="fitFloor" name="fitFloor" required placeholder="E.g. 50" />
                   </div>
                   <div class="field">
-                    <label for="fitUnit">Unit No</label>
-                    <input id="fitUnit" name="fitUnit" placeholder="E.g. 101 or 345" />
+                    <label for="fitUnit">Unit No<span class="field__req" aria-hidden="true">*</span></label>
+                    <input id="fitUnit" name="fitUnit" required placeholder="E.g. 101 or 345" />
                   </div>
                   <div class="field">
                     <label for="fitPostal">Postal Code<span class="field__req" aria-hidden="true">*</span></label>
@@ -7631,8 +7639,8 @@
                 <h2 class="registration__section-label">Healthier SG &amp; Subsidies</h2>
                 <div class="form-grid form-grid--reg form-grid--subsidies">
                   <div class="field">
-                    <label for="fitChasCardType">CHAS Card Type</label>
-                    <select id="fitChasCardType" name="fitChasCardType">${REG_SUBSIDIES_CHAS_OPTIONS}
+                    <label for="fitChasCardType">CHAS Card Type<span class="field__req" aria-hidden="true">*</span></label>
+                    <select id="fitChasCardType" name="fitChasCardType" required>${REG_SUBSIDIES_CHAS_OPTIONS}
                     </select>
                   </div>
                   <div class="field">
@@ -8728,6 +8736,42 @@
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
+  }
+
+  function normalizeClassicApptDateForPicker(input) {
+    const t = String(input || "").trim();
+    if (!t || t === "—") return "";
+    // Prefer the shared normalizer if it can handle it (ISO / DD-MM-YYYY / slash).
+    if (typeof window.WD_normalizeDateDisplay === "function") {
+      const n = window.WD_normalizeDateDisplay(t);
+      if (/^\d{2}-\d{2}-\d{4}$/.test(n)) return n;
+    }
+    // Support legacy displays like "19 Aug 2026".
+    const m = t.match(/^(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{4})$/);
+    if (m) {
+      const dd = parseInt(m[1], 10);
+      const monRaw = String(m[2] || "").slice(0, 3).toLowerCase();
+      const yyyy = parseInt(m[3], 10);
+      const months = {
+        jan: 1,
+        feb: 2,
+        mar: 3,
+        apr: 4,
+        may: 5,
+        jun: 6,
+        jul: 7,
+        aug: 8,
+        sep: 9,
+        oct: 10,
+        nov: 11,
+        dec: 12,
+      };
+      const mm = months[monRaw] || 0;
+      if (dd >= 1 && dd <= 31 && mm >= 1 && mm <= 12 && yyyy >= 1900) {
+        return `${String(dd).padStart(2, "0")}-${String(mm).padStart(2, "0")}-${String(yyyy)}`;
+      }
+    }
+    return t;
   }
 
   function handleProspectDocsFilesAdded(fileNames) {
@@ -9860,6 +9904,9 @@
 
     if (typeof window.WD_initDateInputs === "function") {
       window.WD_initDateInputs(document.getElementById("app"));
+    }
+    if (typeof window.WD_initTimeInputs === "function") {
+      window.WD_initTimeInputs(document.getElementById("app"));
     }
     if (typeof window.WD_initNricFields === "function") {
       window.WD_initNricFields(document.getElementById("app"));
