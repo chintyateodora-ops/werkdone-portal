@@ -883,7 +883,7 @@
                   `<div class="detail-fields detail-fields--2">
                     ${fieldSelect(
                       e,
-                      "How did you hear about us?",
+                      "How did you hear about this programme?",
                       "sourceType",
                       "details",
                       merged,

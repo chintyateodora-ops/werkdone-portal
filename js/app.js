@@ -3522,9 +3522,6 @@
                 <span class="fit-stage__meta">${e(rows.length)} patient${rows.length === 1 ? "" : "s"}</span>
               </div>
               <div class="fit-stage__actions">
-                <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-fit-add-stage="${e(sid)}">+ Add to stage ${e(
-          sid
-        )}</button>
                 <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-fit-upload="${e(sid)}">Upload CSV</button>
               </div>
             </div>
@@ -4803,7 +4800,7 @@
       <h3 class="v3-biodata-modal__heading">Engagement &amp; consent</h3>
       <div class="v3-biodata-modal__grid">
         <div class="field field--full">
-          <label for="v3bio-source-type">How did you hear about us?</label>
+          <label for="v3bio-source-type">How did you hear about this programme?</label>
           <input id="v3bio-source-type" type="text" data-v3-biodata-field="sourceType" value="${e(
             details.sourceType != null ? String(details.sourceType) : ""
           )}" placeholder="E.g. Walk-in registration" autocomplete="off" />
@@ -5405,7 +5402,7 @@
 
             <div class="bio-sec">
               <div class="bio-sec-t">Engagement &amp; Consent</div>
-              <div class="bio-row"><span class="bio-l">How did you hear about us?</span>${txtRo(details.sourceType)}</div>
+              <div class="bio-row"><span class="bio-l">How did you hear about this programme?</span>${txtRo(details.sourceType)}</div>
               <div class="bio-row"><span class="bio-l">Campaign / Event Name</span>${txtRo(details.sourceName)}</div>
               <div class="bio-row"><span class="bio-l">PDPA Consent</span>${txtRo(ynLabel(details.pdpaConsent))}</div>
               <div class="bio-row"><span class="bio-l">eDM Subscription</span>${txtRo(ynLabel(details.edmSubscription))}</div>
@@ -7195,7 +7192,7 @@
                 <h2 class="registration__section-label">Engagement</h2>
                 <div class="form-grid form-grid--reg">
                   <div class="field">
-                    <label for="sourceType">How did you hear about us?<span class="field__req" aria-hidden="true">*</span></label>
+                    <label for="sourceType">How did you hear about this programme?<span class="field__req" aria-hidden="true">*</span></label>
                     <select id="sourceType" name="sourceType" required>
                       <option value="">Select Source Type</option>
                       <option value="Event">Event / Roadshow</option>
@@ -7476,7 +7473,7 @@
                 <h2 class="registration__section-label">Engagement</h2>
                 <div class="form-grid form-grid--reg">
                   <div class="field">
-                    <label for="hpvSourceType">How did you hear about us?</label>
+                    <label for="hpvSourceType">How did you hear about this programme?</label>
                     <select id="hpvSourceType" name="hpvSourceType">
                       <option value="">Select Source Type</option>
                       <option value="Event">Event / Roadshow</option>
@@ -7733,7 +7730,7 @@
                 <h2 class="registration__section-label">Engagement</h2>
                 <div class="form-grid form-grid--reg">
                   <div class="field">
-                    <label for="fitSourceType">How did you hear about us?</label>
+                    <label for="fitSourceType">How did you hear about this programme?</label>
                     <select id="fitSourceType" name="fitSourceType">
                       <option value="">Select Source Type</option>
                       <option value="Event">Event / Roadshow</option>
@@ -9179,27 +9176,6 @@
       });
     });
 
-    const search = document.getElementById("prospect-search");
-    if (search) {
-      search.addEventListener("input", () => {
-        state.search = search.value;
-        clearTimeout(searchDebounce);
-        searchDebounce = setTimeout(() => {
-          renderApp();
-          const again = document.getElementById("prospect-search");
-          if (again) {
-            again.focus();
-            again.setSelectionRange(again.value.length, again.value.length);
-          }
-        }, 200);
-      });
-    }
-
-    document.getElementById("btn-list-filters")?.addEventListener("click", () => {
-      state.filterModal = true;
-      renderApp();
-    });
-
     document.querySelector("[data-export-menu-toggle]")?.addEventListener("click", (e) => {
       e.stopPropagation();
       state.exportMenuOpen = !state.exportMenuOpen;
@@ -9217,56 +9193,6 @@
       });
     });
 
-    function readListFiltersFromForm() {
-      const chips = (group) =>
-        [...document.querySelectorAll(`#list-filter-form [data-lf-group="${group}"].is-selected`)].map((el) =>
-          el.getAttribute("data-value")
-        );
-      const minEl = document.getElementById("lf-age-min");
-      const maxEl = document.getElementById("lf-age-max");
-      const { ageMin, ageMax } = normalizeAgeFilterValues(minEl, maxEl);
-      const dr = normalizeListFilterDateRangeEl(document.getElementById("lf-dr-from"), document.getElementById("lf-dr-to"));
-      const nr = normalizeListFilterDateRangeEl(document.getElementById("lf-nr-from"), document.getElementById("lf-nr-to"));
-      state.listFilters = {
-        stages: chips("stage"),
-        genders: chips("gender"),
-        risks: chips("risk"),
-        ageMin,
-        ageMax,
-        dateRegisteredFrom: dr.from,
-        dateRegisteredTo: dr.to,
-        nextReviewFrom: nr.from,
-        nextReviewTo: nr.to,
-        appointmentTypes: chips("appointmentType"),
-        attendances: chips("attendance"),
-        sourceTypes: chips("sourceType"),
-      };
-    }
-
-    document.getElementById("list-filter-apply")?.addEventListener("click", () => {
-      readListFiltersFromForm();
-      state.filterModal = false;
-      renderApp();
-    });
-
-    document.getElementById("list-filter-clear")?.addEventListener("click", () => {
-      state.listFilters = {
-        stages: [],
-        genders: [],
-        risks: [],
-        ageMin: 18,
-        ageMax: 100,
-        dateRegisteredFrom: "",
-        dateRegisteredTo: "",
-        nextReviewFrom: "",
-        nextReviewTo: "",
-        appointmentTypes: [],
-        attendances: [],
-        sourceTypes: [],
-      };
-      renderApp();
-    });
-
     document.querySelectorAll("[data-close-modal]").forEach((b) => {
       b.addEventListener("click", () => {
         state.filterModal = false;
@@ -9281,26 +9207,7 @@
       }
     });
 
-    document.querySelectorAll("[data-list-sort]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const k = btn.getAttribute("data-list-sort");
-        if (!k) return;
-        if (state.listSort.key === k) {
-          state.listSort.dir = state.listSort.dir === "asc" ? "desc" : "asc";
-        } else {
-          state.listSort.key = k;
-          state.listSort.dir = "asc";
-        }
-        renderApp();
-      });
-    });
-
-    document.querySelectorAll("[data-kanban-card]").forEach((card) => {
-      card.addEventListener("click", () => {
-        const rk = card.getAttribute("data-kanban-prospect");
-        if (rk) location.hash = `#/prospect/${encodeURIComponent(rk)}/screening`;
-      });
-    });
+    bindProspectListPageInteractionsOnly();
 
     document.getElementById("registration-form")?.addEventListener("submit", (e) => {
       e.preventDefault();
@@ -9629,36 +9536,6 @@
           if (cb.checked) next.add(id);
           else next.delete(id);
           fit.selectedIds = Array.from(next);
-          renderApp();
-        });
-      });
-
-      document.querySelectorAll("[data-fit-add-stage]").forEach((btn) => {
-        btn.addEventListener("click", (e) => {
-          e.preventDefault();
-          const sid = Number(btn.getAttribute("data-fit-add-stage") || 0);
-          if (!sid) return;
-          fit.editModal = {
-            isNew: true,
-            stage: sid,
-            patientId: null,
-            form: {
-              ncssRef: "",
-              name: "",
-              nric: "",
-              dob: "",
-              age: "",
-              gender: "F",
-              mobile: "",
-              address: "",
-              dispatchDate: sid === 2 ? fitTodayIso() : "",
-              labRef: "",
-              receivedDate: sid === 3 ? fitTodayIso() : "",
-              result: "",
-              resultDate: sid === 4 ? fitTodayIso() : "",
-              notes: "",
-            },
-          };
           renderApp();
         });
       });

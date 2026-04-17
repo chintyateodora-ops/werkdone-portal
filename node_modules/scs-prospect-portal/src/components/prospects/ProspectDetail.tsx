@@ -1336,7 +1336,7 @@ export function ProspectDetail({ onNavigate, prospectRef }: ProspectDetailProps)
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <EditableSelect
-                        label="How did you hear about us?"
+                        label="How did you hear about this programme?"
                         value={detailsFormData.sourceType}
                         isEditing={isEditingDetails}
                         onChange={(value) => setDetailsFormData({ ...detailsFormData, sourceType: value })}

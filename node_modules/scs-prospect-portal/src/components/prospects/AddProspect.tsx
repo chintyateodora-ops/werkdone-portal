@@ -1338,7 +1338,7 @@ export function AddProspect({ onNavigate, initialProgram = 'mammobus' }: AddPros
                   {/* Source Type */}
                   <div>
                     <Label htmlFor="field-source-type" className="mb-2 block text-base font-normal text-gray-900">
-                      How did you hear about us?<span className="text-red-600">*</span>
+                      How did you hear about this programme?<span className="text-red-600">*</span>
                     </Label>
                     <Select
                       value={formData.sourceType || SEL_NONE}
