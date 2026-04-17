@@ -436,16 +436,8 @@
     activeListProgram: "Mammobus",
   };
 
-  const state = {
-    route: "list",
-    routeId: null,
-    view: "kanban",
-    program: "all",
-    search: "",
-    filterModal: false,
-    exportMenuOpen: false,
-    /** List view: empty array = no restriction for that dimension; date fields are YYYY-MM-DD or "". */
-    listFilters: {
+  function createDefaultListFilters() {
+    return {
       stages: [],
       genders: [],
       risks: [],
@@ -458,7 +450,19 @@
       appointmentTypes: [],
       attendances: [],
       sourceTypes: [],
-    },
+    };
+  }
+
+  const state = {
+    route: "list",
+    routeId: null,
+    view: "kanban",
+    program: "all",
+    search: "",
+    filterModal: false,
+    exportMenuOpen: false,
+    /** List view: empty array = no restriction for that dimension; date fields are YYYY-MM-DD or "". */
+    listFilters: createDefaultListFilters(),
     /** Table sort */
     listSort: { key: "name", dir: "asc" },
     /** Listing KPI strip: active quick filter key (null = none). */
@@ -523,8 +527,6 @@
     detailNoteEdits: {},
     /** rowKey → note ids removed from merged list (seed ids or soft-delete bookkeeping). */
     detailNoteDeletedIds: {},
-    /** Prospect overview Activity Timeline: rowKey → { id, atIso, title, body, by, stage }[] (session log) */
-    detailActivityFeedByProspect: {},
     /** True when registration opened with ?sr_token=… (patient self-service link) */
     registerSelfService: false,
     /** Mobile token URL: “Skip to section” drawer open */
@@ -1320,6 +1322,8 @@
 
     base.timeline = p.activityTimeline ? structuredClone(p.activityTimeline) : structuredClone(DETAIL_DEFAULT.timeline);
     base.activeListProgram = p.program;
+    if (p.profileLastUpdatedAt) base.lastUpdated = p.profileLastUpdatedAt;
+    if (p.profileLastUpdatedBy) base.lastUpdatedBy = p.profileLastUpdatedBy;
     return base;
   }
 
@@ -1791,6 +1795,9 @@
     "healthier-sg": "Healthier SG",
   });
 
+  /** MMG rows in the screening update modal — same value/label map as `SCREENING_APPOINTMENT_TYPE_LABELS`. */
+  const CLASSIC_MAMMOGRAM_APPOINTMENT_TYPE_LABELS = SCREENING_APPOINTMENT_TYPE_LABELS;
+
   /** Options shown in screening update modal per record type (FIT form only offers Healthier SG). */
   function screeningAppointmentTypeSelectOptions(typeKey) {
     const L = SCREENING_APPOINTMENT_TYPE_LABELS;
@@ -2092,6 +2099,19 @@
       patch.appointmentType = String(document.getElementById("csu-appointment-type")?.value || "").trim();
     }
     state.classicScreeningEditById[id] = { ...(state.classicScreeningEditById[id] || {}), ...patch };
+    const rk =
+      (merged.prospectRowKey != null && String(merged.prospectRowKey).trim()) ||
+      (state.detail?.rowKey != null && String(state.detail.rowKey).trim()) ||
+      "";
+    if (rk) {
+      const typeLabel = merged.type?.label || "Screening record";
+      pushProspectActivityTimeline(rk, {
+        title: "Screening record updated",
+        body: `${typeLabel}: status ${status.label}. Appointment, venue, attendance, and review fields were saved.`,
+        by: PORTAL_CURRENT_USER.name,
+        stage: statusKey,
+      });
+    }
     return true;
   }
 
@@ -4230,6 +4250,24 @@
     </section>`;
   }
 
+  /** Update KPI strip + filters bar + table/kanban without rebuilding the whole app (keeps filter modal stable). */
+  function refreshProspectsListingDomFromState() {
+    if (state.route !== "list") return;
+    const root = document.getElementById("prospects-module-root");
+    if (!root) return;
+    const kpiShell = root.querySelector(".prospects-kpi-shell");
+    const main = root.querySelector(".bc-main.prospects-main");
+    if (!kpiShell || !main) return;
+    const summaryRows = getProspectsForSummaryCounts();
+    kpiShell.innerHTML = renderProspectSummarySection(summaryRows, { ariaLabel: "Prospect summary" });
+    const body =
+      state.view === "kanban"
+        ? `<div class="kanban">${renderKanbanFromProspects()}</div>`
+        : renderTable(getListTableRows());
+    main.innerHTML = renderProspectListFiltersBar() + body;
+    bindProspectListPageInteractionsOnly();
+  }
+
   function normalizeDetailTab() {
     const legacy = { medical: "medical-history", other: "other-details" };
     if (typeof state.detailTab === "string") state.detailTab = state.detailTab.trim();
@@ -5697,6 +5735,15 @@
         objectUrl: URL.createObjectURL(file),
       });
     });
+    if (files.length) {
+      const body = files.map((f) => `${f.name} (${activityFileSizeLabel(f.size)})`).join(files.length > 1 ? " · " : "");
+      pushProspectActivityTimeline(rowKey, {
+        title: files.length > 1 ? "Documents uploaded" : "Document uploaded",
+        body,
+        by: PORTAL_CURRENT_USER.name,
+        stage: state.pipeline,
+      });
+    }
   }
 
   function removeDetailDocument(rowKey, docId) {
@@ -5741,6 +5788,13 @@
       authorName: PORTAL_CURRENT_USER.name,
       authorRole: PORTAL_CURRENT_USER.role,
     });
+    const preview = text.length > 140 ? `${text.slice(0, 137)}…` : text;
+    pushProspectActivityTimeline(rowKey, {
+      title: "Note added",
+      body: preview,
+      by: PORTAL_CURRENT_USER.name,
+      stage: state.pipeline,
+    });
     return true;
   }
 
@@ -5753,11 +5807,25 @@
     if (existing) {
       existing.body = text;
       existing.submittedAt = iso;
+      const preview = text.length > 140 ? `${text.slice(0, 137)}…` : text;
+      pushProspectActivityTimeline(rowKey, {
+        title: "Note updated",
+        body: preview,
+        by: PORTAL_CURRENT_USER.name,
+        stage: state.pipeline,
+      });
       return true;
     }
     if (DETAIL_NOTES_SEED.some((s) => s.id === id)) {
       if (!state.detailNoteEdits[rowKey]) state.detailNoteEdits[rowKey] = Object.create(null);
       state.detailNoteEdits[rowKey][id] = { body: text, submittedAt: iso };
+      const preview = text.length > 140 ? `${text.slice(0, 137)}…` : text;
+      pushProspectActivityTimeline(rowKey, {
+        title: "Note updated",
+        body: preview,
+        by: PORTAL_CURRENT_USER.name,
+        stage: state.pipeline,
+      });
       return true;
     }
     return false;
@@ -5768,9 +5836,21 @@
     const idx = list.findIndex((n) => n.id === id);
     if (idx >= 0) {
       list.splice(idx, 1);
+      pushProspectActivityTimeline(rowKey, {
+        title: "Note deleted",
+        body: "A note was removed from this prospect.",
+        by: PORTAL_CURRENT_USER.name,
+        stage: state.pipeline,
+      });
     } else if (DETAIL_NOTES_SEED.some((s) => s.id === id)) {
       if (!state.detailNoteDeletedIds[rowKey]) state.detailNoteDeletedIds[rowKey] = [];
       if (state.detailNoteDeletedIds[rowKey].indexOf(id) === -1) state.detailNoteDeletedIds[rowKey].push(id);
+      pushProspectActivityTimeline(rowKey, {
+        title: "Note deleted",
+        body: "A seeded note was removed from this prospect.",
+        by: PORTAL_CURRENT_USER.name,
+        stage: state.pipeline,
+      });
     }
     if (state.detailNoteEdits[rowKey]) delete state.detailNoteEdits[rowKey][id];
   }
@@ -5819,27 +5899,51 @@
     return s.charAt(0).toUpperCase() + s.slice(1);
   }
 
-  function ensureDetailActivityList(rowKey) {
-    if (!state.detailActivityFeedByProspect[rowKey]) {
-      state.detailActivityFeedByProspect[rowKey] = [];
+  /** Persist one Activity timeline row on the prospect enrolment (`PROSPECTS[].activityTimeline`) and sync `state.detail.timeline` when open. */
+  function pushProspectActivityTimeline(rowKey, opts) {
+    const p = opts != null && typeof opts === "object" ? opts : {};
+    const title = p.title;
+    const body = p.body;
+    const by = p.by;
+    const stage = p.stage;
+    const rk = rowKey != null ? String(rowKey).trim() : "";
+    if (!rk || title == null || String(title).trim() === "") return;
+    const prow = PROSPECTS.find((x) => x.rowKey === rk);
+    if (!prow) return;
+    if (!Array.isArray(prow.activityTimeline)) prow.activityTimeline = [];
+    const byName = by != null ? String(by) : PORTAL_CURRENT_USER.name;
+    const st =
+      stage != null && typeof stage === "string" && PIPELINE_KEYS.includes(stage)
+        ? stage
+        : state.pipeline && PIPELINE_KEYS.includes(state.pipeline)
+          ? state.pipeline
+          : "qualified";
+    prow.activityTimeline.unshift({
+      stage: st,
+      dateTime: formatActivityDisplayTime(new Date()),
+      title: String(title).trim(),
+      body: body != null ? String(body) : "",
+      by: byName,
+    });
+    if (state.detail?.rowKey === rk) {
+      try {
+        state.detail.timeline =
+          typeof structuredClone === "function"
+            ? structuredClone(prow.activityTimeline)
+            : prow.activityTimeline.map((ev) => (ev && typeof ev === "object" ? { ...ev } : {}));
+      } catch (_) {
+        state.detail.timeline = prow.activityTimeline.map((ev) => (ev && typeof ev === "object" ? { ...ev } : {}));
+      }
     }
-    return state.detailActivityFeedByProspect[rowKey];
   }
 
-  function appendDetailActivity(rowKey, { title, body, by, stage }) {
-    ensureDetailActivityList(rowKey).push({
-      id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
-      atIso: new Date().toISOString(),
-      title,
-      body,
-      by: by != null ? by : PORTAL_CURRENT_USER.name,
-      stage: stage != null ? stage : state.pipeline,
-    });
+  function appendDetailActivity(rowKey, payload) {
+    if (payload == null || typeof payload !== "object") return;
+    pushProspectActivityTimeline(rowKey, payload);
   }
 
   /**
-   * Full activity feed for overview: registration, seeded/historical timeline rows, uploads, notes, and session log
-   * (profile saves, pipeline moves, completed tasks). Newest first.
+   * Full activity feed: registration plus `d.timeline` (profile, screening, documents, notes, tasks, etc.). Newest first.
    */
   function buildDetailActivityFeed(rowKey, d) {
     const items = [];
@@ -5864,70 +5968,19 @@
     const timelineSrc = Array.isArray(d?.timeline) ? d.timeline : [];
     const legacyFallback = Date.UTC(2019, 0, 1);
     timelineSrc.forEach((ev, idx) => {
+      if (!ev || typeof ev !== "object") return;
       let sortKey = parseDisplayDateTimeToMs(ev.dateTime);
       if (!sortKey) sortKey = legacyFallback + idx * 60000;
       items.push({
         sortKey,
         id: `feed-tl-${rowKey}-${idx}`,
         dateDisplay: String(ev.dateTime != null ? ev.dateTime : ev.time || "—"),
-        title: ev.title,
-        body: ev.body,
-        by: ev.by,
-        stage: ev.stage,
+        title: ev.title != null ? ev.title : "",
+        body: ev.body != null ? ev.body : "",
+        by: ev.by != null ? ev.by : "—",
+        stage: ev.stage != null ? ev.stage : null,
       });
     });
-
-    const docs = state.detailDocumentsByProspect[rowKey];
-    if (Array.isArray(docs)) {
-      docs.forEach((doc) => {
-        const uploaded = doc.uploadedAt ? new Date(doc.uploadedAt) : new Date();
-        const ms = uploaded.getTime();
-        items.push({
-          sortKey: ms,
-          id: `feed-doc-${doc.id}`,
-          dateDisplay: formatActivityDisplayTime(uploaded),
-          title: "Document uploaded",
-          body: `${doc.name} (${activityFileSizeLabel(doc.size)})`,
-          by: PORTAL_CURRENT_USER.name,
-          stage: null,
-        });
-      });
-    }
-
-    const userNotes = state.detailNotesByProspect[rowKey];
-    if (Array.isArray(userNotes)) {
-      userNotes.forEach((note) => {
-        const at = new Date(note.submittedAt);
-        const ms = at.getTime();
-        const preview = note.body.length > 140 ? `${note.body.slice(0, 137)}…` : note.body;
-        items.push({
-          sortKey: ms,
-          id: `feed-note-${note.id}`,
-          dateDisplay: formatActivityDisplayTime(at),
-          title: "Note added",
-          body: preview,
-          by: note.authorName,
-          stage: null,
-        });
-      });
-    }
-
-    const feed = state.detailActivityFeedByProspect[rowKey];
-    if (Array.isArray(feed)) {
-      feed.forEach((ev) => {
-        const at = new Date(ev.atIso);
-        const ms = at.getTime();
-        items.push({
-          sortKey: Number.isNaN(ms) ? 0 : ms,
-          id: ev.id,
-          dateDisplay: formatActivityDisplayTime(at),
-          title: ev.title,
-          body: ev.body,
-          by: ev.by,
-          stage: ev.stage,
-        });
-      });
-    }
 
     items.sort((a, b) => b.sortKey - a.sortKey || String(b.id).localeCompare(String(a.id)));
     return items.map((item) => {
@@ -7987,8 +8040,8 @@
     const onClassicScreenings =
       (state.route === "detail" && state.detailTab === "screening") ||
       (state.route === "prospectv3" && state.prospectV3Tab === "screenings");
-    const classicModalsOkOnList = state.route === "list";
-    if (!onClassicScreenings && !classicModalsOkOnList) {
+    const classicModalsOkOnListOrScreeningFlow = state.route === "list" || state.route === "screening";
+    if (!onClassicScreenings && !classicModalsOkOnListOrScreeningFlow) {
       state.classicScreeningUpdateModalId = null;
     }
 
@@ -8774,6 +8827,182 @@
     return { ageMin: min, ageMax: max };
   }
 
+  function readListFiltersFromForm() {
+    const chips = (group) =>
+      [...document.querySelectorAll(`#list-filter-form [data-lf-group="${group}"].is-selected`)].map((el) =>
+        el.getAttribute("data-value")
+      );
+    const minEl = document.getElementById("lf-age-min");
+    const maxEl = document.getElementById("lf-age-max");
+    const { ageMin, ageMax } = normalizeAgeFilterValues(minEl, maxEl);
+    const dr = normalizeListFilterDateRangeEl(document.getElementById("lf-dr-from"), document.getElementById("lf-dr-to"));
+    const nr = normalizeListFilterDateRangeEl(document.getElementById("lf-nr-from"), document.getElementById("lf-nr-to"));
+    state.listFilters = {
+      stages: chips("stage"),
+      genders: chips("gender"),
+      risks: chips("risk"),
+      ageMin,
+      ageMax,
+      dateRegisteredFrom: dr.from,
+      dateRegisteredTo: dr.to,
+      nextReviewFrom: nr.from,
+      nextReviewTo: nr.to,
+      appointmentTypes: chips("appointmentType"),
+      attendances: chips("attendance"),
+      sourceTypes: chips("sourceType"),
+    };
+  }
+
+  /** Sync open filter modal controls to `state.listFilters` without re-rendering the dialog. */
+  function syncListFilterFormFromState() {
+    const form = document.getElementById("list-filter-form");
+    if (!form) return;
+    const f = state.listFilters;
+    const map = {
+      stage: "stages",
+      gender: "genders",
+      risk: "risks",
+      appointmentType: "appointmentTypes",
+      attendance: "attendances",
+      sourceType: "sourceTypes",
+    };
+    form.querySelectorAll("[data-lf-chip]").forEach((btn) => {
+      const g = btn.getAttribute("data-lf-group");
+      const v = btn.getAttribute("data-value");
+      const arrKey = map[g];
+      if (!arrKey || v == null) return;
+      const arr = f[arrKey] || [];
+      const on = arr.includes(v);
+      btn.classList.toggle("is-selected", on);
+      btn.setAttribute("aria-pressed", String(on));
+    });
+    const drFrom = document.getElementById("lf-dr-from");
+    const drTo = document.getElementById("lf-dr-to");
+    const nrFrom = document.getElementById("lf-nr-from");
+    const nrTo = document.getElementById("lf-nr-to");
+    if (drFrom) drFrom.value = f.dateRegisteredFrom || "";
+    if (drTo) drTo.value = f.dateRegisteredTo || "";
+    if (nrFrom) nrFrom.value = f.nextReviewFrom || "";
+    if (nrTo) nrTo.value = f.nextReviewTo || "";
+    const minEl = document.getElementById("lf-age-min");
+    const maxEl = document.getElementById("lf-age-max");
+    const amin = Number.isFinite(f.ageMin) ? f.ageMin : 18;
+    const amax = Number.isFinite(f.ageMax) ? f.ageMax : 100;
+    if (minEl) minEl.value = String(amin);
+    if (maxEl) maxEl.value = String(amax);
+  }
+
+  /** Prospect list page: KPI, search, filters modal actions, sort, view toggle, kanban cards. */
+  function bindProspectListPageInteractionsOnly() {
+    document.querySelectorAll("[data-prospect-kpi]").forEach((el) => {
+      const onActivate = () => {
+        const key = el.getAttribute("data-prospect-kpi");
+        if (!key) return;
+        const already = state.listKpiActive === key;
+        const clear = already || key === "total";
+        if (clear) {
+          state.listKpiActive = null;
+          if (state.listKpiPrevSort) {
+            state.listSort = state.listKpiPrevSort;
+            state.listKpiPrevSort = null;
+          }
+          renderApp();
+          return;
+        }
+
+        if (!state.listKpiActive && !state.listKpiPrevSort) {
+          state.listKpiPrevSort = { ...state.listSort };
+        }
+        state.listKpiActive = key;
+        if (key === "highrisk") state.listSort = { key: "risk", dir: "desc" };
+        else if (key === "firsttime") state.listSort = { key: "dateRegistered", dir: "desc" };
+        else if (key === "followup") state.listSort = { key: "nextReview", dir: "asc" };
+        else if (key === "qualified" || key === "booked" || key === "screened") state.listSort = { key: "nextReview", dir: "asc" };
+        renderApp();
+      };
+      el.addEventListener("click", (e) => {
+        e.preventDefault();
+        onActivate();
+      });
+      el.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        onActivate();
+      });
+    });
+
+    const search = document.getElementById("prospect-search");
+    if (search) {
+      search.addEventListener("input", () => {
+        state.search = search.value;
+        clearTimeout(searchDebounce);
+        searchDebounce = setTimeout(() => {
+          renderApp();
+          const again = document.getElementById("prospect-search");
+          if (again) {
+            again.focus();
+            again.setSelectionRange(again.value.length, again.value.length);
+          }
+        }, 200);
+      });
+    }
+
+    document.getElementById("btn-list-filters")?.addEventListener("click", () => {
+      state.filterModal = true;
+      renderApp();
+    });
+
+    document.querySelectorAll("[data-view]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.view = btn.getAttribute("data-view");
+        setStoredListView(state.view);
+        const h = state.view === "kanban" ? "#/kanban" : "#/list";
+        if (location.hash !== h) location.hash = h;
+        else renderApp();
+      });
+    });
+
+    document.getElementById("list-filter-apply")?.addEventListener("click", () => {
+      readListFiltersFromForm();
+      state.filterModal = false;
+      renderApp();
+    });
+
+    document.getElementById("list-filter-clear")?.addEventListener("click", () => {
+      state.listFilters = createDefaultListFilters();
+      syncListFilterFormFromState();
+      if (state.route === "list") {
+        refreshProspectsListingDomFromState();
+      } else {
+        renderApp();
+      }
+      requestAnimationFrame(() => {
+        document.getElementById("list-filter-clear")?.focus();
+      });
+    });
+
+    document.querySelectorAll("[data-list-sort]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const k = btn.getAttribute("data-list-sort");
+        if (!k) return;
+        if (state.listSort.key === k) {
+          state.listSort.dir = state.listSort.dir === "asc" ? "desc" : "asc";
+        } else {
+          state.listSort.key = k;
+          state.listSort.dir = "asc";
+        }
+        renderApp();
+      });
+    });
+
+    document.querySelectorAll("[data-kanban-card]").forEach((card) => {
+      card.addEventListener("click", () => {
+        const rk = card.getAttribute("data-kanban-prospect");
+        if (rk) location.hash = `#/prospect/${encodeURIComponent(rk)}/screening`;
+      });
+    });
+  }
+
   function bindEvents() {
     // Classic screening update modal: auto-calc next review date from review period (user can override).
     (function bindClassicScreeningReviewAutoCalc() {
@@ -8842,46 +9071,11 @@
       applyAuto();
     })();
 
-    document.querySelectorAll("[data-prospect-kpi]").forEach((el) => {
-      const onActivate = () => {
-        const key = el.getAttribute("data-prospect-kpi");
-        if (!key) return;
-        const already = state.listKpiActive === key;
-        const clear = already || key === "total";
-        if (clear) {
-          state.listKpiActive = null;
-          if (state.listKpiPrevSort) {
-            state.listSort = state.listKpiPrevSort;
-            state.listKpiPrevSort = null;
-          }
-          renderApp();
-          return;
-        }
-
-        if (!state.listKpiActive && !state.listKpiPrevSort) {
-          state.listKpiPrevSort = { ...state.listSort };
-        }
-        state.listKpiActive = key;
-        // KPI cards act as quick filters + opinionated sort defaults.
-        if (key === "highrisk") state.listSort = { key: "risk", dir: "desc" };
-        else if (key === "firsttime") state.listSort = { key: "dateRegistered", dir: "desc" };
-        else if (key === "followup") state.listSort = { key: "nextReview", dir: "asc" };
-        else if (key === "qualified" || key === "booked" || key === "screened") state.listSort = { key: "nextReview", dir: "asc" };
-        renderApp();
-      };
-      el.addEventListener("click", (e) => {
-        e.preventDefault();
-        onActivate();
-      });
-      el.addEventListener("keydown", (e) => {
-        if (e.key !== "Enter" && e.key !== " ") return;
-        e.preventDefault();
-        onActivate();
-      });
-    });
-
     // Prospect detail Notes tab: in-panel search (filters note body text)
-    if (state.route === "detail" && state.detailTab === "notes") {
+    const onNotesTab =
+      (state.route === "detail" && state.detailTab === "notes") ||
+      (state.route === "prospectv3" && state.prospectV3Tab === "notes");
+    if (onNotesTab) {
       const rowKey = state.detail?.rowKey || state.detail?.id || "";
       const inp = document.querySelector("[data-detail-notes-search]");
       if (rowKey && inp instanceof HTMLInputElement) {
@@ -8953,16 +9147,6 @@
         if (!rk) return;
         state.prospectListActionsOpenRowKey = state.prospectListActionsOpenRowKey === rk ? null : rk;
         renderApp();
-      });
-    });
-
-    document.querySelectorAll("[data-view]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        state.view = btn.getAttribute("data-view");
-        setStoredListView(state.view);
-        const h = state.view === "kanban" ? "#/kanban" : "#/list";
-        if (location.hash !== h) location.hash = h;
-        else renderApp();
       });
     });
 
@@ -9080,7 +9264,6 @@
         attendances: [],
         sourceTypes: [],
       };
-      state.filterModal = false;
       renderApp();
     });
 
@@ -9912,7 +10095,18 @@
               : panelAttr === "medical-history"
                 ? "Medical History"
                 : "Other Details";
-          appendDetailActivity(state.detail.rowKey, {
+          if (stateKey === "details") {
+            const nowIso = new Date().toISOString();
+            const by = PORTAL_CURRENT_USER.name;
+            state.detail.lastUpdated = nowIso;
+            state.detail.lastUpdatedBy = by;
+            const prow = PROSPECTS.find((x) => x.rowKey === state.detail.rowKey);
+            if (prow) {
+              prow.profileLastUpdatedAt = nowIso;
+              prow.profileLastUpdatedBy = by;
+            }
+          }
+          pushProspectActivityTimeline(state.detail.rowKey, {
             title: "Profile updated",
             body: `${panelLabel} information was saved.`,
             by: PORTAL_CURRENT_USER.name,
@@ -9957,7 +10151,10 @@
 
     if (state.route === "detail" || state.route === "prospectv3") {
       const notesPageBtn = el?.closest?.("[data-detail-notes-page]");
-      if (notesPageBtn && state.detailTab === "notes") {
+      const onNotesTab =
+        (state.route === "detail" && state.detailTab === "notes") ||
+        (state.route === "prospectv3" && state.prospectV3Tab === "notes");
+      if (notesPageBtn && onNotesTab) {
         e.preventDefault();
         const rowKey = state.detail?.rowKey || state.detail?.id || "";
         if (!rowKey) return;
@@ -10154,7 +10351,8 @@
     const classicScrTable =
       (state.route === "detail" && state.detailTab === "screening") ||
       (state.route === "prospectv3" && state.prospectV3Tab === "screenings") ||
-      state.route === "list";
+      state.route === "list" ||
+      state.route === "screening";
     const classicUpdBtn = el?.closest("[data-classic-screening-update]");
     if (classicUpdBtn && classicScrTable) {
       e.preventDefault();
