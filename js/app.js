@@ -473,6 +473,8 @@
     /** Classic collapsible screening records table (Prospect V1 + classic detail): filter + expanded row */
     classicScreeningFilter: "all",
     classicScreeningExpandedId: null,
+    /** When true, all visible screening rows show expanded details (toolbar). */
+    classicScreeningExpandAll: false,
     /** id → partial raw record fields merged onto `#wd-classic-screening-records` seed (prototype session). */
     classicScreeningEditById: {},
     classicScreeningUpdateModalId: null,
@@ -2035,6 +2037,23 @@
   }
 
   /**
+   * Screening record id for the programme chosen on the prospect listing row, using every enrolment `rowKey`
+   * for this person (so Collapse / default expand match the table that lists all programmes).
+   */
+  function pickClassicScreeningRecordIdForDetailProspect(programRaw, detail) {
+    if (!detail) return null;
+    const typeKey = screeningTypeKeyFromListProgram(programRaw);
+    if (!typeKey) return null;
+    const rowKeys = prospectEnrolmentRowsForDetail(detail).map((r) => r.rowKey).filter(Boolean);
+    if (!rowKeys.length) return null;
+    const records = getClassicScreeningRecordsCatalog({ rowKeys });
+    const fk = classicScreeningFilterKey();
+    const visible = fk === "all" ? records : records.filter((r) => r.type?.key === fk);
+    const hit = visible.find((r) => r.type?.key === typeKey);
+    return hit ? hit.id : null;
+  }
+
+  /**
    * After navigation to classic / v1 screening table: align chip filter with list programme (new prospect)
    * and expand the matching record. Re-renders on the same view preserve manual expand/collapse.
    */
@@ -2050,10 +2069,11 @@
     const sig = `${state.route}|${rid}`;
     if (lastScreeningExpandSig === sig) return;
     lastScreeningExpandSig = sig;
+    state.classicScreeningExpandAll = false;
     const prog = state.detail?.activeListProgram;
     const fk = classicScreeningFilterKeyFromListProgram(prog);
     if (fk) state.classicScreeningFilter = fk;
-    const id = pickClassicScreeningRecordIdForListProgram(prog, state.detail?.rowKey);
+    const id = pickClassicScreeningRecordIdForDetailProspect(prog, state.detail);
     state.classicScreeningExpandedId = id || null;
   }
 
@@ -2303,13 +2323,14 @@
     const filterKey = classicScreeningFilterKey();
     const visible = filterKey === "all" ? records : records.filter((r) => r.type?.key === filterKey);
     const exp = state.classicScreeningExpandedId;
+    const expandAll = !!state.classicScreeningExpandAll;
 
     const tbody =
       visible.length === 0
         ? `<tr><td colspan="10"><p class="placeholder-block" style="margin:0">No screening records found.</p></td></tr>`
         : visible
             .map((r) => {
-              const open = exp === r.id;
+              const open = expandAll || exp === r.id;
               const appt = r.appointment
                 ? `<div class="cell-stack"><span>${esc(r.appointment.date)}</span><span class="cell-muted">${esc(
                     r.appointment.time
@@ -2369,6 +2390,11 @@
               <button type="button" class="ui-chip ${filterKey === "MMG" ? "is-selected" : ""}" data-classic-screening-filter="MMG" aria-pressed="${filterKey === "MMG"}">Mammogram (${counts.MMG})</button>
               <button type="button" class="ui-chip ${filterKey === "FIT" ? "is-selected" : ""}" data-classic-screening-filter="FIT" aria-pressed="${filterKey === "FIT"}">FIT Kit (${counts.FIT})</button>
               <button type="button" class="ui-chip ${filterKey === "PAP" ? "is-selected" : ""}" data-classic-screening-filter="PAP" aria-pressed="${filterKey === "PAP"}">HPV/PAP (${counts.PAP})</button>
+            </div>
+            <div class="screening-records-toolbar__actions" role="group" aria-label="Row expansion">
+              <button type="button" class="ui-btn ui-btn--ghost ui-btn--sm screening-records-expand-toggle" data-classic-screening-expand-toggle aria-pressed="${expandAll}">
+                ${expandAll ? "Collapse All" : "Expand All"}
+              </button>
             </div>
           </div>
           <table class="data-table data-table--screening-records" aria-label="Screening records">
@@ -4374,6 +4400,7 @@
   function renderDetailPage() {
     normalizeDetailTab();
     const d = state.detail;
+    const details = state.detailFormValues?.details || {};
     const programTagsHtml = detailProgramTagsHtml(d.programTags);
     const tabs = [
       ["details", "Personal Details"],
@@ -4403,8 +4430,8 @@
           </div>
           <div class="detail-hero__meta detail-hero__meta--tags">
             ${programTagsHtml.trim() ? programTagsHtml : ""}
-            <span class="detail-hero__risk-inline">${riskLevelIndicator(d.risk)}</span>
           </div>
+          ${renderProspectV1KeyInfoStripHtml(d, details, { extraClass: "detail-hero__key-strip" })}
         </div>
       </section>
       <div class="detail-sticky-chrome detail-sticky-chrome--primary-bundle">
@@ -4597,6 +4624,63 @@
     if (!s) return "—";
     if (s.length <= 5) return `${s.charAt(0)}****`;
     return `${s.charAt(0)}****${s.slice(-4)}`;
+  }
+
+  /**
+   * v1 key-info strip: merge Personal Details form state with `PROSPECTS` row + `REG_EXISTING_CLIENTS` (name match).
+   */
+  function prospectKeyInfoStripFields(d, details) {
+    const det = details && typeof details === "object" ? details : {};
+    const pickStr = (v) => (v != null && String(v).trim() !== "" ? String(v).trim() : "");
+    const listRow =
+      PROSPECTS.find((x) => x.rowKey === d.rowKey) || PROSPECTS.find((x) => x.id === d.id) || null;
+    const reg = findRegExistingClientByName(d.name || listRow?.name);
+    const nricRaw = pickStr(det.nric) || pickStr(reg?.nric);
+    let nricDisplay = "—";
+    if (nricRaw) nricDisplay = v3MaskNricForProfileDisplay(nricRaw);
+    else {
+      const masked = pickStr(listRow?.maskedNric);
+      if (masked) nricDisplay = masked;
+    }
+    const contact =
+      pickStr(det.contact) || pickStr(det.mobile) || pickStr(listRow?.phone) || pickStr(reg?.phone) || "—";
+    const chas = pickStr(det.chasCardType) || "—";
+    const healthierSgLabel = v3BiodataHealthierSgLabel(det.healthierSg);
+    return {
+      nricDisplay,
+      contact,
+      chas,
+      healthierSgLabel,
+      risk: d.risk,
+    };
+  }
+
+  function renderProspectV1KeyInfoStripHtml(d, details, opts) {
+    opts = opts || {};
+    const f = prospectKeyInfoStripFields(d, details);
+    const extraClass = opts.extraClass ? String(opts.extraClass).trim() : "";
+    return `<div class="v1-strip${extraClass ? ` ${escapeAttr(extraClass)}` : ""}" role="list" aria-label="Key info">
+          <div class="v1-strip__item" role="listitem">
+            <div class="v1-strip__label">NRIC</div>
+            <div class="v1-strip__value">${escapeAttr(f.nricDisplay)}</div>
+          </div>
+          <div class="v1-strip__item" role="listitem">
+            <div class="v1-strip__label">Contact</div>
+            <div class="v1-strip__value">${escapeAttr(f.contact)}</div>
+          </div>
+          <div class="v1-strip__item" role="listitem">
+            <div class="v1-strip__label">CHAS Card</div>
+            <div class="v1-strip__value">${escapeAttr(f.chas)}</div>
+          </div>
+          <div class="v1-strip__item" role="listitem">
+            <div class="v1-strip__label">HealthierSG</div>
+            <div class="v1-strip__value">${escapeAttr(f.healthierSgLabel)}</div>
+          </div>
+          <div class="v1-strip__item" role="listitem">
+            <div class="v1-strip__label">Risk level</div>
+            <div class="v1-strip__value v1-strip__value--stack">${riskLevelIndicator(f.risk)}</div>
+          </div>
+        </div>`;
   }
 
   function v3BiodataModalFormHtml(e, d, details) {
@@ -5213,7 +5297,6 @@
 
     const listRow =
       PROSPECTS.find((x) => x.rowKey === d.rowKey) || PROSPECTS.find((x) => x.id === d.id) || null;
-    const maskedNric = v3MaskNricForProfileDisplay(details.nric);
     const v1ActiveScreeningLabel = v1ClientActiveScreeningLabel(d.activeListProgram);
     const v1DemoGender = v1ProspectDisplayGender(details, listRow);
     const v1DemoAge = v1ProspectDisplayAge(details, listRow);
@@ -5235,30 +5318,7 @@
           </div>
         </div>
 
-        <div class="v1-strip" role="list" aria-label="Key info">
-          <div class="v1-strip__item" role="listitem">
-            <div class="v1-strip__label">NRIC</div>
-            <div class="v1-strip__value v1-mono">${escapeAttr(maskedNric)}</div>
-          </div>
-          <div class="v1-strip__item" role="listitem">
-            <div class="v1-strip__label">Contact</div>
-            <div class="v1-strip__value">${escapeAttr(details.contact || details.mobile || "—")}</div>
-          </div>
-          <div class="v1-strip__item" role="listitem">
-            <div class="v1-strip__label">CHAS Card</div>
-            <div class="v1-strip__value">${escapeAttr(details.chasCardType || "—")}</div>
-          </div>
-          <div class="v1-strip__item" role="listitem">
-            <div class="v1-strip__label">HealthierSG</div>
-            <div class="v1-strip__value">${escapeAttr(v3BiodataHealthierSgLabel(details.healthierSg))}</div>
-          </div>
-          <div class="v1-strip__item" role="listitem">
-            <div class="v1-strip__label">Risk level</div>
-            <div class="v1-strip__value v1-strip__value--stack">
-              ${riskLevelIndicator(d.risk)}
-            </div>
-          </div>
-        </div>
+        ${renderProspectV1KeyInfoStripHtml(d, details)}
 
         <div class="detail-tabs v1-profile-header__tabs" role="tablist" aria-label="Prospect v1 tabs">
           ${[
@@ -5303,6 +5363,7 @@
     } else if (tab === "biodata") {
       const val = (v) => (v != null && String(v).trim() ? String(v) : "—");
       const { firstName, lastName } = v3BiodataNameParts(d, details);
+      const maskedNric = prospectKeyInfoStripFields(d, details).nricDisplay;
       const postalRaw =
         details.postalCode != null && String(details.postalCode).trim() !== ""
           ? String(details.postalCode).trim()
@@ -8636,10 +8697,29 @@
       return;
     }
 
+    if (state.route === "bishanClinics") {
+      app.innerHTML = `
+      <div class="app-shell app-shell--bishan-flow">
+        <div class="bishan-sticky-chrome">
+          ${renderHeader()}
+        </div>
+        <div class="app-content app-content--bishan-flow">
+          <main class="app-main app-main--bishan-fullbleed">
+            <div id="bishan-scroll-root" class="app-main--bishan-scroll">
+              ${main}
+              ${renderAppFooter()}
+            </div>
+          </main>
+        </div>
+      </div>
+      ${renderModal()}
+    `;
+      bindEvents();
+      return;
+    }
+
     const mainCls =
-      state.route === "bishanClinics"
-        ? "app-main app-main--bishan-fullbleed"
-        : state.route === "list" || state.route === "fitKitTracker"
+      state.route === "list" || state.route === "fitKitTracker"
           ? "app-main app-main--prospects-fullbleed"
           : "app-main";
     app.innerHTML = `
@@ -9044,6 +9124,210 @@
     });
   }
 
+  function ageFromRegistrationDob(dobDdMmYyyyHyphen) {
+    const s = String(dobDdMmYyyyHyphen || "")
+      .trim()
+      .replace(/^(\d{2})-(\d{2})-(\d{4})$/, "$1/$2/$3");
+    return ageFromDobDdMmYyyy(s);
+  }
+
+  function readRegistrationNricFromForm(form, storeInputName) {
+    const el = form?.elements?.namedItem(storeInputName);
+    if (el instanceof HTMLInputElement) return String(el.value || "").trim();
+    return "";
+  }
+
+  function nextProspectListId() {
+    let max = 0;
+    for (const p of PROSPECTS) {
+      const m = String(p.id || "").match(/^PROS-(\d+)$/i);
+      if (m) max = Math.max(max, parseInt(m[1], 10));
+    }
+    const next = max + 1;
+    return `PROS-${String(next).padStart(6, "0")}`;
+  }
+
+  function registrationProgrammeLabel() {
+    const p = String(state.registerProgram || "mammobus").toLowerCase();
+    if (p === "hpv") return "HPV";
+    if (p === "fit") return "FIT";
+    return "Mammobus";
+  }
+
+  function registrationTimelineNowString() {
+    return new Date().toLocaleString("en-SG", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  }
+
+  function pushRegClientFromRegistrationIfNew(entry) {
+    const name = String(entry.name || "").trim();
+    if (!name || findRegExistingClientByName(name)) return;
+    const nric = String(entry.nric || "").trim();
+    if (!nric) return;
+    REG_EXISTING_CLIENTS.push({
+      name,
+      nric,
+      residential: String(entry.residential || "Citizen").trim() || "Citizen",
+      dob: String(entry.dob || "").trim(),
+      gender: String(entry.gender || "").trim(),
+      race: String(entry.race || "").trim(),
+      phone: String(entry.phone || "").trim(),
+      email: String(entry.email || "").trim(),
+      block: String(entry.block || "").trim(),
+      street: String(entry.street || "").trim(),
+      floor: String(entry.floor || "").trim(),
+      unit: String(entry.unit || "").trim(),
+      postal: String(entry.postal || "").trim(),
+      country: String(entry.country || "Singapore").trim() || "Singapore",
+    });
+  }
+
+  function buildProspectRowFromRegistrationForm(form) {
+    const prog = String(state.registerProgram || "mammobus").toLowerCase();
+    const programLabel = registrationProgrammeLabel();
+
+    let fullName = "";
+    let nricFieldName = "nric";
+    let dob = "";
+    let gender = "";
+    let phone = "";
+    let email = "";
+    let residential = "";
+    let race = "";
+    let block = "";
+    let street = "";
+    let floor = "";
+    let unit = "";
+    let postal = "";
+    let country = "Singapore";
+    let sourceType = "";
+    let sourceDetail = "";
+
+    if (prog === "hpv") {
+      fullName = String(form.elements.namedItem("hpvFullName")?.value || "").trim();
+      nricFieldName = "hpvNric";
+      dob = String(form.elements.namedItem("hpvDob")?.value || "").trim();
+      gender = String(form.elements.namedItem("hpvGender")?.value || "").trim();
+      phone = String(form.elements.namedItem("hpvMobile")?.value || "").trim();
+      email = String(form.elements.namedItem("hpvEmail")?.value || "").trim();
+      residential = String(form.elements.namedItem("hpvResidential")?.value || "").trim();
+      race = String(form.elements.namedItem("hpvRace")?.value || "").trim();
+      block = String(form.elements.namedItem("hpvBlock")?.value || "").trim();
+      street = String(form.elements.namedItem("hpvStreet")?.value || "").trim();
+      floor = String(form.elements.namedItem("hpvFloor")?.value || "").trim();
+      unit = String(form.elements.namedItem("hpvUnit")?.value || "").trim();
+      postal = String(form.elements.namedItem("hpvPostal")?.value || "").trim();
+      country = String(form.elements.namedItem("hpvCountry")?.value || "").trim() || "Singapore";
+      sourceType = String(form.elements.namedItem("hpvSourceType")?.value || "").trim();
+      sourceDetail = String(form.elements.namedItem("hpvCampaignName")?.value || "").trim();
+    } else if (prog === "fit") {
+      fullName = String(form.elements.namedItem("fitFullName")?.value || "").trim();
+      nricFieldName = "fitNric";
+      dob = String(form.elements.namedItem("fitDob")?.value || "").trim();
+      gender = String(form.elements.namedItem("fitGender")?.value || "").trim();
+      phone = String(form.elements.namedItem("fitContact")?.value || "").trim();
+      email = String(form.elements.namedItem("fitEmail")?.value || "").trim();
+      residential = String(form.elements.namedItem("fitResidential")?.value || "").trim();
+      race = String(form.elements.namedItem("fitRace")?.value || "").trim();
+      block = String(form.elements.namedItem("fitBlock")?.value || "").trim();
+      street = String(form.elements.namedItem("fitStreet")?.value || "").trim();
+      floor = String(form.elements.namedItem("fitFloor")?.value || "").trim();
+      unit = String(form.elements.namedItem("fitUnit")?.value || "").trim();
+      postal = String(form.elements.namedItem("fitPostal")?.value || "").trim();
+      country = String(form.elements.namedItem("fitCountry")?.value || "").trim() || "Singapore";
+      sourceType = String(form.elements.namedItem("fitSourceType")?.value || "").trim();
+      sourceDetail = String(form.elements.namedItem("fitCampaignName")?.value || "").trim();
+    } else {
+      fullName = String(form.elements.namedItem("fullName")?.value || "").trim();
+      nricFieldName = "nric";
+      dob = String(form.elements.namedItem("dob")?.value || "").trim();
+      gender = String(form.elements.namedItem("gender")?.value || "").trim();
+      phone = String(form.elements.namedItem("phone")?.value || "").trim();
+      email = String(form.elements.namedItem("email")?.value || "").trim();
+      residential = String(form.elements.namedItem("residential")?.value || "").trim();
+      race = String(form.elements.namedItem("race")?.value || "").trim();
+      block = String(form.elements.namedItem("block")?.value || "").trim();
+      street = String(form.elements.namedItem("street")?.value || "").trim();
+      floor = String(form.elements.namedItem("floor")?.value || "").trim();
+      unit = String(form.elements.namedItem("unit")?.value || "").trim();
+      postal = String(form.elements.namedItem("postal")?.value || "").trim();
+      country = String(form.elements.namedItem("country")?.value || "").trim() || "Singapore";
+      sourceType = String(form.elements.namedItem("sourceType")?.value || "").trim();
+      sourceDetail = String(form.elements.namedItem("sourceName")?.value || "").trim();
+    }
+
+    const nric = readRegistrationNricFromForm(form, nricFieldName);
+    const age = ageFromRegistrationDob(dob);
+    const g =
+      gender.toLowerCase() === "male" ? "Male" : gender.toLowerCase() === "female" ? "Female" : "—";
+    const ageLabel = age != null ? `${age} years` : "—";
+    const ageGender = `${g}, ${ageLabel}`;
+
+    const id = nextProspectListId();
+    const rowKey = `${id}-${programLabel}`;
+    const todayIso = new Date().toISOString().slice(0, 10);
+
+    const atEl = form.querySelector('input[type="radio"][name="appointmentType"]:checked');
+    const appointmentTypeRaw =
+      atEl instanceof HTMLInputElement ? String(atEl.value || "").trim().toLowerCase() : "";
+
+    const row = {
+      rowKey,
+      id,
+      name: fullName,
+      maskedNric: v3MaskNricForProfileDisplay(nric),
+      program: programLabel,
+      ageGender,
+      phone: phone || "—",
+      email: email || "",
+      status: "qualified",
+      sourceType: sourceType || "—",
+      sourceDetail: sourceDetail || "",
+      risk: "low",
+      dateRegistered: todayIso,
+      nextReview: "",
+      attendance: "",
+      activityTimeline: [
+        {
+          stage: "qualified",
+          dateTime: registrationTimelineNowString(),
+          title: "Registration submitted",
+          body: state.registerSelfService
+            ? "Screening registration received via self-service link."
+            : "Screening registration submitted from staff portal.",
+          by: state.registerSelfService ? "Self-service" : "Registration portal",
+        },
+      ],
+    };
+
+    if (appointmentTypeRaw) row.appointmentType = appointmentTypeRaw;
+
+    const regClient = {
+      name: fullName,
+      nric,
+      residential,
+      dob,
+      gender,
+      race,
+      phone,
+      email,
+      block,
+      street,
+      floor,
+      unit,
+      postal,
+      country,
+    };
+
+    return { row, regClient };
+  }
+
   function bindEvents() {
     // Classic screening update modal: auto-calc next review date from review period (user can override).
     (function bindClassicScreeningReviewAutoCalc() {
@@ -9196,6 +9480,22 @@
       btn.addEventListener("click", () => {
         state.classicScreeningFilter = btn.getAttribute("data-classic-screening-filter") || "all";
         state.classicScreeningExpandedId = null;
+        state.classicScreeningExpandAll = false;
+        renderApp();
+      });
+    });
+
+    document.querySelectorAll("[data-classic-screening-expand-toggle]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (state.classicScreeningExpandAll) {
+          state.classicScreeningExpandAll = false;
+          state.classicScreeningExpandedId =
+            pickClassicScreeningRecordIdForDetailProspect(state.detail?.activeListProgram, state.detail) || null;
+        } else {
+          state.classicScreeningExpandAll = true;
+        }
         renderApp();
       });
     });
@@ -9204,7 +9504,12 @@
       const toggle = () => {
         const id = row.getAttribute("data-classic-screening-row");
         if (!id) return;
-        state.classicScreeningExpandedId = state.classicScreeningExpandedId === id ? null : id;
+        if (state.classicScreeningExpandAll) {
+          state.classicScreeningExpandAll = false;
+          state.classicScreeningExpandedId = id;
+        } else {
+          state.classicScreeningExpandedId = state.classicScreeningExpandedId === id ? null : id;
+        }
         renderApp();
       };
       row.addEventListener("click", (e) => {
@@ -9255,7 +9560,22 @@
 
     document.getElementById("registration-form")?.addEventListener("submit", (e) => {
       e.preventDefault();
-      showToast("Registration captured (prototype only).");
+      const form = e.target;
+      if (!(form instanceof HTMLFormElement)) return;
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+      const { row, regClient } = buildProspectRowFromRegistrationForm(form);
+      pushRegClientFromRegistrationIfNew(regClient);
+      ensureProspectChecklists(row);
+      PROSPECTS.unshift(row);
+      const rp = String(state.registerProgram || "mammobus").toLowerCase();
+      if (rp === "hpv") state.program = "hpv";
+      else if (rp === "fit") state.program = "fit";
+      else state.program = "mammobus";
+      showToast("Registration submitted. Prospect added to listing.");
+      location.hash = "#/list";
     });
 
     document.getElementById("copy-link")?.addEventListener("click", async () => {

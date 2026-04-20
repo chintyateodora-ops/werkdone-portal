@@ -104,20 +104,12 @@
       return iso;
     }
   }
-  /** Live line: "16 Apr 2026 · 12:08:57 SGT" */
-  function formatNowSGTClock() {
-    const utc = Date.now() + new Date().getTimezoneOffset() * 60000;
-    const sgt = new Date(utc + 8 * 3600000);
-    const a = sgt.toLocaleDateString("en-SG", { day: "numeric", month: "short", year: "numeric" });
-    const t = `${String(sgt.getHours()).padStart(2, "0")}:${String(sgt.getMinutes()).padStart(2, "0")}:${String(sgt.getSeconds()).padStart(2, "0")}`;
-    return `${a} · ${t} SGT`;
-  }
   /** Labels aligned with staging Bishan worklist (werkdone prospect admin). */
   const STAGE_UI_LABEL = {
     appointment: "Booked",
     no_test: "No Test",
     pending_result: "Pending Result",
-    doctor_input: "Doctor Review",
+    doctor_input: "Doctor Input",
     pending_print: "Pending Print",
     complete: "Complete",
   };
@@ -154,6 +146,49 @@
     else if (iv === "2 years") d.setFullYear(d.getFullYear() + 2);
     else if (iv === "3 years") d.setFullYear(d.getFullYear() + 3);
     return fd(d.getFullYear(), d.getMonth() + 1, d.getDate());
+  }
+  function addDaysIso(iso, n) {
+    const d = parseDt(iso);
+    d.setDate(d.getDate() + n);
+    return fd(d.getFullYear(), d.getMonth() + 1, d.getDate());
+  }
+  /** Monday (YYYY-MM-DD) of the ISO calendar week containing `iso`, week starts Monday. */
+  function mondayOfIso(iso) {
+    const d = parseDt(iso);
+    const day = d.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    d.setDate(d.getDate() + diff);
+    return fd(d.getFullYear(), d.getMonth() + 1, d.getDate());
+  }
+  function sundayOfWeekFromMonday(monIso) {
+    return addDaysIso(monIso, 6);
+  }
+  /** e.g. 12 – 18 Apr 2026 */
+  function fmtWeekRangeDisplay(monIso, sunIso) {
+    try {
+      const a = parseDt(monIso);
+      const b = parseDt(sunIso);
+      const y = a.getFullYear();
+      if (a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear()) {
+        const mo = a.toLocaleDateString("en-SG", { month: "short" });
+        return `${a.getDate()} – ${b.getDate()} ${mo} ${y}`;
+      }
+      return `${a.toLocaleDateString("en-SG", { day: "numeric", month: "short", year: "numeric" })} – ${b.toLocaleDateString(
+        "en-SG",
+        { day: "numeric", month: "short", year: "numeric" }
+      )}`;
+    } catch {
+      return monIso;
+    }
+  }
+  function weekGridSlotStarts() {
+    const s = [];
+    for (let m = 480; m <= 810; m += 30) s.push(m);
+    return s;
+  }
+  function getWeekStartIso(bc) {
+    if (bc.weekStartISO) return bc.weekStartISO;
+    return mondayOfIso(bc.calDate);
   }
   function sgtOff(off) {
     const d = nowSGT();
@@ -262,7 +297,7 @@
 
   /**
    * Replace the first N generated patients with demo profiles and give each a visit on `todayIso`
-   * so the queue board / worklist show every screening type × Kanban column. Populates `detailSeedsOut`
+   * so the worklist / week views show varied screening types. Populates `detailSeedsOut`
    * keyed by patient id for Medical History / Other Details tabs.
    */
   function applyBishanShowcaseData(pts, vis, todayIso, detailSeedsOut) {
@@ -1107,8 +1142,9 @@
       _bishanDetailSeeds: detailSeeds,
       detailFormEdit: null,
       detailFormDraft: null,
-      /** "queue" = card queue board, "worklist" = table (staging Bishan). */
-      worklistMode: "queue",
+      /** "worklist" | "week" — week grid uses Monday in weekStartISO (set when entering Week). */
+      worklistMode: "worklist",
+      weekStartISO: null,
       _toastTimer: null,
     };
     initBishanDetailFormSeeds(st);
@@ -1185,129 +1221,67 @@
       .filter((r) => (r.patient ? matchPatient(r.patient) : !qRaw));
   }
 
-  /** Kanban column key for staging-style queue board. */
-  function visitKanbanColumn(stage) {
-    if (stage === "no_test") return "dna";
-    if (stage === "complete") return "done";
-    if (stage === "appointment") return "waiting";
-    if (stage === "pending_result" || stage === "doctor_input" || stage === "pending_print") return "ongoing";
-    return "waiting";
-  }
-
-  /** Minutes since slot start (SGT) for wait label on cards. */
-  function waitLabelSinceSlot(v) {
-    try {
-      const [y, m, d] = String(v.date).split("-").map(Number);
-      const hh = Math.floor(v.slot / 60);
-      const mm = v.slot % 60;
-      const start = new Date(y, m - 1, d, hh, mm, 0);
-      const now = nowSGT();
-      const diffMin = Math.floor((now.getTime() - start.getTime()) / 60000);
-      if (diffMin < 1) return "< 1m";
-      const h = Math.floor(diffMin / 60);
-      const mi = diffMin % 60;
-      if (h > 0) return `${h}h ${mi}m`;
-      return `${mi}m`;
-    } catch {
-      return "—";
-    }
+  function getFilteredWeekVisits(bc, weekStart, weekEnd) {
+    const qRaw = String(bc.search || "").trim().toLowerCase();
+    const qPhone = qRaw.replace(/\s+/g, "");
+    const matchPatient = (p) => {
+      if (!qRaw) return true;
+      const name = String(p?.name || "").toLowerCase();
+      const nric = String(p?.nric || "").toLowerCase();
+      const phone = String(p?.phone || "").replace(/\s+/g, "").toLowerCase();
+      return name.includes(qRaw) || nric.includes(qRaw) || (qPhone && phone.includes(qPhone));
+    };
+    const stageFilter = String(bc.filterStage || "all");
+    const stageAllow =
+      stageFilter === "action"
+        ? ["pending_result", "doctor_input", "pending_print"]
+        : stageFilter === "done"
+          ? ["complete"]
+          : stageFilter === "dna"
+            ? ["no_test"]
+            : null;
+    return bc.visits
+      .filter((v) => v.date >= weekStart && v.date <= weekEnd)
+      .map((v) => ({ ...v, patient: bc.patients.find((x) => x.id === v.patientId) }))
+      .filter((r) => bc.filterType === "all" || (r.patient && r.patient.type === bc.filterType))
+      .filter((r) => !stageAllow || stageAllow.includes(r.stage))
+      .filter((r) => (r.patient ? matchPatient(r.patient) : !qRaw));
   }
 
   function sortRowsBySlot(rows) {
     return [...rows].sort((a, b) => a.slot - b.slot);
   }
 
+  const BISHAN_DAY_DOCTORS = ["Dr Sarah Lim", "Dr James Koh", "Dr Priya Nair", "Dr Michael Tan"];
+
+  function doctorNameForPatient(p) {
+    if (!p || !p.id) return "—";
+    const seed = String(p.id);
+    let h = 0;
+    for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+    return BISHAN_DAY_DOCTORS[h % BISHAN_DAY_DOCTORS.length];
+  }
+
+  function nricLast4(nric) {
+    const s = String(nric || "").trim();
+    if (s.length < 4) return s || "—";
+    return s.slice(-4);
+  }
+
+  function availabilityMessageForSlot(slotMins) {
+    return slotMins % 2 === 0
+      ? "Available for Mammogram"
+      : "Available for HPV / Pap Test / HPV Vaccine / Breast Exam";
+  }
+
+  function renderClinicMainTitle() {
+    return `<h1 class="bc-clinic-main__title">Bishan Clinic</h1>`;
+  }
+
   function renderViewToggle(bc) {
     return `<div class="bc-view-toggle" role="tablist" aria-label="View mode">
-      <button type="button" role="tab" class="bc-view-toggle__btn${bc.worklistMode === "queue" ? " bc-view-toggle__btn--active" : ""}" data-bc-wl-mode="queue" aria-selected="${bc.worklistMode === "queue"}">Queue Board</button>
-      <button type="button" role="tab" class="bc-view-toggle__btn${bc.worklistMode === "worklist" ? " bc-view-toggle__btn--active" : ""}" data-bc-wl-mode="worklist" aria-selected="${bc.worklistMode === "worklist"}">Worklist</button>
-    </div>`;
-  }
-
-  function renderWorklistFiltersBar(bc) {
-    return `<div class="bc-bsh-filters">
-      <div class="toolbar-search bc-bsh-filters__search" role="search">
-        <span class="toolbar-search__icon" aria-hidden="true">${DETAIL_SEARCH_ICON}</span>
-        <input type="search" placeholder="Search by name, NRIC, phone no." value="${escAttr(
-          bc.search
-        )}" autocomplete="off" data-bc-search />
-      </div>
-      <div class="bc-date-wrap">
-        <button type="button" class="bc-date-btn" aria-label="Choose date">${esc(fmtCalHeading(bc.calDate))}</button>
-        <input type="date" class="bc-date-input-hidden" data-bc-cal-date value="${escAttr(bc.calDate)}" />
-      </div>
-      ${renderViewToggle(bc)}
-    </div>`;
-  }
-
-  function renderKanbanCard(r) {
-    const p = r.patient;
-    const idLine = p ? esc(p.nric || p.phone || "—") : "—";
-    const wait = esc(waitLabelSinceSlot(r));
-    const startBtn =
-      r.stage === "appointment"
-        ? `<button type="button" class="bc-kanban__btn-start" data-bc-queue-start="${escAttr(r.id)}">→ Start</button>`
-        : "";
-    const doneBtn =
-      r.stage === "pending_result" || r.stage === "doctor_input" || r.stage === "pending_print"
-        ? `<button type="button" class="bc-kanban__btn-done" data-bc-queue-done="${escAttr(r.id)}">✓ Done</button>`
-        : "";
-    const actions = startBtn || doneBtn ? `<div class="bc-kanban__card-actions">${startBtn}${doneBtn}</div>` : "";
-    return `<div class="bc-kanban__card">
-      <div class="bc-kanban__card-top">
-        <span class="bc-kanban__drag" aria-hidden="true" title="Reorder"></span>
-        <button type="button" class="bc-kanban__menu" data-bc-profile="${escAttr(r.patientId)}" aria-label="More options" title="Open profile">⋮</button>
-      </div>
-      <div class="bc-kanban__card-body">
-        <div class="bc-kanban__card-hit" role="button" tabindex="0" data-bc-open-patient="${escAttr(r.patientId)}" aria-label="Open patient ${escAttr(
-          (p && p.name) || "record"
-        )}">
-          <div class="bc-kanban__patient-name">${esc(p && p.name)}</div>
-          <div class="bc-kanban__patient-id">${idLine}</div>
-          <div class="bc-kanban__card-meta">
-            ${typeBadgeStagingHtml(p && p.type)}
-            <span class="bc-kanban__appt-pill">Appt</span>
-          </div>
-          <div class="bc-kanban__wait">${wait}</div>
-        </div>
-        ${actions}
-      </div>
-    </div>`;
-  }
-
-  function renderQueueBoard(bc, rows) {
-    const buckets = { waiting: [], ongoing: [], done: [], dna: [] };
-    rows.forEach((r) => {
-      const col = visitKanbanColumn(r.stage);
-      buckets[col].push(r);
-    });
-    const cols = [
-      ["waiting", "Waiting", buckets.waiting],
-      ["ongoing", "Ongoing / Screening", buckets.ongoing],
-      ["done", "Done", buckets.done],
-      ["dna", "Do Not Attend", buckets.dna],
-    ];
-    const board = cols
-      .map(([key, label, list]) => {
-        const sorted = sortRowsBySlot(list);
-        const count = sorted.length;
-        const inner =
-          count === 0
-            ? `<div class="bc-kanban__empty">No patients</div>`
-            : sorted.map((r) => renderKanbanCard(r)).join("");
-        const dnaNote = key === "dna" ? ` title="${esc("Did not attend")}"` : "";
-        return `<div class="bc-kanban__col bc-kanban__col--${key}" data-bc-kanban-col="${escAttr(key)}"${dnaNote}>
-          <div class="bc-kanban__col-head">
-            <span class="bc-kanban__col-label">${esc(label)}</span>
-            <span class="bc-kanban__count" aria-label="${esc(String(count))} in column">${esc(String(count))}</span>
-          </div>
-          <div class="bc-kanban__col-body">${inner}</div>
-        </div>`;
-      })
-      .join("");
-    return `<div class="bc-bsh-worklist-wrap bc-bsh-worklist-wrap--queue">
-      ${renderWorklistFiltersBar(bc)}
-      <div class="bc-kanban">${board}</div>
+      <button type="button" role="tab" class="bc-view-toggle__btn${bc.worklistMode === "worklist" ? " bc-view-toggle__btn--active" : ""}" data-bc-wl-mode="worklist" aria-selected="${bc.worklistMode === "worklist"}">Day</button>
+      <button type="button" role="tab" class="bc-view-toggle__btn${bc.worklistMode === "week" ? " bc-view-toggle__btn--active" : ""}" data-bc-wl-mode="week" aria-selected="${bc.worklistMode === "week"}">Week</button>
     </div>`;
   }
 
@@ -1318,44 +1292,57 @@
         const isL = s >= 720 && s < 780;
         if (!br.length) {
           if (isL) {
-            return `<tr class="bc-wl-tr bc-wl-tr--lunch"><td class="bc-wl-lunch-label" colspan="6">Lunch break</td></tr>`;
+            return `<tr class="bc-wl-tr bc-wl-tr--lunch"><td class="bc-wl-lunch-label" colspan="7">Lunch break</td></tr>`;
           }
-          return `<tr class="bc-wl-tr bc-wl-tr--empty">
+          const availMsg = availabilityMessageForSlot(s);
+          return `<tr class="bc-wl-tr bc-wl-tr--avail">
           <td class="bc-wl-td-time">${esc(slotLbl(s))}</td>
-          <td class="bc-wl-td-patient"><span class="bc-available-text">Available</span></td>
-          <td></td><td></td>
-          <td class="bc-wl-td-attend">—</td>
-          <td class="bc-wl-td-action"><button type="button" class="bc-walkin-btn" data-bc-new-apt-slot="${s}">+ Walk-in</button></td>
+          <td class="bc-wl-td-patient">
+            <span class="bc-wl-avail-msg">${esc(availMsg)}</span>
+            <div class="bc-wl-avail-actions">
+              <button type="button" class="bc-walkin-btn" data-bc-new-apt-slot="${s}">+ Walk-in</button>
+            </div>
+          </td>
+          <td class="bc-wl-td-nric"></td>
+          <td class="bc-wl-td-type"></td>
+          <td class="bc-wl-td-stage"></td>
+          <td class="bc-wl-td-doctor"></td>
+          <td class="bc-wl-td-block"><input type="checkbox" class="bc-wl-block-cb" disabled aria-label="Block slot" title="Block" /></td>
         </tr>`;
         }
         return br
-          .map(
-            (r) => `<tr class="bc-wl-tr bc-wl-tr--booked" data-bc-open-patient="${escAttr(r.patientId)}">
+          .map((r) => {
+            const p = r.patient;
+            const idLine = p ? esc(p.bishanCode || p.id) : "—";
+            const doc = doctorNameForPatient(p);
+            return `<tr class="bc-wl-tr bc-wl-tr--booked" data-bc-open-patient="${escAttr(r.patientId)}">
           <td class="bc-wl-td-time">${esc(slotLbl(s))}</td>
-          <td class="bc-wl-td-patient"><span class="bc-wl-name">${esc(r.patient && r.patient.name)}</span><span class="bc-wl-phone">${esc(
-            r.patient && r.patient.phone
-          )}</span></td>
-          <td>${typeBadgeStagingHtml(r.patient && r.patient.type)}</td>
-          <td>${stagePillStagingHtml(r.stage)}</td>
-          <td class="bc-wl-td-attend"><input type="checkbox" class="bc-wl-attend-cb" ${r.attended ? "checked" : ""} disabled aria-label="Attended" /></td>
-          <td class="bc-wl-td-action"><button type="button" class="bc-btn-profile" data-bc-profile="${escAttr(r.patientId)}">Open profile</button></td>
-        </tr>`
-          )
+          <td class="bc-wl-td-patient">
+            <span class="bc-wl-name">${esc(p && p.name)}</span>
+            <span class="bc-wl-idline">${idLine}</span>
+          </td>
+          <td class="bc-wl-td-nric">${esc(nricLast4(p && p.nric))}</td>
+          <td class="bc-wl-td-type">${typeBadgeStagingHtml(p && p.type)}</td>
+          <td class="bc-wl-td-stage">${stagePillStagingHtml(r.stage)}</td>
+          <td class="bc-wl-td-doctor">${esc(doc)}</td>
+          <td class="bc-wl-td-block"><input type="checkbox" class="bc-wl-block-cb" disabled aria-label="Block" title="Block" /></td>
+        </tr>`;
+          })
           .join("");
       })
       .join("");
-    return `<div class="bc-bsh-worklist-wrap">
-      ${renderWorklistFiltersBar(bc)}
+    return `<div class="bc-bsh-worklist-wrap bc-bsh-worklist-wrap--day">
       <div class="bc-wl-shell">
-        <table class="bc-wl-table">
+        <table class="bc-wl-table bc-wl-table--day">
           <thead>
             <tr>
               <th class="bc-wl-th-time" scope="col">Time</th>
               <th scope="col">Patient</th>
+              <th class="bc-wl-th-nric" scope="col">NRIC</th>
               <th scope="col">Type</th>
               <th scope="col">Stage</th>
-              <th scope="col">Attended</th>
-              <th class="bc-wl-th-action" scope="col">Action</th>
+              <th class="bc-wl-th-doctor" scope="col">Doctor</th>
+              <th class="bc-wl-th-block" scope="col">Block</th>
             </tr>
           </thead>
           <tbody>${slotRows}</tbody>
@@ -1364,9 +1351,114 @@
     </div>`;
   }
 
+  function weekApptAbbrev(p) {
+    const t = p && p.type;
+    if (t === "mammogram") return "MMG";
+    if (t === "hpv") return "HPV";
+    if (t === "pap") return "Pap";
+    return "Appt";
+  }
+
+  function renderWeekApptPill(v) {
+    const p = v.patient;
+    const abbr = weekApptAbbrev(p);
+    const mod = p && p.type === "mammogram" ? "mmg" : p && p.type === "hpv" ? "hpv" : p && p.type === "pap" ? "pap" : "mmg";
+    return `<button type="button" class="bc-week-appt bc-week-appt--${mod}" data-bc-open-patient="${escAttr(v.patientId)}">${esc(abbr)}</button>`;
+  }
+
+  function renderWeekView(bc) {
+    const weekStart = getWeekStartIso(bc);
+    const weekEnd = sundayOfWeekFromMonday(weekStart);
+    const dayIsos = [];
+    for (let i = 0; i < 7; i++) dayIsos.push(addDaysIso(weekStart, i));
+    const weekVisits = getFilteredWeekVisits(bc, weekStart, weekEnd);
+    const slotStarts = weekGridSlotStarts();
+    const today = TODAY;
+    const n = nowSGT();
+    const nowMinutes = n.getHours() * 60 + n.getMinutes();
+    const showNowLine = dayIsos.includes(today) && nowMinutes >= 480 && nowMinutes <= 840;
+
+    const dayHeaders = dayIsos
+      .map((iso) => {
+        const d = parseDt(iso);
+        const dow = d.toLocaleDateString("en-SG", { weekday: "short" }).toUpperCase();
+        const isToday = iso === today;
+        const cnt = weekVisits.filter((v) => v.date === iso).length;
+        const apptLine = cnt
+          ? `<span class="bc-week-dayhead__appts">${esc(String(cnt))} appt${cnt === 1 ? "" : "s"}</span>`
+          : "";
+        return `<div class="bc-week-dayhead${isToday ? " bc-week-dayhead--today" : ""}">
+          <span class="bc-week-dayhead__dow">${esc(dow)}</span>
+          <span class="bc-week-dayhead__date">${esc(String(d.getDate()))}</span>
+          ${apptLine}
+        </div>`;
+      })
+      .join("");
+
+    const bodyRows = slotStarts
+      .map((m) => {
+        const timeLbl = slotLbl(m);
+        const cells = dayIsos
+          .map((iso) => {
+            const inCell = weekVisits.filter((v) => v.date === iso && v.slot >= m && v.slot < m + 30);
+            if (!inCell.length) {
+              const demoBlocked = (parseDt(iso).getDate() + Math.floor(m / 30)) % 11 === 0;
+              return demoBlocked
+                ? `<div class="bc-week-cell bc-week-cell--blocked"></div>`
+                : `<div class="bc-week-cell bc-week-cell--available"></div>`;
+            }
+            const pills = sortRowsBySlot(inCell)
+              .map((v) => renderWeekApptPill(v))
+              .join("");
+            return `<div class="bc-week-cell bc-week-cell--booked">${pills}</div>`;
+          })
+          .join("");
+        return `<div class="bc-week-row">
+        <div class="bc-week-row__time">${esc(timeLbl)}</div>
+        ${cells}
+      </div>`;
+      })
+      .join("");
+
+    const nowPct = showNowLine ? Math.min(100, Math.max(0, ((nowMinutes - 480) / (840 - 480)) * 100)) : 0;
+    const nowLine = showNowLine
+      ? `<div class="bc-week-now-line" style="top:calc(${nowPct}% - 1px)" aria-hidden="true"></div>`
+      : "";
+
+    return `<div class="bc-bsh-worklist-wrap bc-bsh-worklist-wrap--week">
+      <div class="bc-week-shell">
+        <div class="bc-week-banner">
+          <div class="bc-week-banner__primary">
+            <h2 class="bc-week-title">Weekly availability <span class="bc-week-title__date">${esc(fmtCalHeading(weekStart))}</span></h2>
+          </div>
+          <div class="bc-week-banner__nav">
+            <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-bc-week-prev>&lt; Prev</button>
+            <span class="bc-week-nav-range">${esc(fmtWeekRangeDisplay(weekStart, weekEnd))}</span>
+            <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-bc-week-next>Next &gt;</button>
+          </div>
+          <div class="bc-week-legend" role="list">
+            <span class="bc-week-legend__item"><span class="bc-week-legend__sw bc-week-legend__sw--booked" aria-hidden="true"></span> Booked</span>
+            <span class="bc-week-legend__item"><span class="bc-week-legend__sw bc-week-legend__sw--avail" aria-hidden="true"></span> Available</span>
+            <span class="bc-week-legend__item"><span class="bc-week-legend__sw bc-week-legend__sw--blocked" aria-hidden="true"></span> Blocked</span>
+          </div>
+        </div>
+        <div class="bc-week-calendar">
+          <div class="bc-week-calendar__head">
+            <div class="bc-week-calendar__corner" aria-hidden="true"></div>
+            ${dayHeaders}
+          </div>
+          <div class="bc-week-calendar__body">
+            ${nowLine}
+            ${bodyRows}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }
+
   function renderWorklist(bc) {
+    if (bc.worklistMode === "week") return renderWeekView(bc);
     const rows = getFilteredDayRows(bc);
-    if (bc.worklistMode === "queue") return renderQueueBoard(bc, rows);
     return renderWorklistTable(bc, rows);
   }
 
@@ -1918,6 +2010,115 @@
     </div>`;
   }
 
+  /** Keep KPI highlight in the sidebar summary in sync with filter dropdowns. */
+  function syncKpiActiveFromFilters(bc) {
+    const ft = String(bc.filterType || "all");
+    const fs = String(bc.filterStage || "all");
+    if (fs === "action" && ft === "all") {
+      bc.kpiActive = "action";
+    } else if (fs === "all" && (ft === "mammogram" || ft === "hpv" || ft === "pap")) {
+      bc.kpiActive = ft;
+    } else {
+      bc.kpiActive = null;
+    }
+  }
+
+  function renderClinicSidebarSummary(bc, stats) {
+    const rowBtn = (key, dotMod, label, n, doneN) => {
+      const active = bc.kpiActive === key;
+      return `<li>
+        <button type="button" class="bc-sidebar-summary__row${active ? " bc-sidebar-summary__row--active" : ""}" data-bc-kpi="${escAttr(
+        key
+      )}" aria-pressed="${active}">
+          <span class="bc-sidebar-summary__dot bc-sidebar-summary__dot--${escAttr(dotMod)}" aria-hidden="true"></span>
+          <span class="bc-sidebar-summary__row-line">${esc(label)}: <strong>${esc(String(n))}</strong> <span class="bc-sidebar-summary__row-done">(${esc(
+        String(doneN)
+      )} done)</span></span>
+        </button>
+      </li>`;
+    };
+    const actionOn = bc.kpiActive === "action";
+    return `<div class="bc-sidebar-summary" aria-label="Today's summary">
+      <div class="bc-sidebar-summary__kicker">Today</div>
+      <button type="button" class="bc-sidebar-summary__total" data-bc-kpi="total">
+        <span class="bc-sidebar-summary__total-top">
+          <span class="bc-sidebar-summary__total-label">Total</span>
+          <span class="bc-sidebar-summary__total-value">${esc(String(stats.total))}</span>
+        </span>
+        <span class="bc-sidebar-summary__done-badge">${esc(String(stats.completedTotal))} done</span>
+      </button>
+      <ul class="bc-sidebar-summary__list" role="list">
+        ${rowBtn("mammogram", "mammo", "Mammogram", stats.mammo, stats.completedMammo)}
+        ${rowBtn("hpv", "hpv", "HPV Test", stats.hpv, stats.completedHpv)}
+        ${rowBtn("pap", "pap", "Pap Test", stats.pap, stats.completedPap)}
+      </ul>
+      <button type="button" class="bc-sidebar-summary__action${actionOn ? " bc-sidebar-summary__action--active" : ""}" data-bc-kpi="action" aria-pressed="${actionOn}">
+        <span class="bc-sidebar-summary__action-label">Action needed</span>
+        <span class="bc-sidebar-summary__action-num">${esc(String(stats.actionNeeded))}</span>
+      </button>
+    </div>`;
+  }
+
+  function renderClinicSidebarFilters(bc, searchFieldHtml) {
+    const wkStart = getWeekStartIso(bc);
+    const wkEnd = sundayOfWeekFromMonday(wkStart);
+    const dateBtnLabel =
+      bc.worklistMode === "week" ? fmtWeekRangeDisplay(wkStart, wkEnd) : fmtCalHeading(bc.calDate);
+    const dateAria = bc.worklistMode === "week" ? "Choose date (week adjusts to that week)" : "Choose date";
+    const ft = String(bc.filterType || "all");
+    const fs = String(bc.filterStage || "all");
+    const sel = (v, cur) => (v === cur ? " selected" : "");
+    return `<div class="bc-clinic-sidebar__filters">
+      ${searchFieldHtml}
+      <label class="bc-sb-field">
+        <span class="bc-sb-field__label">Date</span>
+        <div class="bc-date-wrap bc-date-wrap--sidebar">
+          <button type="button" class="bc-date-btn bc-date-btn--block" aria-label="${escAttr(dateAria)}">${esc(dateBtnLabel)}</button>
+          <input type="date" class="bc-date-input-hidden" data-bc-cal-date value="${escAttr(bc.calDate)}" />
+        </div>
+      </label>
+      <label class="bc-sb-field">
+        <span class="bc-sb-field__label">Screening Type</span>
+        <select class="bc-sb-select" data-bc-filter="type">
+          <option value="all"${sel("all", ft)}>All Types</option>
+          <option value="mammogram"${sel("mammogram", ft)}>Mammogram</option>
+          <option value="hpv"${sel("hpv", ft)}>HPV Test</option>
+          <option value="pap"${sel("pap", ft)}>Pap Test</option>
+        </select>
+      </label>
+      <label class="bc-sb-field">
+        <span class="bc-sb-field__label">Stage</span>
+        <select class="bc-sb-select" data-bc-filter="stage">
+          <option value="all"${sel("all", fs)}>All Stages</option>
+          <option value="action"${sel("action", fs)}>Action needed</option>
+          <option value="done"${sel("done", fs)}>Done</option>
+          <option value="dna"${sel("dna", fs)}>Do not attend</option>
+        </select>
+      </label>
+      <label class="bc-sb-field">
+        <span class="bc-sb-field__label">Doctor</span>
+        <select class="bc-sb-select" disabled aria-disabled="true" title="Not available in demo">
+          <option>All Doctors</option>
+        </select>
+      </label>
+    </div>`;
+  }
+
+  function renderClinicSidebar(bc, stats, searchFieldHtml) {
+    return `<aside class="bc-clinic-sidebar" aria-label="Clinic navigation and filters">
+      <div class="bc-clinic-sidebar__summary">
+        ${renderClinicSidebarSummary(bc, stats)}
+      </div>
+      <div class="bc-clinic-sidebar__body">
+        ${renderClinicSidebarFilters(bc, searchFieldHtml)}
+      </div>
+      <div class="bc-clinic-sidebar__actions">
+        <button type="button" class="ui-btn ui-btn--default ui-btn--sm bc-clinic-sidebar__btn-primary" data-bc-new-apt>+ New Appointment</button>
+        <button type="button" class="ui-btn ui-btn--outline ui-btn--sm bc-clinic-sidebar__btn-secondary" data-bc-new-patient>+ Add patient</button>
+      </div>
+    </aside>`;
+  }
+
   function renderMarkup(bc) {
     TODAY = todaySGT();
     const dayVis = bc.visits.filter((v) => v.date === bc.calDate);
@@ -1948,26 +2149,6 @@
       ? [...bc.visits].filter((v) => v.patientId === selPat.id).sort((a, b) => b.date.localeCompare(a.date))
       : [];
     const nextApt = pVisits.filter((v) => !isSlotPast(v.date, v.slot))[0];
-
-    const statCard = (mod, key, label, value, sub) => {
-      const active = bc.kpiActive === key && key !== "total";
-      const pressed = active ? ' aria-pressed="true"' : ' aria-pressed="false"';
-      return `<button type="button" class="bc-stat-card ${mod}${active ? " bc-stat-card--active" : ""}" data-bc-kpi="${escAttr(
-        key
-      )}"${pressed}>
-        <div class="bc-stat-card__label">${esc(label)}</div>
-        <div class="bc-stat-card__value">${esc(String(value))}</div>
-        <div class="bc-stat-card__sub">${esc(sub)}</div>
-      </button>`;
-    };
-    const statsRow = `
-      <div class="bc-bsh-stats-row" aria-label="Today's summary">
-        ${statCard("bc-stat-card--total", "total", "Today's Total", stats.total, `${stats.completedTotal} completed`)}
-        ${statCard("bc-stat-card--mammo", "mammogram", "Mammogram", stats.mammo, `${stats.completedMammo} completed`)}
-        ${statCard("bc-stat-card--hpv", "hpv", "HPV Test", stats.hpv, `${stats.completedHpv} completed`)}
-        ${statCard("bc-stat-card--pap", "pap", "Pap Test", stats.pap, `${stats.completedPap} completed`)}
-        ${statCard("bc-stat-card--action", "action", "Action Needed", stats.actionNeeded, "pending lab · review")}
-      </div>`;
 
     const searchDrop =
       sq && searchResults.length
@@ -2001,10 +2182,10 @@
 
     const toast = bc.toast ? `<div class="bc-toast" role="status">${esc(bc.toast)}</div>` : "";
 
-    const searchField = `<div class="bc-search-wrap">
-            <div class="toolbar-search bc-bsh-toolbar-search" role="search">
+    const searchField = `<div class="bc-search-wrap bc-search-wrap--sidebar">
+            <div class="toolbar-search bc-bsh-toolbar-search bc-bsh-toolbar-search--sidebar" role="search">
               <span class="toolbar-search__icon" aria-hidden="true">${DETAIL_SEARCH_ICON}</span>
-              <input type="search" placeholder="Search by name, NRIC, phone no." value="${escAttr(
+              <input type="search" placeholder="Name, NRIC or phone…" value="${escAttr(
                 bc.search
               )}" autocomplete="off" data-bc-search />
             </div>
@@ -2012,16 +2193,20 @@
           </div>`;
 
     const isPatientRoute = bc.view === "patient" && selPat;
-    const clinicToolbar = `<header class="bc-bsh-toolbar">
-        <div class="bc-bsh-toolbar__title-group">
-          <h1 class="bc-bsh-toolbar__title">Bishan Clinic</h1>
-          <p class="bc-bsh-toolbar__clock"><span data-bc-live-clock>${esc(formatNowSGTClock())}</span></p>
+    const clinicChrome = !isPatientRoute
+      ? `<div class="bc-clinic-layout">
+      <header class="bc-clinic-main__strip bc-clinic-layout__strip" aria-label="Bishan Clinic header">
+        <div class="bc-clinic-main__strip-inner">
+          ${renderClinicMainTitle()}
+          ${renderViewToggle(bc)}
         </div>
-        <div class="bc-bsh-toolbar__actions">
-          <button type="button" class="ui-btn ui-btn--default ui-btn--sm" data-bc-new-apt>+ New Appointment</button>
-          <button type="button" class="ui-btn ui-btn--outline ui-btn--sm" data-bc-new-patient>+ Add patient</button>
-        </div>
-      </header>`;
+      </header>
+      ${renderClinicSidebar(bc, stats, searchField)}
+      <div class="bc-clinic-main">
+        <div class="bc-main">${main}</div>
+      </div>
+    </div>`
+      : "";
     const patientBar = isPatientRoute
       ? `<header class="bc-bsh-patient-bar" aria-label="Patient record">
         <div class="detail-hero bc-bsh-patient-hero">
@@ -2037,7 +2222,7 @@
       </header>`
       : "";
 
-    return `<section class="bc-screening${isPatientRoute ? " bc-screening--patient-route" : ""}" id="bishan-screening-root" aria-label="Bishan cancer screening clinic">
+    return `<section class="bc-screening${isPatientRoute ? " bc-screening--patient-route" : " bc-screening--clinic-index"}" id="bishan-screening-root" aria-label="Bishan cancer screening clinic">
       ${
         isPatientRoute && typeof global.WD_renderAppBreadcrumb === "function"
           ? global.WD_renderAppBreadcrumb(
@@ -2046,9 +2231,8 @@
             )
           : ""
       }
-      ${isPatientRoute ? patientBar : clinicToolbar}
-      ${isPatientRoute ? "" : statsRow}
-      <div class="bc-main">${main}</div>
+      ${isPatientRoute ? patientBar : ""}
+      ${isPatientRoute ? `<div class="bc-main">${main}</div>` : clinicChrome}
       ${renderModal(bc)}
       ${toast}
     </section>`;
@@ -2122,18 +2306,19 @@
       }
     });
 
-    root.addEventListener("keydown", (e) => {
-      if (e.key !== "Enter" && e.key !== " ") return;
-      const raw = e.target;
-      const hit = raw instanceof Element ? raw.closest(".bc-kanban__card-hit") : null;
-      if (!hit || !hit.hasAttribute("data-bc-open-patient")) return;
-      e.preventDefault();
+    root.addEventListener("change", (e) => {
+      const t = e.target;
+      if (!(t instanceof HTMLSelectElement)) return;
+      const f = t.getAttribute("data-bc-filter");
+      if (f !== "type" && f !== "stage") return;
       const bc = get();
-      const id = hit.getAttribute("data-bc-open-patient");
-      const p = bc.patients.find((x) => x.id === id);
-      if (p) {
-        navigateToBishanPatient(bc, p);
+      if (f === "type") {
+        bc.filterType = t.value;
+      } else {
+        bc.filterStage = t.value;
       }
+      syncKpiActiveFromFilters(bc);
+      commit();
     });
 
     root.addEventListener("click", (e) => {
@@ -2179,10 +2364,31 @@
       if (el.closest("[data-bc-wl-mode]")) {
         e.preventDefault();
         const mode = el.closest("[data-bc-wl-mode]").getAttribute("data-bc-wl-mode");
-        if (mode === "queue" || mode === "worklist") {
+        if (mode === "worklist" || mode === "week") {
           bc.worklistMode = mode;
+          if (mode === "week") {
+            bc.weekStartISO = mondayOfIso(bc.calDate);
+            bc.calDate = bc.weekStartISO;
+          }
           commit();
         }
+        return;
+      }
+
+      if (el.closest("[data-bc-week-prev]")) {
+        e.preventDefault();
+        const ws = getWeekStartIso(bc);
+        bc.weekStartISO = addDaysIso(ws, -7);
+        bc.calDate = bc.weekStartISO;
+        commit();
+        return;
+      }
+      if (el.closest("[data-bc-week-next]")) {
+        e.preventDefault();
+        const ws = getWeekStartIso(bc);
+        bc.weekStartISO = addDaysIso(ws, 7);
+        bc.calDate = bc.weekStartISO;
+        commit();
         return;
       }
 
@@ -2235,32 +2441,6 @@
         const s = Number(el.closest("[data-bc-new-apt-slot]").getAttribute("data-bc-new-apt-slot"));
         bc.modal = { type: "newApt", date: bc.calDate, slot: s, patientId: "", patientQuery: "" };
         commit();
-        return;
-      }
-
-      if (el.closest("[data-bc-queue-start]")) {
-        e.preventDefault();
-        e.stopPropagation();
-        const id = el.closest("[data-bc-queue-start]").getAttribute("data-bc-queue-start");
-        const v = bc.visits.find((x) => x.id === id);
-        if (v && v.stage === "appointment") {
-          bc.visits = bc.visits.map((x) =>
-            x.id === id ? { ...x, attended: true, stage: "pending_result" } : x
-          );
-          showToast(bc, "Screening started.", commit);
-        }
-        return;
-      }
-
-      if (el.closest("[data-bc-queue-done]")) {
-        e.preventDefault();
-        e.stopPropagation();
-        const id = el.closest("[data-bc-queue-done]").getAttribute("data-bc-queue-done");
-        const v = bc.visits.find((x) => x.id === id);
-        if (v) {
-          bc.modal = { type: "editVisit", visit: { ...v }, fp: v.labFile || null, letterMode: false };
-          commit();
-        }
         return;
       }
 
@@ -2709,6 +2889,10 @@
       const bc = get();
       if (t instanceof HTMLInputElement && t.hasAttribute("data-bc-cal-date")) {
         bc.calDate = t.value;
+        if (bc.worklistMode === "week") {
+          bc.weekStartISO = mondayOfIso(bc.calDate);
+          bc.calDate = bc.weekStartISO;
+        }
         commit();
         return;
       }
@@ -2801,23 +2985,6 @@
       }
     });
 
-    if (root._bcLiveClockId) {
-      clearInterval(root._bcLiveClockId);
-      root._bcLiveClockId = null;
-    }
-    const tickClock = () => {
-      const el = root.querySelector("[data-bc-live-clock]");
-      if (!el) {
-        if (root._bcLiveClockId) {
-          clearInterval(root._bcLiveClockId);
-          root._bcLiveClockId = null;
-        }
-        return;
-      }
-      el.textContent = formatNowSGTClock();
-    };
-    tickClock();
-    root._bcLiveClockId = setInterval(tickClock, 1000);
   }
 
   /** Hash segment validation — keep in sync with `parseRoute` in app.js. */
