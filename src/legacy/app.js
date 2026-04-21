@@ -9031,45 +9031,34 @@ if (typeof window !== "undefined") {
     if (maxEl) maxEl.value = String(amax);
   }
 
-  /** Prospect list page: KPI, search, filters modal actions, sort, view toggle, kanban cards. */
+  function applyProspectListKpiFromEl(kpiEl) {
+    const key = kpiEl.getAttribute("data-prospect-kpi");
+    if (!key) return;
+    const already = state.listKpiActive === key;
+    const clear = already || key === "total";
+    if (clear) {
+      state.listKpiActive = null;
+      if (state.listKpiPrevSort) {
+        state.listSort = state.listKpiPrevSort;
+        state.listKpiPrevSort = null;
+      }
+      renderApp();
+      return;
+    }
+
+    if (!state.listKpiActive && !state.listKpiPrevSort) {
+      state.listKpiPrevSort = { ...state.listSort };
+    }
+    state.listKpiActive = key;
+    if (key === "highrisk") state.listSort = { key: "risk", dir: "desc" };
+    else if (key === "firsttime") state.listSort = { key: "dateRegistered", dir: "desc" };
+    else if (key === "followup") state.listSort = { key: "nextReview", dir: "asc" };
+    else if (key === "qualified" || key === "booked" || key === "screened") state.listSort = { key: "nextReview", dir: "asc" };
+    renderApp();
+  }
+
+  /** Prospect list page: search + filter modal (clicks for KPI/kanban/toolbar use document delegation in installDelegatedAppListeners). */
   function bindProspectListPageInteractionsOnly() {
-    document.querySelectorAll("[data-prospect-kpi]").forEach((el) => {
-      const onActivate = () => {
-        const key = el.getAttribute("data-prospect-kpi");
-        if (!key) return;
-        const already = state.listKpiActive === key;
-        const clear = already || key === "total";
-        if (clear) {
-          state.listKpiActive = null;
-          if (state.listKpiPrevSort) {
-            state.listSort = state.listKpiPrevSort;
-            state.listKpiPrevSort = null;
-          }
-          renderApp();
-          return;
-        }
-
-        if (!state.listKpiActive && !state.listKpiPrevSort) {
-          state.listKpiPrevSort = { ...state.listSort };
-        }
-        state.listKpiActive = key;
-        if (key === "highrisk") state.listSort = { key: "risk", dir: "desc" };
-        else if (key === "firsttime") state.listSort = { key: "dateRegistered", dir: "desc" };
-        else if (key === "followup") state.listSort = { key: "nextReview", dir: "asc" };
-        else if (key === "qualified" || key === "booked" || key === "screened") state.listSort = { key: "nextReview", dir: "asc" };
-        renderApp();
-      };
-      el.addEventListener("click", (e) => {
-        e.preventDefault();
-        onActivate();
-      });
-      el.addEventListener("keydown", (e) => {
-        if (e.key !== "Enter" && e.key !== " ") return;
-        e.preventDefault();
-        onActivate();
-      });
-    });
-
     const search = document.getElementById("prospect-search");
     if (search && search.dataset.wdReactList !== "1") {
       search.addEventListener("input", () => {
@@ -9085,21 +9074,6 @@ if (typeof window !== "undefined") {
         }, 200);
       });
     }
-
-    document.getElementById("btn-list-filters")?.addEventListener("click", () => {
-      state.filterModal = true;
-      renderApp();
-    });
-
-    document.querySelectorAll("[data-view]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        state.view = btn.getAttribute("data-view");
-        setStoredListView(state.view);
-        const h = state.view === "kanban" ? "#/kanban" : "#/list";
-        if (location.hash !== h) location.hash = h;
-        else renderApp();
-      });
-    });
 
     document.getElementById("list-filter-apply")?.addEventListener("click", () => {
       readListFiltersFromForm();
@@ -9117,27 +9091,6 @@ if (typeof window !== "undefined") {
       }
       requestAnimationFrame(() => {
         document.getElementById("list-filter-clear")?.focus();
-      });
-    });
-
-    document.querySelectorAll("[data-list-sort]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const k = btn.getAttribute("data-list-sort");
-        if (!k) return;
-        if (state.listSort.key === k) {
-          state.listSort.dir = state.listSort.dir === "asc" ? "desc" : "asc";
-        } else {
-          state.listSort.key = k;
-          state.listSort.dir = "asc";
-        }
-        renderApp();
-      });
-    });
-
-    document.querySelectorAll("[data-kanban-card]").forEach((card) => {
-      card.addEventListener("click", () => {
-        const rk = card.getAttribute("data-kanban-prospect");
-        if (rk) location.hash = `#/prospect/${encodeURIComponent(rk)}/screening`;
       });
     });
   }
@@ -9474,25 +9427,6 @@ if (typeof window !== "undefined") {
       renderApp();
     });
 
-    document.querySelectorAll("[data-program-option]").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        state.program = btn.getAttribute("data-program-option");
-        state.programMenuOpen = false;
-        renderApp();
-      });
-    });
-
-    document.querySelectorAll("[data-prospect-list-actions-toggle]").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const rk = btn.getAttribute("data-prospect-list-actions-toggle");
-        if (!rk) return;
-        state.prospectListActionsOpenRowKey = state.prospectListActionsOpenRowKey === rk ? null : rk;
-        renderApp();
-      });
-    });
-
     // Classic screening records table: type filter + row expand (Client 360 + Prospect V3)
     document.querySelectorAll("[data-classic-screening-filter]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -9541,12 +9475,6 @@ if (typeof window !== "undefined") {
           toggle();
         }
       });
-    });
-
-    document.querySelector("[data-export-menu-toggle]")?.addEventListener("click", (e) => {
-      e.stopPropagation();
-      state.exportMenuOpen = !state.exportMenuOpen;
-      renderApp();
     });
 
     document.querySelectorAll("[data-export-option]").forEach((btn) => {
@@ -9618,12 +9546,6 @@ if (typeof window !== "undefined") {
           }
         }, 2800);
       }
-    });
-
-    document.querySelector("[data-add-prospect-toggle]")?.addEventListener("click", (e) => {
-      e.stopPropagation();
-      state.addProspectMenuOpen = !state.addProspectMenuOpen;
-      renderApp();
     });
 
     document.querySelectorAll("[data-reg-nav]").forEach((btn) => {
@@ -10263,10 +10185,86 @@ if (typeof window !== "undefined") {
     window.__WD_PORTAL_DELEGATION_BOUND = true;
 
     const rootEl = document.getElementById("app");
-    if (rootEl) {
-      rootEl.addEventListener("click", (e) => {
+    document.addEventListener("click", (e) => {
     const raw = e.target;
     const el = raw instanceof Element ? raw : raw?.parentElement;
+
+    const programOpt = el?.closest("[data-program-option]");
+    if (programOpt) {
+      e.stopPropagation();
+      state.program = programOpt.getAttribute("data-program-option");
+      state.programMenuOpen = false;
+      renderApp();
+      return;
+    }
+
+    if (state.route === "list") {
+      const exportToggle = el?.closest("[data-export-menu-toggle]");
+      if (exportToggle) {
+        e.stopPropagation();
+        state.exportMenuOpen = !state.exportMenuOpen;
+        renderApp();
+        return;
+      }
+      const addProspectT = el?.closest("[data-add-prospect-toggle]");
+      if (addProspectT) {
+        e.stopPropagation();
+        state.addProspectMenuOpen = !state.addProspectMenuOpen;
+        renderApp();
+        return;
+      }
+      const actToggle = el?.closest("[data-prospect-list-actions-toggle]");
+      if (actToggle) {
+        e.stopPropagation();
+        const rk = actToggle.getAttribute("data-prospect-list-actions-toggle");
+        if (!rk) return;
+        state.prospectListActionsOpenRowKey = state.prospectListActionsOpenRowKey === rk ? null : rk;
+        renderApp();
+        return;
+      }
+      if (el?.closest("#btn-list-filters")) {
+        state.filterModal = true;
+        renderApp();
+        return;
+      }
+      const viewBtn = el?.closest("[data-view]");
+      if (viewBtn) {
+        const v = viewBtn.getAttribute("data-view");
+        if (v) {
+          state.view = v;
+          setStoredListView(state.view);
+          const h = state.view === "kanban" ? "#/kanban" : "#/list";
+          if (location.hash !== h) location.hash = h;
+          else renderApp();
+        }
+        return;
+      }
+      const sortBtn = el?.closest("[data-list-sort]");
+      if (sortBtn) {
+        const k = sortBtn.getAttribute("data-list-sort");
+        if (!k) return;
+        if (state.listSort.key === k) {
+          state.listSort.dir = state.listSort.dir === "asc" ? "desc" : "asc";
+        } else {
+          state.listSort.key = k;
+          state.listSort.dir = "asc";
+        }
+        renderApp();
+        return;
+      }
+      const kpiHit = el?.closest("[data-prospect-kpi]");
+      if (kpiHit) {
+        e.preventDefault();
+        applyProspectListKpiFromEl(kpiHit);
+        return;
+      }
+      const kanbanCard = el?.closest("[data-kanban-card]");
+      if (kanbanCard) {
+        const rk = kanbanCard.getAttribute("data-kanban-prospect");
+        if (rk) location.hash = `#/prospect/${encodeURIComponent(rk)}/screening`;
+        return;
+      }
+    }
 
     const atDrawerDismiss = el?.closest("[data-activity-timeline-drawer-dismiss]");
     if (atDrawerDismiss && state.route === "detail" && state.activityTimelineDrawerOpen) {
@@ -10760,7 +10758,8 @@ if (typeof window !== "undefined") {
     }
   });
 
-  document.getElementById("app").addEventListener("change", (e) => {
+  if (rootEl) {
+  rootEl.addEventListener("change", (e) => {
     const t = e.target;
     if (!(t instanceof HTMLInputElement)) return;
 
@@ -10852,18 +10851,26 @@ if (typeof window !== "undefined") {
       if (!(t instanceof HTMLInputElement) || !t.classList.contains("prospect-docs__search-input")) return;
       filterProspectDocsTable(t.value);
     });
+  }
 
-    rootEl.addEventListener("keydown", (e) => {
-      if (e.key !== "Enter") return;
+    document.addEventListener("keydown", (e) => {
       const raw = e.target;
       const el = raw instanceof Element ? raw : raw?.parentElement;
+      if (state.route === "list") {
+        const kpiHit = el?.closest("[data-prospect-kpi]");
+        if (kpiHit && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          applyProspectListKpiFromEl(kpiHit);
+          return;
+        }
+      }
+      if (e.key !== "Enter") return;
       const row = el?.closest("tr[data-nav-prospect]");
       if (row) {
         const id = row.getAttribute("data-nav-prospect");
-        location.hash = `#/prospect/${encodeURIComponent(id)}/screening`;
+        if (id) location.hash = `#/prospect/${encodeURIComponent(id)}/screening`;
       }
     });
-    }
 
     document.addEventListener("click", (e) => {
       const prog = document.getElementById("program-title-dropdown");
