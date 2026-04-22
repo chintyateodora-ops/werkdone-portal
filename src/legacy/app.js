@@ -542,6 +542,8 @@ if (typeof window !== "undefined") {
     registerSelfServiceEntry: "landing",
     /** Singpass path — demo prefill + lock listed fields (self-service or staff) */
     registerSingpassLocked: false,
+    /** Patient self-service: show confirmation after successful registration submit */
+    registerSelfServiceSuccess: false,
     /** FIT Kit Tracker (prototype) — in-memory session state */
     fitKit: {
       activeStage: 0,
@@ -6190,6 +6192,57 @@ if (typeof window !== "undefined") {
       </div>`;
   }
 
+  /** Self-service confirmation: same sticky chrome as the form (header + programme titles) without submit or section nav. */
+  function renderRegisterSelfServiceSuccessToolbar() {
+    let title;
+    let subtitle;
+    switch (state.registerProgram) {
+      case "hpv":
+        title = "HPV Test / PAP Test Screening";
+        subtitle = "Screening Registration Form";
+        break;
+      case "fit":
+        title = "FIT Screening Programme";
+        subtitle = "Faecal Immunochemical Test — Issuing Record Form (IRF)";
+        break;
+      default:
+        title = "Mammogram Screening Registration";
+        subtitle = "Screening Registration Form";
+    }
+    return `
+      <div class="registration__toolbar registration__toolbar--self-service registration__toolbar--success">
+        <div class="registration__toolbar-row registration__toolbar-row--self-service-main">
+          <div class="registration__toolbar-titles">
+            <h1 class="registration__title">${escapeAttr(title)}</h1>
+            <p class="registration__subtitle">${escapeAttr(subtitle)}</p>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function renderRegisterSelfServiceSuccessPage() {
+    return `
+      <div class="app-shell app-shell--registration-flow app-shell--registration-self-service app-shell--reg-success">
+        <div class="registration-sticky-chrome">
+          ${renderHeader({ selfService: true })}
+          ${renderRegisterSelfServiceSuccessToolbar()}
+        </div>
+        <div class="app-content app-content--registration-flow app-content--registration-self-service app-content--reg-success">
+          <main class="app-main app-main--registration app-main--reg-success" id="main-content">
+            <div class="reg-success__main">
+              <div class="reg-success__inner">
+                <img src="assets/SuccessRegistration.svg" alt="" class="reg-success__illustration" width="165" height="165" decoding="async" />
+                <h2 class="reg-success__title">Registration Successful</h2>
+                <p class="reg-success__message">Thank you for registering! Your registration will be reviewed.</p>
+                <p class="reg-success__hint">You may now close the browser.</p>
+              </div>
+            </div>
+            ${renderAppFooter({ variant: "registration-end" })}
+          </main>
+        </div>
+      </div>`;
+  }
+
   function renderRegistrationNavDrawer() {
     const open = state.registrationMobileNavOpen;
     return `
@@ -8331,6 +8384,7 @@ if (typeof window !== "undefined") {
     if (state.route !== "register") {
       state.regNavSection = null;
       state.registrationMobileNavOpen = false;
+      state.registerSelfServiceSuccess = false;
     } else {
       const navIds = regNavItemsForProgram().map(([id]) => id);
       if (!state.regNavSection || !navIds.includes(state.regNavSection)) {
@@ -8826,6 +8880,7 @@ if (typeof window !== "undefined") {
     lastAppRenderedRoute = state.route;
     /* Internal staff `#/register/…` opens the form directly; patient `?sr_token=…#/register/…` (Copy link → View) starts on Singpass vs manual. */
     if (state.route === "register" && prevRoute !== "register") {
+      state.registerSelfServiceSuccess = false;
       if (state.registerSelfService) {
         state.registerSelfServiceEntry = "landing";
         state.registerSingpassLocked = false;
@@ -8853,6 +8908,12 @@ if (typeof window !== "undefined") {
     } else if (state.route === "fitKitTracker") {
       main = renderFitKitTrackerPage();
     } else if (state.route !== "register") main = renderListPage();
+
+    if (state.route === "register" && state.registerSelfService && state.registerSelfServiceSuccess) {
+      app.innerHTML = `${renderRegisterSelfServiceSuccessPage()}${renderModal()}`;
+      bindEvents();
+      return;
+    }
 
     if (state.route === "register" && state.registerSelfServiceEntry === "landing") {
       app.innerHTML = `${renderRegisterSelfServiceLandingPage()}${renderModal()}`;
@@ -9652,17 +9713,20 @@ if (typeof window !== "undefined") {
       if (state.route !== "register" || !state.registerSelfService) return;
       state.registerSelfServiceEntry = "landing";
       state.registerSingpassLocked = false;
+      state.registerSelfServiceSuccess = false;
       renderApp();
     });
     document.getElementById("reg-landing-singpass")?.addEventListener("click", () => {
       state.registerSelfServiceEntry = "form";
       state.registerSingpassLocked = true;
+      state.registerSelfServiceSuccess = false;
       renderApp();
       showToast("Myinfo retrieved (prototype — demo data applied).");
     });
     document.getElementById("reg-landing-manual")?.addEventListener("click", () => {
       state.registerSelfServiceEntry = "form";
       state.registerSingpassLocked = false;
+      state.registerSelfServiceSuccess = false;
       renderApp();
     });
 
@@ -9767,6 +9831,11 @@ if (typeof window !== "undefined") {
       if (rp === "hpv") state.program = "hpv";
       else if (rp === "fit") state.program = "fit";
       else state.program = "mammobus";
+      if (state.registerSelfService) {
+        state.registerSelfServiceSuccess = true;
+        renderApp();
+        return;
+      }
       showToast("Registration submitted. Prospect added to listing.");
       location.hash = "#/list";
     });

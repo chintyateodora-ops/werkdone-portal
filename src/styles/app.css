@@ -7685,6 +7685,83 @@ body.registration-nav-drawer-open {
   color: var(--color-gray-500);
 }
 
+/* Patient self-service — after successful registration submit (same shell as form, no submit in toolbar) */
+.app-content--reg-success {
+  background: var(--color-white);
+}
+
+.app-main.app-main--reg-success {
+  background: var(--color-white);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.app-main--reg-success .reg-success__main {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.registration__toolbar--success.registration__toolbar--self-service .registration__toolbar-row--self-service-main {
+  flex-wrap: nowrap;
+}
+
+@media (max-width: 640px) {
+  /* Override FormSG row+hamburger layout: success chrome is titles only */
+  .app-shell--registration-self-service
+    .registration__toolbar--self-service.registration__toolbar--success
+    .registration__toolbar-row--self-service-main {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.reg-success__main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem max(1rem, env(safe-area-inset-left)) 2rem max(1rem, env(safe-area-inset-right));
+  padding-bottom: max(2rem, env(safe-area-inset-bottom));
+  background: var(--color-white);
+}
+
+.reg-success__inner {
+  width: 100%;
+  max-width: 26rem;
+  text-align: center;
+}
+
+.reg-success__illustration {
+  display: block;
+  margin: 0 auto 1.25rem;
+  width: min(220px, 72vw);
+  height: auto;
+}
+
+.reg-success__title {
+  margin: 0 0 0.75rem;
+  font-family: var(--font-body);
+  font-size: clamp(1.25rem, 4vw, 1.5rem);
+  line-height: 1.25;
+  font-weight: var(--weight-bold);
+  color: #755bb5;
+  letter-spacing: -0.02em;
+}
+
+.reg-success__message {
+  margin: 0 0 1.25rem;
+  font-size: var(--text-body-m);
+  line-height: 1.5;
+  color: var(--color-neutral-9);
+}
+
+.reg-success__hint {
+  margin: 0;
+  font-size: var(--text-body-m);
+  font-weight: var(--weight-bold);
+  line-height: 1.45;
+  color: #755bb5;
+}
+
 .reg-landing__footer {
   flex-shrink: 0;
 }
