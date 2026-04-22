@@ -8,102 +8,22 @@
       content="Streamline patient management with customizable tabs for tracking medical history, screening progress, and visit notes, enhancing healthcare efficiency."
     />
     <title>WerkDone Prospect Management Portal</title>
-    <link rel="icon" href="favicon.png" type="image/png" />
-    <link rel="apple-touch-icon" href="favicon.png" />
+    <link rel="icon" href="./favicon.png" type="image/png" />
+    <link rel="apple-touch-icon" href="./favicon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/uicons-regular-rounded/css/uicons-regular-rounded.css" crossorigin="anonymous" />
-    <!-- Bump ?v= on every JS/CSS change (avoids stale assets when opening index.html from disk or CDN). -->
-    <link rel="stylesheet" href="css/tokens.css?v=20260416-page-heading" />
-    <link rel="stylesheet" href="css/app.css?v=20260424-bishan-scroll-shell-2" />
-    <link rel="stylesheet" href="css/bishan-screening-portal.css?v=20260424-bishan-scroll-shell-2" />
-    <link rel="stylesheet" href="css/ui-shadcn.css?v=20260415-reg-personal-extra" />
+    <link
+      rel="stylesheet"
+      href="https://cdn-uicons.flaticon.com/uicons-regular-rounded/css/uicons-regular-rounded.css"
+      crossorigin="anonymous"
+    />
   </head>
   <body>
-    <div id="app" aria-live="polite"></div>
-    <!-- Classic collapsible "Screening Records" demo rows (Client 360 + Prospect V3). Parsed by js/app.js. -->
-    <script id="wd-classic-screening-records" type="application/json">
-[
-  {
-    "id": "s1",
-    "submitted": "12 Apr 2026",
-    "type": { "key": "MMG", "label": "Mammogram", "tone": "sr-type--mmg" },
-    "status": { "key": "booked", "label": "Booked", "tone": "sr-status--booked" },
-    "appointment": { "date": "19 Aug 2026", "time": "10:30am" },
-    "venue": "Bedok North Hawker Centre",
-    "appointmentType": "mammobus",
-    "action": { "label": "Reschedule", "tone": "ui-btn--outline", "kind": "reschedule" },
-    "result": "—",
-    "nextReviewPeriod": "—",
-    "nextReviewDate": "—",
-    "lastUpdatedBy": "Justin Paul"
-  },
-  {
-    "id": "s2",
-    "submitted": "5 Apr 2026",
-    "type": { "key": "MMG", "label": "Mammogram", "tone": "sr-type--mmg" },
-    "status": { "key": "qualified", "label": "Qualified", "tone": "sr-status--qualified" },
-    "appointment": null,
-    "venue": "—",
-    "appointmentType": "scs-clinic",
-    "action": { "label": "Book Appt", "tone": "ui-btn--default", "kind": "book" },
-    "result": "—",
-    "nextReviewPeriod": "—",
-    "nextReviewDate": "—",
-    "lastUpdatedBy": "Justin Paul"
-  },
-  {
-    "id": "s3",
-    "submitted": "14 Jan 2024",
-    "type": { "key": "FIT", "label": "FIT Kit", "tone": "sr-type--fit" },
-    "status": { "key": "screened", "label": "Screened", "tone": "sr-status--screened" },
-    "appointment": { "date": "20 Jan 2024", "time": "11:00am" },
-    "venue": "Bedok Polyclinic",
-    "action": null,
-    "result": "Normal",
-    "nextReviewPeriod": "1 year",
-    "nextReviewDate": "Jan 2025",
-    "lastUpdatedBy": "Dr. Sarah Lim"
-  },
-  {
-    "id": "s4",
-    "submitted": "2 Apr 2021",
-    "type": { "key": "PAP", "label": "HPV Test", "tone": "sr-type--hpv" },
-    "status": { "key": "screened", "label": "Screened", "tone": "sr-status--screened" },
-    "appointment": { "date": "2 Apr 2021", "time": "9:00am" },
-    "venue": "SingHealth Polyclinic",
-    "action": null,
-    "result": "Normal",
-    "nextReviewPeriod": "3 years",
-    "nextReviewDate": "Apr 2024",
-    "lastUpdatedBy": "Nurse Chen Wei"
-  },
-  {
-    "id": "s5",
-    "submitted": "8 Mar 2018",
-    "type": { "key": "PAP", "label": "PAP Test", "tone": "sr-type--pap" },
-    "status": { "key": "screened", "label": "Screened", "tone": "sr-status--screened" },
-    "appointment": { "date": "8 Mar 2018", "time": "2:00pm" },
-    "venue": "NCC",
-    "action": null,
-    "result": "Normal",
-    "nextReviewPeriod": "3 years",
-    "nextReviewDate": "Mar 2021",
-    "lastUpdatedBy": "System import"
-  }
-]
-    </script>
-    <!-- SheetJS (XLSX) for export dropdown (CSV/XLSX). Must load before js/app.js. -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
-    <script src="js/detail-panels.js?v=20260416-notes-pagination-5" defer></script>
-    <script src="js/bishan-screening-portal.js?v=20260424-bishan-scroll-shell-2" defer></script>
-    <script src="js/date-input.js?v=20260415-reg-personal-extra" defer></script>
-    <script src="js/time-input.js?v=20260417-csu-time-input" defer></script>
-    <script src="js/nric-toggle.js?v=20260415-reg-personal-extra" defer></script>
-    <script src="js/app.js?v=20260424-bishan-scroll-shell-2" defer></script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
