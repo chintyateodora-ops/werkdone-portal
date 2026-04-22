@@ -6769,11 +6769,88 @@ if (typeof window !== "undefined") {
     return false;
   }
 
+  const REGISTRATION_SG_PHONE_ERR = "Contact numbers must be 8 digits and start with 6, 8, or 9.";
+
+  function normalizeRegistrationSgLocalPhoneDigits(raw) {
+    let s = String(raw || "").trim().replace(/[\s-]/g, "");
+    if (s.startsWith("+65")) s = s.slice(3);
+    else if (s.startsWith("65") && s.length > 8) s = s.slice(2);
+    return s.replace(/\D/g, "");
+  }
+
+  function isValidRegistrationSgPhone(raw) {
+    const d = normalizeRegistrationSgLocalPhoneDigits(raw);
+    if (d.length !== 8) return false;
+    const c = d.charAt(0);
+    return c === "6" || c === "8" || c === "9";
+  }
+
+  function updateRegistrationSgPhoneError(inputEl) {
+    if (!(inputEl instanceof HTMLInputElement) || !inputEl.classList.contains("registration__sg-phone")) return;
+    const err = document.getElementById(`${inputEl.id}-format-error`);
+    if (!(err instanceof HTMLElement)) return;
+    const inline = inputEl.closest(".field__inline");
+
+    const skip = inputEl.disabled || inputEl.readOnly;
+    const raw = String(inputEl.value || "").trim();
+
+    if (skip || !raw) {
+      err.setAttribute("hidden", "");
+      err.textContent = "";
+      inputEl.removeAttribute("aria-invalid");
+      inputEl.removeAttribute("aria-describedby");
+      if (inline) inline.classList.remove("field__inline--invalid");
+      return;
+    }
+
+    if (isValidRegistrationSgPhone(raw)) {
+      err.setAttribute("hidden", "");
+      err.textContent = "";
+      inputEl.removeAttribute("aria-invalid");
+      inputEl.removeAttribute("aria-describedby");
+      if (inline) inline.classList.remove("field__inline--invalid");
+      return;
+    }
+
+    err.textContent = REGISTRATION_SG_PHONE_ERR;
+    err.removeAttribute("hidden");
+    inputEl.setAttribute("aria-invalid", "true");
+    inputEl.setAttribute("aria-describedby", `${inputEl.id}-format-error`);
+    if (inline) inline.classList.add("field__inline--invalid");
+  }
+
+  function refreshRegistrationSgPhoneFormatForForm(form) {
+    if (!form) return;
+    form.querySelectorAll("input.registration__sg-phone").forEach((el) => {
+      if (el instanceof HTMLInputElement) updateRegistrationSgPhoneError(el);
+    });
+  }
+
+  function validateRegistrationFormSgPhoneFields(form) {
+    if (!form) return false;
+    let firstBad = null;
+    form.querySelectorAll("input.registration__sg-phone").forEach((el) => {
+      if (!(el instanceof HTMLInputElement)) return;
+      updateRegistrationSgPhoneError(el);
+      const inline = el.closest(".field__inline");
+      if (inline && inline.classList.contains("field__inline--invalid") && !firstBad) firstBad = el;
+    });
+    if (firstBad) {
+      firstBad.focus();
+      try {
+        firstBad.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      } catch (_) {}
+      return true;
+    }
+    return false;
+  }
+
   /** Per-render sync only; input/blur handlers are on `document` in installDelegatedAppListeners (always active for #registration-form). */
   function bindRegistrationNricFormatValidation(form) {
     if (!form) return;
     refreshRegistrationNricFormatForForm(form);
     syncRegistrationNricPlaceholderFromResidential(form);
+    refreshRegistrationSgPhoneFormatForForm(form);
   }
 
   function refreshRegistrationNricFormatForForm(form) {
@@ -6976,6 +7053,7 @@ if (typeof window !== "undefined") {
     setVal(ids.country, "");
     if (typeof window.WD_syncNricMasks === "function") window.WD_syncNricMasks(form);
     syncRegistrationNricPlaceholderFromResidential(form);
+    refreshRegistrationSgPhoneFormatForForm(form);
   }
 
   function setRegistrationNricValue(form, storeInputId, value) {
@@ -7017,6 +7095,7 @@ if (typeof window !== "undefined") {
     setVal(ids.postal, client.postal);
     setVal(ids.country, client.country);
     syncRegistrationNricPlaceholderFromResidential(form);
+    refreshRegistrationSgPhoneFormatForForm(form);
   }
 
   function bindRegistrationClientLookup(form) {
@@ -7215,9 +7294,12 @@ if (typeof window !== "undefined") {
                   </div>
                   <div class="field">
                     <label for="phone">Contact Number<span class="field__req" aria-hidden="true">*</span></label>
-                    <div class="field__inline">
-                      <input type="text" class="field__prefix" value="+65" disabled aria-label="Country code" />
-                      <input id="phone" name="phone" type="tel" required placeholder="E.g. 8123 4567" />
+                    <div class="field__phone-wrap">
+                      <div class="field__inline">
+                        <input type="text" class="field__prefix" value="+65" disabled aria-label="Country code" />
+                        <input id="phone" name="phone" type="tel" class="registration__sg-phone" required placeholder="E.g. 8123 4567" />
+                      </div>
+                      <p class="field__phone-format-error" id="phone-format-error" hidden></p>
                     </div>
                   </div>
                   <div class="field">
@@ -7240,12 +7322,12 @@ if (typeof window !== "undefined") {
                     <input id="street" name="street" required placeholder="E.g. Pasir Drive" />
                   </div>
                   <div class="field">
-                    <label for="floor">Floor<span class="field__req" aria-hidden="true">*</span></label>
-                    <input id="floor" name="floor" required placeholder="E.g. 50" />
+                    <label for="floor">Floor</label>
+                    <input id="floor" name="floor" placeholder="E.g. 50" />
                   </div>
                   <div class="field">
-                    <label for="unit">Unit No<span class="field__req" aria-hidden="true">*</span></label>
-                    <input id="unit" name="unit" required placeholder="E.g. 101 or 345" />
+                    <label for="unit">Unit No</label>
+                    <input id="unit" name="unit" placeholder="E.g. 101 or 345" />
                   </div>
                   <div class="field">
                     <label for="postal">Postal Code<span class="field__req" aria-hidden="true">*</span></label>
@@ -7559,9 +7641,12 @@ if (typeof window !== "undefined") {
                   </div>
                   <div class="field">
                     <label for="hpvMobile">Contact Number<span class="field__req" aria-hidden="true">*</span></label>
-                    <div class="field__inline">
-                      <input type="text" class="field__prefix" value="+65" disabled aria-label="Country code" />
-                      <input id="hpvMobile" name="hpvMobile" type="tel" required placeholder="E.g. 8123 4567" />
+                    <div class="field__phone-wrap">
+                      <div class="field__inline">
+                        <input type="text" class="field__prefix" value="+65" disabled aria-label="Country code" />
+                        <input id="hpvMobile" name="hpvMobile" type="tel" class="registration__sg-phone" required placeholder="E.g. 8123 4567" />
+                      </div>
+                      <p class="field__phone-format-error" id="hpvMobile-format-error" hidden></p>
                     </div>
                   </div>
                   <div class="field">
@@ -7584,12 +7669,12 @@ if (typeof window !== "undefined") {
                     <input id="hpvStreet" name="hpvStreet" placeholder="E.g. Pasir Drive" />
                   </div>
                   <div class="field">
-                    <label for="hpvFloor">Floor<span class="field__req" aria-hidden="true">*</span></label>
-                    <input id="hpvFloor" name="hpvFloor" required placeholder="E.g. 50" />
+                    <label for="hpvFloor">Floor</label>
+                    <input id="hpvFloor" name="hpvFloor" placeholder="E.g. 50" />
                   </div>
                   <div class="field">
-                    <label for="hpvUnit">Unit No<span class="field__req" aria-hidden="true">*</span></label>
-                    <input id="hpvUnit" name="hpvUnit" required placeholder="E.g. 101 or 345" />
+                    <label for="hpvUnit">Unit No</label>
+                    <input id="hpvUnit" name="hpvUnit" placeholder="E.g. 101 or 345" />
                   </div>
                   <div class="field">
                     <label for="hpvPostal">Postal Code<span class="field__req" aria-hidden="true">*</span></label>
@@ -7829,9 +7914,12 @@ if (typeof window !== "undefined") {
                   </div>
                   <div class="field">
                     <label for="fitContact">Contact Number<span class="field__req" aria-hidden="true">*</span></label>
-                    <div class="field__inline">
-                      <input type="text" class="field__prefix" value="+65" disabled aria-label="Country code" />
-                      <input id="fitContact" name="fitContact" type="tel" required placeholder="E.g. 8123 4567" />
+                    <div class="field__phone-wrap">
+                      <div class="field__inline">
+                        <input type="text" class="field__prefix" value="+65" disabled aria-label="Country code" />
+                        <input id="fitContact" name="fitContact" type="tel" class="registration__sg-phone" required placeholder="E.g. 8123 4567" />
+                      </div>
+                      <p class="field__phone-format-error" id="fitContact-format-error" hidden></p>
                     </div>
                   </div>
                   <div class="field">
@@ -7854,12 +7942,12 @@ if (typeof window !== "undefined") {
                     <input id="fitStreet" name="fitStreet" placeholder="E.g. Pasir Drive" />
                   </div>
                   <div class="field">
-                    <label for="fitFloor">Floor<span class="field__req" aria-hidden="true">*</span></label>
-                    <input id="fitFloor" name="fitFloor" required placeholder="E.g. 50" />
+                    <label for="fitFloor">Floor</label>
+                    <input id="fitFloor" name="fitFloor" placeholder="E.g. 50" />
                   </div>
                   <div class="field">
-                    <label for="fitUnit">Unit No<span class="field__req" aria-hidden="true">*</span></label>
-                    <input id="fitUnit" name="fitUnit" required placeholder="E.g. 101 or 345" />
+                    <label for="fitUnit">Unit No</label>
+                    <input id="fitUnit" name="fitUnit" placeholder="E.g. 101 or 345" />
                   </div>
                   <div class="field">
                     <label for="fitPostal">Postal Code<span class="field__req" aria-hidden="true">*</span></label>
@@ -9666,6 +9754,7 @@ if (typeof window !== "undefined") {
       const form = e.target;
       if (!(form instanceof HTMLFormElement)) return;
       if (validateRegistrationFormNricFields(form)) return;
+      if (validateRegistrationFormSgPhoneFields(form)) return;
       if (!form.checkValidity()) {
         form.reportValidity();
         return;
@@ -11156,26 +11245,32 @@ if (typeof window !== "undefined") {
 
     document.addEventListener("input", (e) => {
       const t = e.target;
-      if (!(t instanceof HTMLInputElement) || !t.classList.contains("field__nric-edit")) return;
-      if (!t.closest("#registration-form")) return;
-      const shell = t.closest(".field__nric");
-      if (!shell) return;
-      const store = shell.querySelector(".field__nric-store");
-      if (store instanceof HTMLInputElement) store.value = t.value;
-      updateRegistrationNricFormatError(shell);
+      if (!(t instanceof HTMLInputElement) || !t.closest("#registration-form")) return;
+      if (t.classList.contains("field__nric-edit")) {
+        const shell = t.closest(".field__nric");
+        if (!shell) return;
+        const store = shell.querySelector(".field__nric-store");
+        if (store instanceof HTMLInputElement) store.value = t.value;
+        updateRegistrationNricFormatError(shell);
+        return;
+      }
+      if (t.classList.contains("registration__sg-phone")) updateRegistrationSgPhoneError(t);
     });
 
     document.addEventListener(
       "focusout",
       (e) => {
         const t = e.target;
-        if (!(t instanceof HTMLInputElement) || !t.classList.contains("field__nric-edit")) return;
-        if (!t.closest("#registration-form")) return;
-        const shell = t.closest(".field__nric");
-        if (!shell) return;
-        const store = shell.querySelector(".field__nric-store");
-        if (store instanceof HTMLInputElement) store.value = t.value;
-        updateRegistrationNricFormatError(shell);
+        if (!(t instanceof HTMLInputElement) || !t.closest("#registration-form")) return;
+        if (t.classList.contains("field__nric-edit")) {
+          const shell = t.closest(".field__nric");
+          if (!shell) return;
+          const store = shell.querySelector(".field__nric-store");
+          if (store instanceof HTMLInputElement) store.value = t.value;
+          updateRegistrationNricFormatError(shell);
+          return;
+        }
+        if (t.classList.contains("registration__sg-phone")) updateRegistrationSgPhoneError(t);
       },
       true
     );
