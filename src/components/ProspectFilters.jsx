@@ -1,11 +1,27 @@
+import { useRef } from "react";
 import { IconHtml } from "../utils/iconHtml";
 
-let prospectSearchDebounce = null;
-
 export function ProspectFilters({ api }) {
+  const searchDebounce = useRef(null);
   const n = api.listFilterCategoryCount();
   const listPressed = api.state.view === "list";
   const kanbanPressed = api.state.view === "kanban";
+
+  function handleSearchChange(e) {
+    api.state.search = e.target.value;
+    clearTimeout(searchDebounce.current);
+    searchDebounce.current = setTimeout(() => {
+      // Only notify React to re-render filters bar — do NOT call renderApp()
+      // which would destroy and recreate the entire DOM
+      api.notifyReact();
+    }, 200);
+  }
+
+  function handleFiltersClick() {
+    api.state.filterModal = true;
+    api.renderApp(); // filter modal is rendered by legacy, needs full renderApp
+  }
+
   return (
     <div className="bc-bsh-filters prospects-filters-bar" role="toolbar" aria-label="Search and filters">
       <div className="toolbar-search prospects-filters-bar__search">
@@ -17,20 +33,9 @@ export function ProspectFilters({ api }) {
           id="prospect-search"
           data-wd-react-list="1"
           placeholder="Search by name, NRIC, phone no."
-          value={api.state.search}
+          defaultValue={api.state.search}
           autoComplete="off"
-          onChange={(e) => {
-            api.state.search = e.target.value;
-            clearTimeout(prospectSearchDebounce);
-            prospectSearchDebounce = setTimeout(() => {
-              api.renderApp();
-              const again = document.getElementById("prospect-search");
-              if (again) {
-                again.focus();
-                again.setSelectionRange(again.value.length, again.value.length);
-              }
-            }, 200);
-          }}
+          onChange={handleSearchChange}
         />
       </div>
       <div className="prospects-filters-bar__end">
@@ -40,6 +45,7 @@ export function ProspectFilters({ api }) {
           id="btn-list-filters"
           aria-haspopup="dialog"
           aria-expanded={api.state.filterModal}
+          onClick={handleFiltersClick}
         >
           <span className="ui-btn__icon" aria-hidden="true">
             <IconHtml html={api.icons.filter} />

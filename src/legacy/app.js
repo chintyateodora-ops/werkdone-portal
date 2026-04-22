@@ -4287,6 +4287,7 @@ if (typeof window !== "undefined") {
   function refreshProspectsListingDomFromState() {
     if (state.route !== "list") return;
     renderApp();
+    notifyReact();
   }
 
   function normalizeDetailTab() {
@@ -6153,12 +6154,17 @@ if (typeof window !== "undefined") {
     return `
       <div class="app-shell app-shell--reg-landing">
         <header class="reg-landing__header" role="banner">
+          <div class="reg-landing__header-inner">
+            <div class="reg-landing__back-wrap">
+              <button type="button" id="reg-landing-back" class="detail-hero__back reg-landing__back" aria-label="Go back">${icons.back}</button>
+            </div>
           <div class="reg-landing__logos">
             <img src="assets/branding/scs-logo.png" alt="Singapore Cancer Society" class="reg-landing__logo reg-landing__logo--scs" width="160" height="52" />
             <span class="reg-landing__logo-divider" aria-hidden="true"></span>
             <img src="assets/branding/logo-bcf.png" alt="Breast Cancer Foundation" class="reg-landing__logo reg-landing__logo--bcf" width="200" height="120" />
             <span class="reg-landing__logo-divider" aria-hidden="true"></span>
             <img src="assets/branding/logo-nhg-diagnostics.png" alt="NHG Health Diagnostics" class="reg-landing__logo reg-landing__logo--nhg" width="220" height="56" />
+          </div>
           </div>
         </header>
         <main class="reg-landing__main" id="main-content">
@@ -9031,6 +9037,11 @@ if (typeof window !== "undefined") {
     if (maxEl) maxEl.value = String(amax);
   }
 
+  function notifyReact() {
+    window.__WD_PORTAL_TICK__ = (window.__WD_PORTAL_TICK__ || 0) + 1;
+    window.dispatchEvent(new CustomEvent("wd-portal-update"));
+  }
+
   function applyProspectListKpiFromEl(kpiEl) {
     const key = kpiEl.getAttribute("data-prospect-kpi");
     if (!key) return;
@@ -9043,6 +9054,7 @@ if (typeof window !== "undefined") {
         state.listKpiPrevSort = null;
       }
       renderApp();
+      notifyReact();
       return;
     }
 
@@ -9055,45 +9067,11 @@ if (typeof window !== "undefined") {
     else if (key === "followup") state.listSort = { key: "nextReview", dir: "asc" };
     else if (key === "qualified" || key === "booked" || key === "screened") state.listSort = { key: "nextReview", dir: "asc" };
     renderApp();
+    notifyReact();
   }
 
-  /** Prospect list page: search + filter modal (clicks for KPI/kanban/toolbar use document delegation in installDelegatedAppListeners). */
-  function bindProspectListPageInteractionsOnly() {
-    const search = document.getElementById("prospect-search");
-    if (search && search.dataset.wdReactList !== "1") {
-      search.addEventListener("input", () => {
-        state.search = search.value;
-        clearTimeout(searchDebounce);
-        searchDebounce = setTimeout(() => {
-          renderApp();
-          const again = document.getElementById("prospect-search");
-          if (again) {
-            again.focus();
-            again.setSelectionRange(again.value.length, again.value.length);
-          }
-        }, 200);
-      });
-    }
-
-    document.getElementById("list-filter-apply")?.addEventListener("click", () => {
-      readListFiltersFromForm();
-      state.filterModal = false;
-      renderApp();
-    });
-
-    document.getElementById("list-filter-clear")?.addEventListener("click", () => {
-      state.listFilters = createDefaultListFilters();
-      syncListFilterFormFromState();
-      if (state.route === "list") {
-        refreshProspectsListingDomFromState();
-      } else {
-        renderApp();
-      }
-      requestAnimationFrame(() => {
-        document.getElementById("list-filter-clear")?.focus();
-      });
-    });
-  }
+  /** Prospect list interactions use document delegation in installDelegatedAppListeners (React mount timing). */
+  function bindProspectListPageInteractionsOnly() {}
 
   function ageFromRegistrationDob(dobDdMmYyyyHyphen) {
     const s = String(dobDdMmYyyyHyphen || "")
@@ -9409,6 +9387,9 @@ if (typeof window !== "undefined") {
       });
     }
 
+    document.getElementById("reg-landing-back")?.addEventListener("click", () => {
+      window.history.back();
+    });
     document.getElementById("reg-landing-singpass")?.addEventListener("click", () => {
       state.registerSelfServiceEntry = "form";
       state.registerSingpassLocked = true;
@@ -10204,6 +10185,7 @@ if (typeof window !== "undefined") {
         e.stopPropagation();
         state.exportMenuOpen = !state.exportMenuOpen;
         renderApp();
+        notifyReact();
         return;
       }
       const addProspectT = el?.closest("[data-add-prospect-toggle]");
@@ -10211,6 +10193,7 @@ if (typeof window !== "undefined") {
         e.stopPropagation();
         state.addProspectMenuOpen = !state.addProspectMenuOpen;
         renderApp();
+        notifyReact();
         return;
       }
       const actToggle = el?.closest("[data-prospect-list-actions-toggle]");
@@ -10220,11 +10203,13 @@ if (typeof window !== "undefined") {
         if (!rk) return;
         state.prospectListActionsOpenRowKey = state.prospectListActionsOpenRowKey === rk ? null : rk;
         renderApp();
+        notifyReact();
         return;
       }
       if (el?.closest("#btn-list-filters")) {
         state.filterModal = true;
         renderApp();
+        notifyReact();
         return;
       }
       const viewBtn = el?.closest("[data-view]");
@@ -10235,7 +10220,10 @@ if (typeof window !== "undefined") {
           setStoredListView(state.view);
           const h = state.view === "kanban" ? "#/kanban" : "#/list";
           if (location.hash !== h) location.hash = h;
-          else renderApp();
+          else {
+            renderApp();
+            notifyReact();
+          }
         }
         return;
       }
@@ -10250,6 +10238,7 @@ if (typeof window !== "undefined") {
           state.listSort.dir = "asc";
         }
         renderApp();
+        notifyReact();
         return;
       }
       const kpiHit = el?.closest("[data-prospect-kpi]");
@@ -10751,10 +10740,39 @@ if (typeof window !== "undefined") {
       document.getElementById("prospect-docs-file")?.click();
       return;
     }
+    if (el?.closest("#list-filter-apply")) {
+      readListFiltersFromForm();
+      state.filterModal = false;
+      renderApp();
+      notifyReact();
+      return;
+    }
+    if (el?.closest("#list-filter-clear")) {
+      state.listFilters = createDefaultListFilters();
+      syncListFilterFormFromState();
+      refreshProspectsListingDomFromState();
+      notifyReact();
+      requestAnimationFrame(() => {
+        document.getElementById("list-filter-clear")?.focus();
+      });
+      return;
+    }
     const row = el?.closest("tr[data-nav-prospect]");
     if (row && !el.closest("button") && !el.closest("a")) {
       const id = row.getAttribute("data-nav-prospect");
       location.hash = `#/prospect/${encodeURIComponent(id)}/screening`;
+    }
+  });
+
+  document.addEventListener("input", (e) => {
+    const t = e.target;
+    if (!(t instanceof HTMLInputElement)) return;
+    if (t.id === "prospect-search") {
+      state.search = t.value;
+      clearTimeout(searchDebounce);
+      searchDebounce = setTimeout(() => {
+        refreshProspectsListingDomFromState();
+      }, 200);
     }
   });
 
@@ -10971,6 +10989,9 @@ if (typeof window !== "undefined") {
     window.__WD_PORTAL_API__ = {
       state,
       renderApp,
+      notifyReact,
+      exportCsv: exportProspectsCsvSheetJs,
+      exportExcel: exportProspectsXlsx,
       PROGRAMS,
       PIPELINE_KEYS,
       getFilteredProspects,

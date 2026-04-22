@@ -7359,14 +7359,30 @@ body.registration-nav-drawer-open {
   border-bottom: 1px solid var(--color-gray-200);
 }
 
+.reg-landing__header-inner {
+  max-width: 52rem;
+  margin: 0 auto;
+}
+
+.reg-landing__back-wrap {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 0.75rem;
+}
+
+button.reg-landing__back {
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
 .reg-landing__logos {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: 0.75rem 1rem;
-  max-width: 52rem;
-  margin: 0 auto;
 }
 
 .reg-landing__logo {

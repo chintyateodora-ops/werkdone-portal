@@ -3,6 +3,36 @@ import { IconHtml } from "../utils/iconHtml";
 
 export function ProspectListPageHeader({ api }) {
   const exportOpen = api.state.exportMenuOpen ? "is-open" : "";
+  const addOpen = api.state.addProspectMenuOpen ? "is-open" : "";
+
+  function handleExportToggle(e) {
+    e.stopPropagation();
+    api.state.exportMenuOpen = !api.state.exportMenuOpen;
+    api.state.addProspectMenuOpen = false;
+    api.notifyReact();
+  }
+
+  function handleAddProspectToggle(e) {
+    e.stopPropagation();
+    api.state.addProspectMenuOpen = !api.state.addProspectMenuOpen;
+    api.state.exportMenuOpen = false;
+    api.notifyReact();
+  }
+
+  function handleExportCsv(e) {
+    e.preventDefault();
+    api.state.exportMenuOpen = false;
+    api.notifyReact();
+    api.exportCsv();
+  }
+
+  function handleExportExcel(e) {
+    e.preventDefault();
+    api.state.exportMenuOpen = false;
+    api.notifyReact();
+    api.exportExcel();
+  }
+
   return (
     <header className="bc-bsh-toolbar prospects-page-toolbar" aria-label="Prospect list header">
       <div className="bc-bsh-toolbar__title-group">
@@ -39,28 +69,28 @@ export function ProspectListPageHeader({ api }) {
           <button
             type="button"
             className="ui-btn ui-btn--outline ui-btn--sm"
-            data-export-menu-toggle
             aria-expanded={api.state.exportMenuOpen}
             aria-haspopup="true"
+            onClick={handleExportToggle}
           >
             Export
           </button>
           <div className="title-dropdown__panel" role="menu">
-            <button type="button" className="title-dropdown__option" role="menuitem" data-export-option="csv">
+            <button type="button" className="title-dropdown__option" role="menuitem" onClick={handleExportCsv}>
               Export CSV
             </button>
-            <button type="button" className="title-dropdown__option" role="menuitem" data-export-option="excel">
+            <button type="button" className="title-dropdown__option" role="menuitem" onClick={handleExportExcel}>
               Export Excel
             </button>
           </div>
         </div>
-        <div className={`title-dropdown title-dropdown--align-end ${api.state.addProspectMenuOpen ? "is-open" : ""}`} id="add-prospect-dropdown">
+        <div className={`title-dropdown title-dropdown--align-end ${addOpen}`} id="add-prospect-dropdown">
           <button
             type="button"
             className="ui-btn ui-btn--default ui-btn--sm"
-            data-add-prospect-toggle
             aria-expanded={api.state.addProspectMenuOpen}
             aria-haspopup="true"
+            onClick={handleAddProspectToggle}
           >
             <span className="ui-btn__icon" aria-hidden="true">
               <IconHtml html={api.icons.plus} />
