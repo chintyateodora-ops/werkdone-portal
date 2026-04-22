@@ -6150,18 +6150,27 @@ if (typeof window !== "undefined") {
     return "Mammogram Screening Registration";
   }
 
+  function renderRegisterSelfServiceLandingLogos() {
+    const scsImg =
+      '<img src="assets/branding/scs-logo.png" alt="Singapore Cancer Society" class="reg-landing__logo reg-landing__logo--scs" width="160" height="52" />';
+    if (state.registerProgram === "hpv" || state.registerProgram === "fit") {
+      return `<div class="reg-landing__logos reg-landing__logos--scs-only">${scsImg}</div>`;
+    }
+    return `<div class="reg-landing__logos">
+            ${scsImg}
+            <span class="reg-landing__logo-divider" aria-hidden="true"></span>
+            <img src="assets/branding/logo-bcf.png" alt="Breast Cancer Foundation" class="reg-landing__logo reg-landing__logo--bcf" width="200" height="120" />
+            <span class="reg-landing__logo-divider" aria-hidden="true"></span>
+            <img src="assets/branding/logo-nhg-diagnostics.png" alt="NHG Health Diagnostics" class="reg-landing__logo reg-landing__logo--nhg" width="220" height="56" />
+          </div>`;
+  }
+
   function renderRegisterSelfServiceLandingPage() {
     const title = escapeAttr(registerProgramLandingTitle());
     return `
       <div class="app-shell app-shell--reg-landing">
         <header class="reg-landing__header" role="banner">
-          <div class="reg-landing__logos">
-            <img src="assets/branding/scs-logo.png" alt="Singapore Cancer Society" class="reg-landing__logo reg-landing__logo--scs" width="160" height="52" />
-            <span class="reg-landing__logo-divider" aria-hidden="true"></span>
-            <img src="assets/branding/logo-bcf.png" alt="Breast Cancer Foundation" class="reg-landing__logo reg-landing__logo--bcf" width="200" height="120" />
-            <span class="reg-landing__logo-divider" aria-hidden="true"></span>
-            <img src="assets/branding/logo-nhg-diagnostics.png" alt="NHG Health Diagnostics" class="reg-landing__logo reg-landing__logo--nhg" width="220" height="56" />
-          </div>
+          ${renderRegisterSelfServiceLandingLogos()}
         </header>
         <main class="reg-landing__main" id="main-content">
           <div class="reg-landing__card">
