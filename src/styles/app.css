@@ -5518,15 +5518,50 @@ button.app-header__back {
   border-color: var(--color-error);
 }
 
-.field__nric-format-error {
-  margin: 0.35rem 0 0;
-  font-size: var(--text-body-s);
+/* Inline validation copy under NRIC / phone — scoped + fallbacks so production CSS can’t wash out color */
+.field .field__nric-format-error,
+#registration-form .field .field__nric-format-error {
+  box-sizing: border-box;
+  margin: 0.375rem 0 0;
+  padding: 0;
+  font-size: var(--text-body-s, 0.8125rem);
   line-height: 1.45;
-  color: var(--color-error);
+  font-weight: var(--weight-regular, 400);
+  color: var(--color-error, #bb2915);
 }
 
-.field__nric-format-error:not([hidden]) {
+.field .field__nric-format-error:not([hidden]),
+#registration-form .field .field__nric-format-error:not([hidden]) {
   display: block;
+}
+
+.field__phone-wrap {
+  width: 100%;
+}
+
+.field .field__phone-wrap .field__phone-format-error,
+#registration-form .field .field__phone-wrap .field__phone-format-error {
+  box-sizing: border-box;
+  margin: 0.375rem 0 0;
+  padding: 0;
+  font-size: var(--text-body-s, 0.8125rem);
+  line-height: 1.45;
+  font-weight: var(--weight-regular, 400);
+  color: var(--color-error, #bb2915);
+}
+
+.field .field__phone-wrap .field__phone-format-error:not([hidden]),
+#registration-form .field .field__phone-wrap .field__phone-format-error:not([hidden]) {
+  display: block;
+}
+
+.field .field__inline.field__inline--invalid {
+  border-color: var(--color-error);
+}
+
+.field .field__inline.field__inline--invalid:focus-within {
+  outline: 2px solid color-mix(in srgb, var(--color-error) 35%, transparent);
+  border-color: var(--color-error);
 }
 
 .field__nric-face {
