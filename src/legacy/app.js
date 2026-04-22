@@ -3645,6 +3645,7 @@ if (typeof window !== "undefined") {
       return `
       <header class="app-header app-header--self-service">
         <div class="app-header__brand">
+          <button type="button" id="registration-self-service-back" class="detail-hero__back app-header__back" aria-label="Back to registration method">${icons.back}</button>
           ${renderScsLogo()}
         </div>
       </header>
@@ -6154,17 +6155,12 @@ if (typeof window !== "undefined") {
     return `
       <div class="app-shell app-shell--reg-landing">
         <header class="reg-landing__header" role="banner">
-          <div class="reg-landing__header-inner">
-            <div class="reg-landing__back-wrap">
-              <button type="button" id="reg-landing-back" class="detail-hero__back reg-landing__back" aria-label="Go back">${icons.back}</button>
-            </div>
           <div class="reg-landing__logos">
             <img src="assets/branding/scs-logo.png" alt="Singapore Cancer Society" class="reg-landing__logo reg-landing__logo--scs" width="160" height="52" />
             <span class="reg-landing__logo-divider" aria-hidden="true"></span>
             <img src="assets/branding/logo-bcf.png" alt="Breast Cancer Foundation" class="reg-landing__logo reg-landing__logo--bcf" width="200" height="120" />
             <span class="reg-landing__logo-divider" aria-hidden="true"></span>
             <img src="assets/branding/logo-nhg-diagnostics.png" alt="NHG Health Diagnostics" class="reg-landing__logo reg-landing__logo--nhg" width="220" height="56" />
-          </div>
           </div>
         </header>
         <main class="reg-landing__main" id="main-content">
@@ -9387,8 +9383,11 @@ if (typeof window !== "undefined") {
       });
     }
 
-    document.getElementById("reg-landing-back")?.addEventListener("click", () => {
-      window.history.back();
+    document.getElementById("registration-self-service-back")?.addEventListener("click", () => {
+      if (state.route !== "register" || !state.registerSelfService) return;
+      state.registerSelfServiceEntry = "landing";
+      state.registerSingpassLocked = false;
+      renderApp();
     });
     document.getElementById("reg-landing-singpass")?.addEventListener("click", () => {
       state.registerSelfServiceEntry = "form";
