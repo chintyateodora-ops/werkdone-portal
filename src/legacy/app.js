@@ -7514,10 +7514,6 @@ if (typeof window !== "undefined") {
                       <option value="evening">Evening</option>
                     </select>
                   </div>
-                  <div class="field field--full">
-                    <label for="screeningLocationEvent">Screening Location / Event</label>
-                    <input id="screeningLocationEvent" name="screeningLocationEvent" type="text" placeholder="Enter Screening Location / Event" />
-                  </div>
                 </div>
               </section>
 
@@ -7846,10 +7842,6 @@ if (typeof window !== "undefined") {
                       <option value="evening">Evening</option>
                     </select>
                   </div>
-                  <div class="field field--full">
-                    <label for="hpvScreeningLocation">Screening Location / Event</label>
-                    <input id="hpvScreeningLocation" name="hpvScreeningLocation" type="text" placeholder="Enter Screening Location / Event" />
-                  </div>
                 </div>
               </section>
 
@@ -8105,10 +8097,6 @@ if (typeof window !== "undefined") {
                       <option value="afternoon">Afternoon</option>
                       <option value="evening">Evening</option>
                     </select>
-                  </div>
-                  <div class="field field--full">
-                    <label for="fitScreeningLocation">Screening Location / Event</label>
-                    <input id="fitScreeningLocation" name="fitScreeningLocation" type="text" placeholder="Enter Screening Location / Event" />
                   </div>
                 </div>
               </section>
