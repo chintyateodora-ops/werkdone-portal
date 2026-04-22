@@ -6586,6 +6586,7 @@ if (typeof window !== "undefined") {
       '<i class="fi fi-rr-eye field__nric-toggle-ico field__nric-toggle-ico--when-revealed"></i>' +
       "</span>";
     return (
+      '<div class="field__nric-wrap">' +
       '<div class="field__nric field__nric--revealed">' +
       '<input type="hidden" id="' +
       id +
@@ -6598,13 +6599,17 @@ if (typeof window !== "undefined") {
       " />" +
       '<div class="field__nric-face">' +
       '<span class="field__nric-asterisks" aria-hidden="true"></span>' +
-      '<input type="text" class="field__nric-edit" autocomplete="off" maxlength="20" placeholder="Enter NRIC No."' +
+      '<input type="text" class="field__nric-edit" autocomplete="off" maxlength="20" placeholder="Enter NRIC / FIN number"' +
       reqEdit +
       ' />' +
       "</div>" +
       '<button type="button" class="field__nric-toggle" aria-label="Hide NRIC" aria-pressed="true" title="Hide NRIC" data-nric-toggle>' +
       toggleIcons +
       "</button>" +
+      "</div>" +
+      '<p class="field__nric-format-error" id="' +
+      id +
+      '-format-error" hidden></p>' +
       "</div>"
     );
   }
@@ -6643,6 +6648,165 @@ if (typeof window !== "undefined") {
     return String(s || "")
       .replace(/\s/g, "")
       .toUpperCase();
+  }
+
+  const REGISTRATION_NRIC_CITIZEN_PR_RE = /^[ST]\d{7}[A-Z]$/;
+  const REGISTRATION_NRIC_FOREIGNER_FIN_RE = /^[FGM]\d{7}[A-Z]$/;
+  /** When residential status is not selected yet: accept any valid NRIC/FIN prefix (S,T,F,G,M). */
+  const REGISTRATION_NRIC_UNSPECIFIED_RES_RE = /^[STFGM]\d{7}[A-Z]$/;
+
+  function normalizeRegistrationNricFinValue(s) {
+    return String(s || "")
+      .replace(/\s/g, "")
+      .toUpperCase();
+  }
+
+  function getRegistrationResidentialValueForNricShell(shell) {
+    const form = shell?.closest("#registration-form");
+    if (!(form instanceof HTMLFormElement)) return "";
+    const store = shell.querySelector(".field__nric-store");
+    if (!(store instanceof HTMLInputElement)) return "";
+    const sid = store.id;
+    const resSel =
+      sid === "nric"
+        ? form.querySelector("#residential")
+        : sid === "hpvNric"
+          ? form.querySelector("#hpvResidential")
+          : sid === "fitNric"
+            ? form.querySelector("#fitResidential")
+            : null;
+    return resSel instanceof HTMLSelectElement ? String(resSel.value || "").trim() : "";
+  }
+
+  function isValidRegistrationNricForResidential(residentialValue, rawNric) {
+    const n = normalizeRegistrationNricFinValue(rawNric);
+    if (!n) return true;
+    const v = String(residentialValue || "").trim();
+    if (v === "Citizen" || v === "PR") return REGISTRATION_NRIC_CITIZEN_PR_RE.test(n);
+    if (v === "Foreigner") return REGISTRATION_NRIC_FOREIGNER_FIN_RE.test(n);
+    return REGISTRATION_NRIC_UNSPECIFIED_RES_RE.test(n);
+  }
+
+  function registrationNricFormatErrorMessage(residentialValue) {
+    const v = String(residentialValue || "").trim();
+    if (v === "Citizen" || v === "PR") {
+      return "NRIC number must start with S or T, followed by 7 digits and a letter.";
+    }
+    if (v === "Foreigner") {
+      return "FIN number must start with F, G, or M, followed by 7 digits and a letter.";
+    }
+    return "Select residential status, then enter a valid NRIC or FIN number.";
+  }
+
+  function syncRegistrationNricStoresFromEdits(form) {
+    if (!form) return;
+    form.querySelectorAll(".field__nric-store").forEach((store) => {
+      if (!(store instanceof HTMLInputElement)) return;
+      const shell = store.closest(".field__nric");
+      if (!shell) return;
+      const edit = shell.querySelector(".field__nric-edit");
+      if (!(edit instanceof HTMLInputElement)) return;
+      if (edit.disabled || edit.readOnly) return;
+      store.value = edit.value;
+    });
+  }
+
+  function updateRegistrationNricFormatError(shell) {
+    if (!shell) return;
+    const store = shell.querySelector(".field__nric-store");
+    const edit = shell.querySelector(".field__nric-edit");
+    if (!(store instanceof HTMLInputElement) || !(edit instanceof HTMLInputElement)) return;
+    const err = document.getElementById(`${store.id}-format-error`);
+    if (!(err instanceof HTMLElement)) return;
+
+    const skip = edit.disabled || edit.readOnly;
+    const raw = String(store.value || "").trim();
+
+    if (skip || !raw) {
+      err.setAttribute("hidden", "");
+      err.textContent = "";
+      edit.removeAttribute("aria-invalid");
+      edit.removeAttribute("aria-describedby");
+      shell.classList.remove("field__nric--invalid");
+      return;
+    }
+
+    const residentialVal = getRegistrationResidentialValueForNricShell(shell);
+    if (isValidRegistrationNricForResidential(residentialVal, store.value)) {
+      err.setAttribute("hidden", "");
+      err.textContent = "";
+      edit.removeAttribute("aria-invalid");
+      edit.removeAttribute("aria-describedby");
+      shell.classList.remove("field__nric--invalid");
+      return;
+    }
+
+    err.textContent = registrationNricFormatErrorMessage(residentialVal);
+    err.removeAttribute("hidden");
+    edit.setAttribute("aria-invalid", "true");
+    edit.setAttribute("aria-describedby", `${store.id}-format-error`);
+    shell.classList.add("field__nric--invalid");
+  }
+
+  function validateRegistrationFormNricFields(form) {
+    if (!form) return false;
+    syncRegistrationNricStoresFromEdits(form);
+    let firstBadEdit = null;
+    form.querySelectorAll(".field__nric").forEach((shell) => {
+      updateRegistrationNricFormatError(shell);
+      const edit = shell.querySelector(".field__nric-edit");
+      if (edit instanceof HTMLInputElement && shell.classList.contains("field__nric--invalid") && !firstBadEdit) {
+        firstBadEdit = edit;
+      }
+    });
+    if (firstBadEdit) {
+      firstBadEdit.focus();
+      try {
+        firstBadEdit.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      } catch (_) {}
+      return true;
+    }
+    return false;
+  }
+
+  /** Per-render sync only; input/blur handlers are on `document` in installDelegatedAppListeners (always active for #registration-form). */
+  function bindRegistrationNricFormatValidation(form) {
+    if (!form) return;
+    refreshRegistrationNricFormatForForm(form);
+    syncRegistrationNricPlaceholderFromResidential(form);
+  }
+
+  function refreshRegistrationNricFormatForForm(form) {
+    if (!form) return;
+    form.querySelectorAll(".field__nric").forEach((shell) => updateRegistrationNricFormatError(shell));
+  }
+
+  function registrationNricEditPlaceholderForResidential(residentialValue) {
+    const v = String(residentialValue || "").trim();
+    if (!v) return "Enter NRIC / FIN number";
+    if (v === "Citizen" || v === "PR") return "e.g. S1234567D";
+    if (v === "Foreigner") return "e.g. F1234567J";
+    return "Enter NRIC / FIN number";
+  }
+
+  function syncRegistrationNricPlaceholderFromResidential(form) {
+    if (!(form instanceof HTMLFormElement)) return;
+    const pairs = [
+      ["residential", "nric"],
+      ["hpvResidential", "hpvNric"],
+      ["fitResidential", "fitNric"],
+    ];
+    for (let i = 0; i < pairs.length; i++) {
+      const resId = pairs[i][0];
+      const storeId = pairs[i][1];
+      const res = form.querySelector(`#${CSS.escape(resId)}`);
+      const store = form.querySelector(`#${CSS.escape(storeId)}`);
+      if (!(res instanceof HTMLSelectElement) || !(store instanceof HTMLInputElement) || !store.classList.contains("field__nric-store")) continue;
+      const shell = store.closest(".field__nric");
+      const edit = shell?.querySelector(".field__nric-edit");
+      if (!(edit instanceof HTMLInputElement)) continue;
+      edit.placeholder = registrationNricEditPlaceholderForResidential(res.value);
+    }
   }
 
   /** All demo clients matching NRIC or name (for registration search dropdown). */
@@ -6811,6 +6975,7 @@ if (typeof window !== "undefined") {
     setVal(ids.postal, "");
     setVal(ids.country, "");
     if (typeof window.WD_syncNricMasks === "function") window.WD_syncNricMasks(form);
+    syncRegistrationNricPlaceholderFromResidential(form);
   }
 
   function setRegistrationNricValue(form, storeInputId, value) {
@@ -6824,6 +6989,8 @@ if (typeof window !== "undefined") {
     if (typeof window.WD_syncNricMasks === "function") {
       window.WD_syncNricMasks(form);
     }
+    refreshRegistrationNricFormatForForm(form);
+    syncRegistrationNricPlaceholderFromResidential(form);
   }
 
   function applyRegistrationExistingClientAutofill(form, program, client) {
@@ -6849,6 +7016,7 @@ if (typeof window !== "undefined") {
     setVal(ids.unit, client.unit);
     setVal(ids.postal, client.postal);
     setVal(ids.country, client.country);
+    syncRegistrationNricPlaceholderFromResidential(form);
   }
 
   function bindRegistrationClientLookup(form) {
@@ -9497,6 +9665,7 @@ if (typeof window !== "undefined") {
       e.preventDefault();
       const form = e.target;
       if (!(form instanceof HTMLFormElement)) return;
+      if (validateRegistrationFormNricFields(form)) return;
       if (!form.checkValidity()) {
         form.reportValidity();
         return;
@@ -10164,6 +10333,7 @@ if (typeof window !== "undefined") {
     initRegistrationPrefLangWidgets(document.getElementById("app"));
     const regForm = document.getElementById("registration-form");
     bindRegistrationClientLookup(regForm instanceof HTMLFormElement ? regForm : null);
+    bindRegistrationNricFormatValidation(regForm instanceof HTMLFormElement ? regForm : null);
 
     window.__WD_PORTAL_TICK__ = (window.__WD_PORTAL_TICK__ || 0) + 1;
     window.dispatchEvent(new CustomEvent("wd-portal-update"));
@@ -10982,6 +11152,42 @@ if (typeof window !== "undefined") {
       if (state.route !== "register" || !state.registerSelfService || !state.registrationMobileNavOpen) return;
       state.registrationMobileNavOpen = false;
       syncRegistrationMobileNavDom();
+    });
+
+    document.addEventListener("input", (e) => {
+      const t = e.target;
+      if (!(t instanceof HTMLInputElement) || !t.classList.contains("field__nric-edit")) return;
+      if (!t.closest("#registration-form")) return;
+      const shell = t.closest(".field__nric");
+      if (!shell) return;
+      const store = shell.querySelector(".field__nric-store");
+      if (store instanceof HTMLInputElement) store.value = t.value;
+      updateRegistrationNricFormatError(shell);
+    });
+
+    document.addEventListener(
+      "focusout",
+      (e) => {
+        const t = e.target;
+        if (!(t instanceof HTMLInputElement) || !t.classList.contains("field__nric-edit")) return;
+        if (!t.closest("#registration-form")) return;
+        const shell = t.closest(".field__nric");
+        if (!shell) return;
+        const store = shell.querySelector(".field__nric-store");
+        if (store instanceof HTMLInputElement) store.value = t.value;
+        updateRegistrationNricFormatError(shell);
+      },
+      true
+    );
+
+    document.addEventListener("change", (e) => {
+      const t = e.target;
+      if (!(t instanceof HTMLSelectElement)) return;
+      if (t.id !== "residential" && t.id !== "hpvResidential" && t.id !== "fitResidential") return;
+      const form = t.closest("#registration-form");
+      if (!(form instanceof HTMLFormElement)) return;
+      syncRegistrationNricPlaceholderFromResidential(form);
+      refreshRegistrationNricFormatForForm(form);
     });
   }
 

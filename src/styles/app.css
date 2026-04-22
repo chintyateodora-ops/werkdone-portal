@@ -5488,6 +5488,10 @@ button.app-header__back {
 }
 
 /* NRIC: text field + visibility toggle (same shell idea as .field__date) */
+.field__nric-wrap {
+  width: 100%;
+}
+
 .field__nric {
   display: flex;
   align-items: stretch;
@@ -5500,9 +5504,29 @@ button.app-header__back {
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+.field__nric.field__nric--invalid {
+  border-color: var(--color-error);
+}
+
 .field .field__nric:focus-within {
   outline: 2px solid var(--color-primary-200);
   border-color: var(--color-primary-400);
+}
+
+.field .field__nric.field__nric--invalid:focus-within {
+  outline: 2px solid color-mix(in srgb, var(--color-error) 35%, transparent);
+  border-color: var(--color-error);
+}
+
+.field__nric-format-error {
+  margin: 0.35rem 0 0;
+  font-size: var(--text-body-s);
+  line-height: 1.45;
+  color: var(--color-error);
+}
+
+.field__nric-format-error:not([hidden]) {
+  display: block;
 }
 
 .field__nric-face {
