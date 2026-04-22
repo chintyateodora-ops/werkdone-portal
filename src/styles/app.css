@@ -6424,6 +6424,89 @@ button.app-header__back {
   line-height: var(--lh-reg-form);
 }
 
+/* Mammogram — Screening Questions (#reg-screening): match reference form (stacked legends, purple radios, red *) */
+#reg-screening .registration__stack {
+  gap: 1.75rem;
+}
+
+#reg-screening .registration__fieldset-legend {
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+  font-weight: var(--weight-regular);
+  line-height: 1.45;
+  color: #333333;
+}
+
+#reg-screening .registration__fieldset-legend .field__req,
+#reg-screening .field__req {
+  color: #d32f2f;
+}
+
+#reg-screening .registration__radio-group--stack {
+  padding-left: 0;
+  gap: 0.625rem;
+}
+
+/* Beat `.field label { display: block }` so radios + text stay one row; block rows use grid for wrapped “Yes (…)”. */
+#reg-screening .registration__radio-label:not(.registration__radio-label--block) {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+#reg-screening .registration__radio-label.registration__radio-label--block {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 0.5rem;
+  align-items: start;
+  width: 100%;
+}
+
+#reg-screening .registration__radio-label {
+  font-size: 1rem;
+  font-weight: var(--weight-regular);
+  line-height: 1.45;
+  color: #333333;
+}
+
+#reg-screening .registration__radio-label--block span {
+  font-size: 1rem;
+  line-height: 1.45;
+  color: #333333;
+  min-width: 0;
+}
+
+#reg-screening .registration__radio-label input[type="radio"] {
+  appearance: none;
+  -webkit-appearance: none;
+  box-sizing: border-box;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0.125rem 0 0;
+  border: 2px solid #bdbdbd;
+  border-radius: 50%;
+  background-color: var(--color-white);
+  background-image: none;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+#reg-screening .registration__radio-label input[type="radio"]:hover {
+  border-color: #9e9e9e;
+}
+
+#reg-screening .registration__radio-label input[type="radio"]:checked {
+  border-color: var(--color-primary-500);
+  background-color: var(--color-white);
+  background-image: radial-gradient(circle, var(--color-primary-500) 0 40%, transparent 41%);
+}
+
+#reg-screening .registration__radio-label input[type="radio"]:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-primary-500) 40%, transparent);
+  outline-offset: 2px;
+}
+
 .field__static-label {
   display: block;
   margin-bottom: 0.5rem;
