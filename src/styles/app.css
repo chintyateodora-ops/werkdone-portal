@@ -6300,6 +6300,115 @@ button.app-header__back {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.registration__appt-prefs-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.registration__screening-time-field {
+  margin: 0;
+}
+
+.registration__screening-time-head {
+  margin-bottom: 0.5rem;
+}
+
+.registration__screening-time-heading {
+  font-size: var(--text-body-m);
+  font-weight: var(--weight-medium);
+  color: var(--color-neutral-9);
+}
+
+.registration__screening-time-intro {
+  margin: 0 0 0.75rem;
+  padding: 0.75rem 0.875rem;
+  background: var(--color-gray-50);
+  border: 1px solid var(--color-gray-200);
+  border-radius: 8px;
+  font-size: var(--text-body-s);
+  color: var(--color-neutral-8);
+  line-height: 1.45;
+}
+
+.registration__screening-time-intro p {
+  margin: 0 0 0.5rem;
+}
+
+.registration__screening-time-intro p:last-child {
+  margin-bottom: 0;
+}
+
+.registration__slot-duration-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.5rem !important;
+  margin-bottom: 0 !important;
+  color: var(--color-neutral-7);
+}
+
+.registration__slot-duration-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.registration__time-chips {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.55rem 0.6rem;
+  align-items: stretch;
+}
+
+.registration__time-chip {
+  appearance: none;
+  margin: 0;
+  padding: 0.3rem 0.35rem;
+  font: inherit;
+  font-size: var(--text-body-s);
+  color: var(--color-neutral-9);
+  background: var(--color-white);
+  border: 1px solid var(--color-gray-300);
+  border-radius: 999px;
+  cursor: pointer;
+  text-align: center;
+  width: 100%;
+  min-width: 0;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.registration__time-chip:hover:not(:disabled) {
+  border-color: var(--color-gray-500);
+  background: var(--color-gray-50);
+}
+
+.registration__time-chip.is-selected {
+  border-color: var(--color-primary-500);
+  background: color-mix(in srgb, var(--color-primary-500) 10%, var(--color-white));
+  color: var(--color-primary-500);
+  font-weight: var(--weight-semibold);
+}
+
+.registration__time-chip--waiting:not(:disabled):not(.is-selected) {
+  border-style: dashed;
+}
+
+.registration__time-chip--booked:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.registration__waiting-list-banner {
+  margin-top: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  font-size: var(--text-body-s);
+  line-height: 1.45;
+  color: var(--color-neutral-9);
+  background: rgba(180, 120, 40, 0.12);
+  border: 1px solid rgba(180, 120, 40, 0.35);
+  border-radius: 8px;
+}
+
 /* Residential address: Block / Street, Floor / Unit, Postal / Country */
 .form-grid.form-grid--reg.form-grid--address {
   gap: 1rem 1.25rem;
@@ -7289,6 +7398,16 @@ body.registration-nav-drawer-open {
 
   .form-grid--reg {
     grid-template-columns: 1fr;
+  }
+
+  .registration__time-chips {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 400px) {
+  .registration__time-chips {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

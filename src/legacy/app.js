@@ -23,6 +23,394 @@ if (typeof window !== "undefined") {
     listView: "wd.listView",
   });
 
+  const MAMMOBUS_BOOKING_STORAGE_KEY = "wd.mammobusBookedSlots.v1";
+
+  /** Demo-only: always shown as disabled in the chip grid (prototype). */
+  const MAMMOGRAM_DEMO_BOOKED_SLOTS = Object.freeze(["09:00", "10:30", "14:00"]);
+
+  function readMammobusBookedSlotsMap() {
+    try {
+      const raw = localStorage.getItem(MAMMOBUS_BOOKING_STORAGE_KEY);
+      if (!raw) return {};
+      const o = JSON.parse(raw);
+      return o && typeof o === "object" ? o : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function writeMammobusBookedSlotsMap(map) {
+    try {
+      localStorage.setItem(MAMMOBUS_BOOKING_STORAGE_KEY, JSON.stringify(map));
+    } catch (_) {}
+  }
+
+  function isMammobusSlotBooked(dateDdMmYyyy, slotValue) {
+    const d = String(dateDdMmYyyy || "").trim();
+    const s = String(slotValue || "").trim();
+    if (!d || !s) return false;
+    const map = readMammobusBookedSlotsMap();
+    const arr = Array.isArray(map[d]) ? map[d] : [];
+    return arr.includes(s);
+  }
+
+  function isMammogramSlotUnavailableForBooking(dateDdMmYyyy, slotValue) {
+    const s = String(slotValue || "").trim();
+    if (!s) return false;
+    if (MAMMOGRAM_DEMO_BOOKED_SLOTS.includes(s)) return true;
+    return isMammobusSlotBooked(dateDdMmYyyy, slotValue);
+  }
+
+  function recordMammobusSlotBooking(dateDdMmYyyy, slotValue) {
+    const d = String(dateDdMmYyyy || "").trim();
+    const s = String(slotValue || "").trim();
+    if (!d || !s) return;
+    const map = readMammobusBookedSlotsMap();
+    const prev = Array.isArray(map[d]) ? map[d] : [];
+    if (prev.includes(s)) return;
+    map[d] = prev.concat(s);
+    writeMammobusBookedSlotsMap(map);
+  }
+
+  function formatSlotLabelFromValue(token) {
+    const m = String(token || "").trim().match(/^(\d{2}):(\d{2})$/);
+    if (!m) return String(token || "").trim();
+    const h = parseInt(m[1], 10);
+    const mi = parseInt(m[2], 10);
+    const ap = h >= 12 ? "PM" : "AM";
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return `${h12}:${String(mi).padStart(2, "0")} ${ap}`;
+  }
+
+  /** 15-minute steps, 09:00–16:00 inclusive; excludes 12:00–12:45 (lunch). */
+  function mammogramFifteenMinuteSlotOptions() {
+    const out = [];
+    for (let minutes = 9 * 60; minutes <= 16 * 60; minutes += 15) {
+      // Exclude 12:00pm–12:45pm
+      if (minutes >= 12 * 60 && minutes < 13 * 60) continue;
+      const h = Math.floor(minutes / 60);
+      const mi = minutes % 60;
+      const value = `${String(h).padStart(2, "0")}:${String(mi).padStart(2, "0")}`;
+      out.push({
+        value,
+        label: formatSlotLabelFromValue(value),
+        waiting: false,
+      });
+    }
+    return out;
+  }
+
+  function isMammogramWaitingListSlot(slotValue) {
+    const m = String(slotValue || "").trim().match(/^(\d{2}):(\d{2})$/);
+    if (!m) return false;
+    const total = parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+    return total >= 20 * 60 && total <= 22 * 60;
+  }
+
+  function updateMammogramWaitingListNotice(regRoot, slotValue) {
+    const el = regRoot.querySelector("[data-waiting-list-notice]");
+    if (!(el instanceof HTMLElement)) return;
+    const show = Boolean(slotValue && isMammogramWaitingListSlot(slotValue));
+    el.hidden = !show;
+  }
+
+  /** Human-readable time slot for prospect details / Client 360 (mammogram morning/afternoon/evening or HH:MM). */
+  function formatRegistrationTimeSlotDisplay(raw) {
+    const s = String(raw || "").trim().toLowerCase();
+    if (!s) return "—";
+    if (s === "morning") return "Morning";
+    if (s === "afternoon") return "Afternoon";
+    if (s === "evening") return "Evening";
+    const t = String(raw || "").trim();
+    if (/^\d{2}:\d{2}$/.test(t)) return formatSlotLabelFromValue(t);
+    return t;
+  }
+
+  /**
+   * Mammogram registration offers Mammobus + Bishan + Healthier SG; HPV/FIT do not include a Mammobus option.
+   * Used to hide mammogram "Appointment Preferences" for SCS Clinic @ Bishan without relying on route state.
+   */
+  function isMammogramRegistrationBishanClinicSelected(regRoot) {
+    if (!(regRoot instanceof HTMLElement)) return false;
+    const mammobusOpt = regRoot.querySelector('input[type="radio"][name="appointmentType"][value="mammobus"]');
+    const bishan = regRoot.querySelector('input[type="radio"][name="appointmentType"][value="scs-clinic"]');
+    return mammobusOpt instanceof HTMLInputElement && bishan instanceof HTMLInputElement && bishan.checked;
+  }
+
+  function syncMammogramAppointmentPreferences(regRoot) {
+    if (!(regRoot instanceof HTMLElement)) return;
+    const mammTimeBlock = regRoot.querySelector("[data-mammogram-appt-time-block]");
+    const scsTimeBlock = regRoot.querySelector("[data-scs-appt-time-block]");
+    const wrap = regRoot.querySelector("[data-mammogram-time-chips]");
+    const hidden = regRoot.querySelector("#preferredTimeSlot");
+    const scsSelect = regRoot.querySelector("#preferredTimeSlotScs");
+    const mammobusWaitlist = regRoot.querySelector("#mammobusJoinWaitlist");
+    const mammobusWaitlistBtn = regRoot.querySelector("#mammobusJoinWaitlistBtn");
+    const dateLabel = regRoot.querySelector("[data-appt-pref-date-label]");
+    const timeHeading = regRoot.querySelector("[data-appt-pref-time-heading]");
+    const prefsRoot = regRoot.querySelector("[data-registration-appt-prefs]");
+    const dateFieldWrap = regRoot.querySelector("[data-appt-date-field]");
+    const apptSection = regRoot.querySelector("#reg-appointment");
+    const dateInpEarly = regRoot.querySelector("#preferredScreeningDate");
+
+    const setMammogramApptPrefsLayout = (mode) => {
+      const stackCls = "registration__appt-prefs registration__appt-prefs-stack";
+      const scsCls = "registration__appt-prefs form-grid form-grid--reg";
+      if (prefsRoot instanceof HTMLElement) {
+        prefsRoot.className = mode === "scs" ? scsCls : stackCls;
+      }
+      if (dateFieldWrap instanceof HTMLElement) {
+        if (mode === "scs") dateFieldWrap.classList.remove("field--full");
+        else dateFieldWrap.classList.add("field--full");
+      }
+      if (scsTimeBlock instanceof HTMLElement) {
+        if (mode === "scs") scsTimeBlock.classList.remove("field--full");
+        else scsTimeBlock.classList.add("field--full");
+      }
+    };
+
+    const healthierSgRadio = regRoot.querySelector(
+      'input[type="radio"][name="appointmentType"][value="healthier-sg"]'
+    );
+    const healthierSgSelected = healthierSgRadio instanceof HTMLInputElement && healthierSgRadio.checked;
+
+    /** Mammogram @ Bishan: hide Appointment Preferences entirely (no date/slot capture on this path). */
+    if (isMammogramRegistrationBishanClinicSelected(regRoot)) {
+      if (apptSection instanceof HTMLElement) {
+        apptSection.hidden = true;
+        apptSection.querySelectorAll("input, select, textarea, button").forEach((el) => {
+          if (
+            el instanceof HTMLInputElement ||
+            el instanceof HTMLSelectElement ||
+            el instanceof HTMLTextAreaElement ||
+            el instanceof HTMLButtonElement
+          ) {
+            el.disabled = true;
+          }
+        });
+      }
+      if (dateInpEarly instanceof HTMLInputElement) {
+        dateInpEarly.value = "";
+        dateInpEarly.removeAttribute("required");
+      }
+      if (hidden instanceof HTMLInputElement) {
+        hidden.value = "";
+        hidden.removeAttribute("name");
+        hidden.disabled = true;
+      }
+      if (mammobusWaitlist instanceof HTMLInputElement) {
+        mammobusWaitlist.checked = false;
+        mammobusWaitlist.disabled = true;
+      }
+      if (mammobusWaitlistBtn instanceof HTMLButtonElement) {
+        mammobusWaitlistBtn.disabled = true;
+        mammobusWaitlistBtn.setAttribute("aria-pressed", "false");
+        mammobusWaitlistBtn.classList.remove("is-selected");
+      }
+      if (scsSelect instanceof HTMLSelectElement) {
+        scsSelect.value = "";
+        scsSelect.removeAttribute("name");
+        scsSelect.disabled = true;
+      }
+      if (wrap instanceof HTMLElement) wrap.replaceChildren();
+      if (mammTimeBlock instanceof HTMLElement) mammTimeBlock.hidden = true;
+      if (scsTimeBlock instanceof HTMLElement) scsTimeBlock.hidden = true;
+      setMammogramApptPrefsLayout("mammobus");
+      updateMammogramWaitingListNotice(regRoot, "");
+      document.querySelectorAll('[data-reg-nav="reg-appointment"]').forEach((btn) => {
+        if (btn instanceof HTMLElement) btn.style.display = "none";
+      });
+      return;
+    }
+
+    if (!(wrap instanceof HTMLElement) || !(hidden instanceof HTMLInputElement) || !(scsSelect instanceof HTMLSelectElement)) {
+      return;
+    }
+
+    const apptTypeEl = regRoot.querySelector('input[type="radio"][name="appointmentType"]:checked');
+    const at =
+      apptTypeEl instanceof HTMLInputElement ? String(apptTypeEl.value || "").trim().toLowerCase() : "";
+
+    if (apptSection instanceof HTMLElement && !healthierSgSelected) {
+      apptSection.hidden = false;
+      document.querySelectorAll('[data-reg-nav="reg-appointment"]').forEach((btn) => {
+        if (btn instanceof HTMLElement) btn.style.display = "";
+      });
+      apptSection.querySelectorAll("input, select, textarea, button").forEach((el) => {
+        if (
+          el instanceof HTMLInputElement ||
+          el instanceof HTMLSelectElement ||
+          el instanceof HTMLTextAreaElement ||
+          el instanceof HTMLButtonElement
+        ) {
+          el.disabled = false;
+        }
+      });
+    }
+
+    const dateInp = regRoot.querySelector("#preferredScreeningDate");
+    const dateStr = dateInp instanceof HTMLInputElement ? String(dateInp.value || "").trim() : "";
+
+    if (at !== "mammobus" && at !== "scs-clinic") {
+      hidden.value = "";
+      hidden.removeAttribute("name");
+      hidden.disabled = true;
+      if (mammobusWaitlist instanceof HTMLInputElement) {
+        mammobusWaitlist.checked = false;
+        mammobusWaitlist.disabled = true;
+      }
+      if (mammobusWaitlistBtn instanceof HTMLButtonElement) {
+        mammobusWaitlistBtn.disabled = true;
+        mammobusWaitlistBtn.setAttribute("aria-pressed", "false");
+        mammobusWaitlistBtn.classList.remove("is-selected");
+      }
+      scsSelect.value = "";
+      scsSelect.removeAttribute("name");
+      scsSelect.disabled = true;
+      if (mammTimeBlock instanceof HTMLElement) mammTimeBlock.hidden = true;
+      if (scsTimeBlock instanceof HTMLElement) scsTimeBlock.hidden = true;
+      setMammogramApptPrefsLayout("mammobus");
+      updateMammogramWaitingListNotice(regRoot, "");
+      return;
+    }
+
+    if (mammTimeBlock instanceof HTMLElement) mammTimeBlock.hidden = at !== "mammobus";
+    if (scsTimeBlock instanceof HTMLElement) scsTimeBlock.hidden = at !== "scs-clinic";
+
+    if (at === "mammobus") {
+      setMammogramApptPrefsLayout("mammobus");
+      if (dateLabel) dateLabel.textContent = "Screening Date";
+      if (timeHeading) timeHeading.textContent = "Screening Time";
+      if (dateInp instanceof HTMLInputElement) dateInp.setAttribute("required", "");
+      scsSelect.removeAttribute("name");
+      scsSelect.disabled = true;
+      scsSelect.value = "";
+      hidden.setAttribute("name", "preferredTimeSlot");
+      hidden.disabled = false;
+      if (mammobusWaitlist instanceof HTMLInputElement) {
+        mammobusWaitlist.disabled = false;
+      }
+      if (mammobusWaitlistBtn instanceof HTMLButtonElement) {
+        mammobusWaitlistBtn.disabled = false;
+      }
+
+      const bookedStored = dateStr ? readMammobusBookedSlotsMap()[dateStr] : null;
+      const bookedArr = Array.isArray(bookedStored) ? bookedStored : [];
+      let selected = String(hidden.value || "").trim();
+      wrap.replaceChildren();
+
+      for (const { value, label, waiting } of mammogramFifteenMinuteSlotOptions()) {
+        const taken = bookedArr.includes(value) || MAMMOGRAM_DEMO_BOOKED_SLOTS.includes(value);
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.setAttribute("data-time-chip", "");
+        btn.setAttribute("data-slot-value", value);
+        btn.className =
+          "registration__time-chip" +
+          (waiting ? " registration__time-chip--waiting" : "") +
+          (taken ? " registration__time-chip--booked" : "");
+        btn.textContent = label;
+        btn.setAttribute("aria-pressed", "false");
+        if (taken) {
+          btn.disabled = true;
+          btn.title = "No longer available";
+        } else if (waiting) {
+          btn.title = "Waiting list (8pm–10pm)";
+        }
+        wrap.appendChild(btn);
+      }
+
+      if (selected) {
+        const btn = wrap.querySelector(`button[data-slot-value="${selected}"]`);
+        if (btn instanceof HTMLButtonElement && !btn.disabled) {
+          btn.classList.add("is-selected");
+          btn.setAttribute("aria-pressed", "true");
+        } else {
+          hidden.value = "";
+          selected = "";
+        }
+      }
+
+      if (mammobusWaitlist instanceof HTMLInputElement && mammobusWaitlist.type === "checkbox" && mammobusWaitlist.checked) {
+        hidden.value = "";
+        wrap.querySelectorAll("button[data-time-chip]").forEach((b) => {
+          if (b instanceof HTMLButtonElement && !b.disabled) b.disabled = true;
+        });
+        updateMammogramWaitingListNotice(regRoot, "");
+      }
+
+      if (mammobusWaitlistBtn instanceof HTMLButtonElement) {
+        const active = Boolean(mammobusWaitlist instanceof HTMLInputElement && mammobusWaitlist.checked);
+        mammobusWaitlistBtn.setAttribute("aria-pressed", active ? "true" : "false");
+        mammobusWaitlistBtn.classList.toggle("is-selected", active);
+      }
+
+      updateMammogramWaitingListNotice(regRoot, selected);
+      return;
+    }
+
+    /* scs-clinic (non-mammogram programmes still using this template): preferred date/time + morning / afternoon / evening */
+    setMammogramApptPrefsLayout("scs");
+    if (mammobusWaitlist instanceof HTMLInputElement) {
+      mammobusWaitlist.checked = false;
+      mammobusWaitlist.disabled = true;
+    }
+    if (mammobusWaitlistBtn instanceof HTMLButtonElement) {
+      mammobusWaitlistBtn.disabled = true;
+      mammobusWaitlistBtn.setAttribute("aria-pressed", "false");
+      mammobusWaitlistBtn.classList.remove("is-selected");
+    }
+    if (dateLabel) dateLabel.textContent = "Preferred Screening Date";
+    if (dateInp instanceof HTMLInputElement) dateInp.setAttribute("required", "");
+    hidden.value = "";
+    hidden.removeAttribute("name");
+    hidden.disabled = true;
+    wrap.replaceChildren();
+    scsSelect.setAttribute("name", "preferredTimeSlot");
+    scsSelect.disabled = false;
+    const prev = String(scsSelect.value || "").trim();
+    if (!["", "morning", "afternoon", "evening"].includes(prev)) scsSelect.value = "";
+    updateMammogramWaitingListNotice(regRoot, "");
+  }
+
+  function applyMammogramTimeChipSelection(regRoot, slotValue) {
+    const wrap = regRoot.querySelector("[data-mammogram-time-chips]");
+    const holder = regRoot.querySelector("#preferredTimeSlot");
+    const wl = regRoot.querySelector("#mammobusJoinWaitlist");
+    if (!(wrap instanceof HTMLElement) || !(holder instanceof HTMLInputElement)) return;
+    const v = String(slotValue || "").trim();
+    holder.value = v;
+    if (wl instanceof HTMLInputElement && wl.type === "checkbox") wl.checked = false;
+    const wlBtn = regRoot.querySelector("#mammobusJoinWaitlistBtn");
+    if (wlBtn instanceof HTMLButtonElement) wlBtn.setAttribute("aria-pressed", "false");
+    wrap.querySelectorAll("button[data-time-chip]").forEach((b) => {
+      if (!(b instanceof HTMLButtonElement)) return;
+      if (b.disabled) {
+        b.classList.remove("is-selected");
+        b.setAttribute("aria-pressed", "false");
+        return;
+      }
+      const match = (b.getAttribute("data-slot-value") || "") === v;
+      b.classList.toggle("is-selected", Boolean(v && match));
+      b.setAttribute("aria-pressed", v && match ? "true" : "false");
+    });
+    updateMammogramWaitingListNotice(regRoot, v);
+  }
+
+  function syncHpvLastPapOtherVisibility(regRoot) {
+    if (!(regRoot instanceof HTMLElement)) return;
+    const sel = regRoot.querySelector("#hpvLastPapHpvTest");
+    const wrap = regRoot.querySelector("[data-hpv-last-test-other-wrap]");
+    const input = regRoot.querySelector("#hpvLastPapHpvTestOther");
+    if (!(sel instanceof HTMLSelectElement) || !(wrap instanceof HTMLElement)) return;
+    const show = sel.value === "others";
+    wrap.hidden = !show;
+    if (input instanceof HTMLInputElement) {
+      input.disabled = !show;
+      if (!show) input.value = "";
+    }
+  }
+
   function getStoredListView() {
     try {
       const v = String(localStorage.getItem(STORAGE_KEYS.listView) || "").trim().toLowerCase();
@@ -1668,7 +2056,12 @@ if (typeof window !== "undefined") {
       riskLevel,
       screeningLocationEvent:
         p.sourceDetail && String(p.sourceDetail).trim() ? String(p.sourceDetail).trim() : base.screeningLocationEvent,
-      preferredScreeningDate: isoDateToPreferredScreening(p.dateRegistered) || base.preferredScreeningDate,
+      preferredScreeningDate:
+        (p.preferredScreeningDate && String(p.preferredScreeningDate).trim()) ||
+        isoDateToPreferredScreening(p.dateRegistered) ||
+        base.preferredScreeningDate,
+      preferredTimeSlot:
+        (p.preferredTimeSlot && String(p.preferredTimeSlot).trim()) || base.preferredTimeSlot || "",
     };
 
     if (reg) {
@@ -1758,14 +2151,11 @@ if (typeof window !== "undefined") {
       return val(raw);
     };
     const timeSlotLabel = (raw) => {
-      const s = String(raw || "")
-        .trim()
-        .toLowerCase();
+      const s = String(raw || "").trim();
       if (!s) return dash;
-      if (s === "morning") return "Morning";
-      if (s === "afternoon") return "Afternoon";
-      if (s === "evening") return "Evening";
-      return val(raw);
+      const disp = formatRegistrationTimeSlotDisplay(raw);
+      if (disp === "—") return dash;
+      return disp;
     };
     const preferredDate = (() => {
       const direct = val(r?.preferredScreeningDate);
@@ -5693,7 +6083,9 @@ if (typeof window !== "undefined") {
             <div class="client360-kv">
               <div class="client360-kv__row"><span>Programme</span><strong>${escapeAttr(details.preferredScreeningDate ? program : "—")}</strong></div>
               <div class="client360-kv__row"><span>Preferred Slot</span><strong>${escapeAttr(details.screeningLocationEvent || details.preferredScreeningDate || "—")}</strong></div>
-              <div class="client360-kv__row"><span>Time</span><strong>${escapeAttr(details.preferredTimeSlot || "—")}</strong></div>
+              <div class="client360-kv__row"><span>Time</span><strong>${escapeAttr(
+                formatRegistrationTimeSlotDisplay(details.preferredTimeSlot || "")
+              )}</strong></div>
               <div class="client360-kv__row"><span>Notes</span><strong>${escapeAttr(details.followUpNotes || "—")}</strong></div>
             </div>
             <div class="screening-note">Read-only — locked at form submission</div>
@@ -6098,6 +6490,7 @@ if (typeof window !== "undefined") {
     ["reg-hpv-appointment-type", "Appointment Type"],
     ["reg-hpv-healthier-sg", "Healthier SG Programme"],
     ["reg-hpv-appointment", "Appointment Preferences"],
+    ["reg-hpv-screening", "Screening Questions"],
     ["reg-hpv-engagement", "Engagement"],
     ["reg-hpv-consent", "Consent"],
   ];
@@ -7340,12 +7733,6 @@ if (typeof window !== "undefined") {
                     </select>
                   </div>
                   <div class="field">
-                    <label for="religion">Religion</label>
-                    <select id="religion" name="religion">
-                      ${registrationSelectOptions(V3_BIODATA_OPTIONS?.religion, "Select Religion")}
-                    </select>
-                  </div>
-                  <div class="field">
                     <label for="phone">Contact Number<span class="field__req" aria-hidden="true">*</span></label>
                     <div class="field__phone-wrap">
                       <div class="field__inline">
@@ -7407,13 +7794,6 @@ if (typeof window !== "undefined") {
                     <select id="healthierSg" name="healthierSg">${REG_SUBSIDIES_HEALTHIER_SG_OPTIONS}
                     </select>
                   </div>
-                  <fieldset class="registration__fieldset field">
-                    <legend class="registration__fieldset-legend registration__fieldset-legend--field">Is this your first mammogram screening?<span class="field__req" aria-hidden="true">*</span></legend>
-                    <div class="registration__radio-group" role="radiogroup" aria-required="true">
-                      <label class="registration__radio-label"><input type="radio" name="firstMammogramScreening" value="yes" required /> Yes</label>
-                      <label class="registration__radio-label"><input type="radio" name="firstMammogramScreening" value="no" /> No</label>
-                    </div>
-                  </fieldset>
                   <div class="field">
                     <label for="lastScreeningYear">Year of Last Screening</label>
                     <input id="lastScreeningYear" name="lastScreeningYear" type="text" inputmode="numeric" maxlength="4" placeholder="Enter Year of Last Screening" autocomplete="off" />
@@ -7436,7 +7816,7 @@ if (typeof window !== "undefined") {
                       </div>
                       <div class="registration__option-card-desc">
                         <div class="registration__option-card-subtitle">I would like to book a mammogram appointment on the Mammobus</div>
-                        SCS, BCF &amp; NHGD initiative bringing subsidised mammogram screenings to neighbourhoods across Singapore. Note: not wheelchair-accessible.
+                        SCS, BCF &amp; NHGD initiative bringing subsidised mammogram screenings to neighbourhoods across Singapore.
                       </div>
                     </div>
                   </label>
@@ -7473,26 +7853,9 @@ if (typeof window !== "undefined") {
 
               <section id="reg-healthier-sg" class="registration-card registration__healthier-sg-extra" tabindex="-1" hidden>
                 <h2 class="registration__section-label">Healthier SG Programme</h2>
-
-                <div class="registration__question-card">
-                  <div class="registration__question-kicker">QUESTION 1 OF 2</div>
-                  <div class="registration__question-title">Have you booked your Healthier SG mammogram screening yet?</div>
-                  <div class="registration__yesno" role="radiogroup" aria-label="Healthier SG booking status">
-                    <label class="registration__yesno-btn" data-yesno>
-                      <input class="registration__yesno-input" type="radio" name="healthierSgBooked" value="no" />
-                      <span>No</span>
-                    </label>
-                    <label class="registration__yesno-btn" data-yesno>
-                      <input class="registration__yesno-input" type="radio" name="healthierSgBooked" value="yes" />
-                      <span>Yes</span>
-                    </label>
-                  </div>
-                </div>
-
-                <div class="registration__question-card" data-hsg-q2>
-                  <div class="registration__question-kicker">QUESTION 2 OF 2</div>
-                  <div class="registration__question-title">When is the date of your screening? (Choose date)</div>
+                <div class="form-grid form-grid--reg">
                   <div class="field field--full">
+                    <label for="healthierSgScreeningDate">When is the date of your screening? (Choose date)</label>
                     ${registrationDateInput("healthierSgScreeningDate", "healthierSgScreeningDate", false)}
                   </div>
                 </div>
@@ -7500,14 +7863,44 @@ if (typeof window !== "undefined") {
 
               <section id="reg-appointment" class="registration-card" tabindex="-1">
                 <h2 class="registration__section-label">Appointment Preferences</h2>
-                <div class="form-grid form-grid--reg">
-                  <div class="field">
-                    <label for="preferredScreeningDate">Preferred Screening Date<span class="field__req" aria-hidden="true">*</span></label>
+                <div class="registration__appt-prefs registration__appt-prefs-stack" data-registration-appt-prefs>
+                  <div class="field field--full" data-appt-date-field>
+                    <label for="preferredScreeningDate"><span data-appt-pref-date-label>Screening Date</span><span class="field__req" aria-hidden="true">*</span></label>
                     ${registrationDateInput("preferredScreeningDate", "preferredScreeningDate", true)}
                   </div>
-                  <div class="field">
-                    <label for="preferredTimeSlot">Preferred Time Slot</label>
-                    <select id="preferredTimeSlot" name="preferredTimeSlot">
+                  <div class="field field--full registration__screening-time-field" data-mammogram-appt-time-block>
+                    <div class="registration__screening-time-head">
+                      <span id="preferredTimeSlot-label" class="registration__screening-time-heading" data-appt-pref-time-heading>Screening Time</span>
+                    </div>
+                    <div class="registration__screening-time-intro" role="note">
+                      <p>Screening will run from 9am to 4pm.</p>
+                      <p class="registration__slot-duration-hint">
+                        <span class="registration__slot-duration-icon" aria-hidden="true">&#8987;</span>
+                        <span>Each slot is 15 mins long</span>
+                      </p>
+                    </div>
+                    <div
+                      class="registration__time-chips"
+                      data-mammogram-time-chips
+                      role="group"
+                      aria-labelledby="preferredTimeSlot-label"
+                    ></div>
+                    <input type="hidden" id="preferredTimeSlot" name="preferredTimeSlot" value="" />
+                    <input type="checkbox" id="mammobusJoinWaitlist" name="mammobusJoinWaitlist" value="yes" hidden />
+                    <button
+                      type="button"
+                      class="registration__time-chip"
+                      id="mammobusJoinWaitlistBtn"
+                      data-waitlist-toggle
+                      aria-pressed="false"
+                      style="margin-top: 12px;"
+                    >
+                      Join Waitlist
+                    </button>
+                  </div>
+                  <div class="field field--full registration__scs-appt-time" data-scs-appt-time-block hidden>
+                    <label for="preferredTimeSlotScs">Preferred Time Slot</label>
+                    <select id="preferredTimeSlotScs" disabled>
                       <option value="">Select Preferred Time Slot</option>
                       <option value="morning">Morning</option>
                       <option value="afternoon">Afternoon</option>
@@ -7683,12 +8076,6 @@ if (typeof window !== "undefined") {
                     </select>
                   </div>
                   <div class="field">
-                    <label for="hpvReligion">Religion</label>
-                    <select id="hpvReligion" name="hpvReligion">
-                      ${registrationSelectOptions(V3_BIODATA_OPTIONS?.religion, "Select Religion")}
-                    </select>
-                  </div>
-                  <div class="field">
                     <label for="hpvMobile">Contact Number<span class="field__req" aria-hidden="true">*</span></label>
                     <div class="field__phone-wrap">
                       <div class="field__inline">
@@ -7750,13 +8137,6 @@ if (typeof window !== "undefined") {
                     <select id="hpvHealthierSg" name="hpvHealthierSg">${REG_SUBSIDIES_HEALTHIER_SG_OPTIONS}
                     </select>
                   </div>
-                  <fieldset class="registration__fieldset field">
-                    <legend class="registration__fieldset-legend registration__fieldset-legend--field">Is this your first HPV screening?</legend>
-                    <div class="registration__radio-group" role="radiogroup">
-                      <label class="registration__radio-label"><input type="radio" name="firstHpvScreening" value="yes" /> Yes</label>
-                      <label class="registration__radio-label"><input type="radio" name="firstHpvScreening" value="no" /> No</label>
-                    </div>
-                  </fieldset>
                   <div class="field">
                     <label for="hpvLastScreeningYear">Year of Last Screening</label>
                     <input id="hpvLastScreeningYear" name="hpvLastScreeningYear" type="text" inputmode="numeric" maxlength="4" placeholder="Enter Year of Last Screening" autocomplete="off" />
@@ -7801,26 +8181,9 @@ if (typeof window !== "undefined") {
 
               <section id="reg-hpv-healthier-sg" class="registration-card registration__healthier-sg-extra" tabindex="-1" hidden>
                 <h2 class="registration__section-label">Healthier SG Programme</h2>
-
-                <div class="registration__question-card">
-                  <div class="registration__question-kicker">QUESTION 1 OF 2</div>
-                  <div class="registration__question-title">Have you booked your Healthier SG HPV screening yet?</div>
-                  <div class="registration__yesno" role="radiogroup" aria-label="Healthier SG booking status">
-                    <label class="registration__yesno-btn" data-yesno>
-                      <input class="registration__yesno-input" type="radio" name="hpvHealthierSgBooked" value="no" />
-                      <span>No</span>
-                    </label>
-                    <label class="registration__yesno-btn" data-yesno>
-                      <input class="registration__yesno-input" type="radio" name="hpvHealthierSgBooked" value="yes" />
-                      <span>Yes</span>
-                    </label>
-                  </div>
-                </div>
-
-                <div class="registration__question-card" data-hsg-q2>
-                  <div class="registration__question-kicker">QUESTION 2 OF 2</div>
-                  <div class="registration__question-title">When is the date of your screening?</div>
+                <div class="form-grid form-grid--reg">
                   <div class="field field--full">
+                    <label for="hpvHealthierSgScreeningDate">When is the date of your screening?</label>
                     ${registrationDateInput("hpvHealthierSgScreeningDate", "hpvHealthierSgScreeningDate", false)}
                   </div>
                 </div>
@@ -7841,6 +8204,39 @@ if (typeof window !== "undefined") {
                       <option value="afternoon">Afternoon</option>
                       <option value="evening">Evening</option>
                     </select>
+                  </div>
+                </div>
+              </section>
+
+              <section id="reg-hpv-screening" class="registration-card" tabindex="-1">
+                <h2 class="registration__section-label">Screening Questions</h2>
+                <div class="form-grid form-grid--reg">
+                  <div class="field field--full">
+                    <label for="hpvRecentMenstruation">First Day of Most Recent Menstruation</label>
+                    ${registrationDateInput("hpvRecentMenstruation", "hpvRecentMenstruation", false)}
+                  </div>
+                  <div class="field field--full">
+                    <label for="hpvLastPapHpvTest">Date of Last Pap/HPV Test</label>
+                    <select id="hpvLastPapHpvTest" name="hpvLastPapHpvTest">
+                      <option value="">Select</option>
+                      <option value="na">NA</option>
+                      <option value="others">Others (please specify)</option>
+                    </select>
+                  </div>
+                  <div class="field field--full" data-hpv-last-test-other-wrap hidden>
+                    <input
+                      id="hpvLastPapHpvTestOther"
+                      name="hpvLastPapHpvTestOther"
+                      type="text"
+                      disabled
+                      placeholder="When was your last Pap/HPV Test? (Indicate the year here)"
+                      autocomplete="off"
+                      aria-label="When was your last Pap/HPV Test? Indicate the year here"
+                    />
+                  </div>
+                  <div class="field field--full">
+                    <label for="hpvSexualActivity">Have you ever had any sexual activity?</label>
+                    <input id="hpvSexualActivity" name="hpvSexualActivity" type="text" placeholder="" autocomplete="off" />
                   </div>
                 </div>
               </section>
@@ -7952,12 +8348,6 @@ if (typeof window !== "undefined") {
                     </select>
                   </div>
                   <div class="field">
-                    <label for="fitReligion">Religion</label>
-                    <select id="fitReligion" name="fitReligion">
-                      ${registrationSelectOptions(V3_BIODATA_OPTIONS?.religion, "Select Religion")}
-                    </select>
-                  </div>
-                  <div class="field">
                     <label for="fitContact">Contact Number<span class="field__req" aria-hidden="true">*</span></label>
                     <div class="field__phone-wrap">
                       <div class="field__inline">
@@ -8019,13 +8409,6 @@ if (typeof window !== "undefined") {
                     <select id="fitHealthierSg" name="fitHealthierSg">${REG_SUBSIDIES_HEALTHIER_SG_OPTIONS}
                     </select>
                   </div>
-                  <fieldset class="registration__fieldset field">
-                    <legend class="registration__fieldset-legend registration__fieldset-legend--field">Is this your first FIT screening?</legend>
-                    <div class="registration__radio-group" role="radiogroup">
-                      <label class="registration__radio-label"><input type="radio" name="firstFitScreening" value="yes" /> Yes</label>
-                      <label class="registration__radio-label"><input type="radio" name="firstFitScreening" value="no" /> No</label>
-                    </div>
-                  </fieldset>
                   <div class="field">
                     <label for="fitLastScreeningYear">Year of Last Screening</label>
                     <input id="fitLastScreeningYear" name="fitLastScreeningYear" type="text" inputmode="numeric" maxlength="4" placeholder="Enter Year of Last Screening" autocomplete="off" />
@@ -8057,26 +8440,9 @@ if (typeof window !== "undefined") {
 
               <section id="reg-fit-healthier-sg" class="registration-card registration__healthier-sg-extra" tabindex="-1">
                 <h2 class="registration__section-label">Healthier SG Programme</h2>
-
-                <div class="registration__question-card">
-                  <div class="registration__question-kicker">QUESTION 1 OF 2</div>
-                  <div class="registration__question-title">Have you booked your Healthier SG screening yet?</div>
-                  <div class="registration__yesno" role="radiogroup" aria-label="Healthier SG booking status">
-                    <label class="registration__yesno-btn" data-yesno>
-                      <input class="registration__yesno-input" type="radio" name="healthierSgBooked" value="no" />
-                      <span>No</span>
-                    </label>
-                    <label class="registration__yesno-btn" data-yesno>
-                      <input class="registration__yesno-input" type="radio" name="healthierSgBooked" value="yes" />
-                      <span>Yes</span>
-                    </label>
-                  </div>
-                </div>
-
-                <div class="registration__question-card" data-hsg-q2>
-                  <div class="registration__question-kicker">QUESTION 2 OF 2</div>
-                  <div class="registration__question-title">When is the date of your screening? (Choose date)</div>
+                <div class="form-grid form-grid--reg">
                   <div class="field field--full">
+                    <label for="healthierSgScreeningDate">When is the date of your screening? (Choose date)</label>
                     ${registrationDateInput("healthierSgScreeningDate", "healthierSgScreeningDate", false)}
                   </div>
                 </div>
@@ -9567,6 +9933,22 @@ if (typeof window !== "undefined") {
 
     if (appointmentTypeRaw) row.appointmentType = appointmentTypeRaw;
 
+    if (prog === "hpv") {
+      row.hpvRecentMenstruation = String(form.elements.namedItem("hpvRecentMenstruation")?.value || "").trim();
+      row.hpvLastPapHpvTest = String(form.elements.namedItem("hpvLastPapHpvTest")?.value || "").trim();
+      row.hpvLastPapHpvTestOther = String(form.elements.namedItem("hpvLastPapHpvTestOther")?.value || "").trim();
+      row.hpvSexualActivity = String(form.elements.namedItem("hpvSexualActivity")?.value || "").trim();
+    }
+
+    if (prog !== "hpv" && prog !== "fit" && appointmentTypeRaw && appointmentTypeRaw !== "healthier-sg") {
+      const prefDate = String(form.elements.namedItem("preferredScreeningDate")?.value || "").trim();
+      const prefSlot = String(form.elements.namedItem("preferredTimeSlot")?.value || "").trim();
+      const joinWl = Boolean(form.elements.namedItem("mammobusJoinWaitlist")?.checked);
+      if (prefDate) row.preferredScreeningDate = prefDate;
+      if (prefSlot) row.preferredTimeSlot = prefSlot;
+      if (appointmentTypeRaw === "mammobus" && joinWl) row.joinWaitlist = true;
+    }
+
     const regClient = {
       name: fullName,
       nric,
@@ -9811,6 +10193,26 @@ if (typeof window !== "undefined") {
         form.reportValidity();
         return;
       }
+
+      const atPre = form.querySelector('input[type="radio"][name="appointmentType"]:checked');
+      const atPreRaw =
+        atPre instanceof HTMLInputElement ? String(atPre.value || "").trim().toLowerCase() : "";
+      const regProgPre = String(state.registerProgram || "mammobus").toLowerCase();
+      if (regProgPre !== "hpv" && regProgPre !== "fit" && atPreRaw === "mammobus") {
+        const dBook = String(form.elements.namedItem("preferredScreeningDate")?.value || "").trim();
+        const slBook = String(form.elements.namedItem("preferredTimeSlot")?.value || "").trim();
+        const joinWl = Boolean(form.elements.namedItem("mammobusJoinWaitlist")?.checked);
+        if (dBook && !slBook && !joinWl) {
+          showToast("Please select a screening time slot, or tick Join waitlist.");
+          return;
+        }
+        if (dBook && slBook && isMammogramSlotUnavailableForBooking(dBook, slBook)) {
+          showToast("This screening time is no longer available. Please choose another slot.");
+          return;
+        }
+        if (dBook && slBook) recordMammobusSlotBooking(dBook, slBook);
+      }
+
       const { row, regClient } = buildProspectRowFromRegistrationForm(form);
       pushRegClientFromRegistrationIfNew(regClient);
       ensureProspectChecklists(row);
@@ -9900,13 +10302,14 @@ if (typeof window !== "undefined") {
       const syncHealthierSgExtra = () => {
         const selected = regRoot.querySelector('input[type="radio"][name="appointmentType"][value="healthier-sg"]');
         const show = selected instanceof HTMLInputElement && selected.checked;
+        const hideMammogramBishanApptPrefs = isMammogramRegistrationBishanClinicSelected(regRoot);
 
         const pairs = [
-          { extraId: "#reg-healthier-sg", extraTocId: null, bookedName: "healthierSgBooked", dateId: "healthierSgScreeningDate", apptId: "#reg-appointment", tocId: "reg-appointment" },
-          { extraId: "#reg-fit-healthier-sg", extraTocId: "reg-fit-healthier-sg", bookedName: "healthierSgBooked", dateId: "healthierSgScreeningDate", apptId: "#reg-fit-appointment", tocId: "reg-fit-appointment" },
-          { extraId: "#reg-hpv-healthier-sg", extraTocId: "reg-hpv-healthier-sg", bookedName: "hpvHealthierSgBooked", dateId: "hpvHealthierSgScreeningDate", apptId: "#reg-hpv-appointment", tocId: "reg-hpv-appointment" },
+          { extraId: "#reg-healthier-sg", extraTocId: null, dateId: "healthierSgScreeningDate", apptId: "#reg-appointment", tocId: "reg-appointment" },
+          { extraId: "#reg-fit-healthier-sg", extraTocId: "reg-fit-healthier-sg", dateId: "healthierSgScreeningDate", apptId: "#reg-fit-appointment", tocId: "reg-fit-appointment" },
+          { extraId: "#reg-hpv-healthier-sg", extraTocId: "reg-hpv-healthier-sg", dateId: "hpvHealthierSgScreeningDate", apptId: "#reg-hpv-appointment", tocId: "reg-hpv-appointment" },
         ];
-        pairs.forEach(({ extraId, extraTocId, bookedName, dateId, apptId, tocId }) => {
+        pairs.forEach(({ extraId, extraTocId, dateId, apptId, tocId }) => {
           const extra = regRoot.querySelector(extraId);
           if (extra instanceof HTMLElement) {
             extra.hidden = !show;
@@ -9922,10 +10325,11 @@ if (typeof window !== "undefined") {
             });
           }
 
-          // Hide Appointment Preferences when Healthier SG is selected.
+          // Hide Appointment Preferences when Healthier SG is selected (or mammogram SCS Clinic @ Bishan).
+          const hideApptPref = apptId === "#reg-appointment" ? show || hideMammogramBishanApptPrefs : show;
           const apptPref = regRoot.querySelector(apptId);
           if (apptPref instanceof HTMLElement) {
-            apptPref.hidden = show;
+            apptPref.hidden = hideApptPref;
             apptPref.querySelectorAll("input, select, textarea, button").forEach((el) => {
               if (
                 el instanceof HTMLInputElement ||
@@ -9933,14 +10337,14 @@ if (typeof window !== "undefined") {
                 el instanceof HTMLTextAreaElement ||
                 el instanceof HTMLButtonElement
               ) {
-                el.disabled = show;
+                el.disabled = hideApptPref;
               }
             });
           }
 
           // Hide TOC entry too, so user can't navigate to a hidden section.
           document.querySelectorAll(`[data-reg-nav="${tocId}"]`).forEach((btn) => {
-            if (btn instanceof HTMLElement) btn.style.display = show ? "none" : "";
+            if (btn instanceof HTMLElement) btn.style.display = hideApptPref ? "none" : "";
           });
 
           if (extraTocId) {
@@ -9949,18 +10353,9 @@ if (typeof window !== "undefined") {
             });
           }
 
-          // Question 2: disable date unless Question 1 = "yes" (per-form radio names + date ids)
-          const bookedYes = regRoot.querySelector(`input[type="radio"][name="${bookedName}"][value="yes"]`);
-          const bookedNo = regRoot.querySelector(`input[type="radio"][name="${bookedName}"][value="no"]`);
-          const isYes = bookedYes instanceof HTMLInputElement && bookedYes.checked;
-          const isNo = bookedNo instanceof HTMLInputElement && bookedNo.checked;
-          const q2 = extra instanceof HTMLElement ? extra.querySelector('[data-hsg-q2]') : null;
-          if (q2 instanceof HTMLElement) q2.hidden = !show || !isYes;
-
           const dateInput = regRoot.querySelector(`#${dateId}`);
           if (dateInput instanceof HTMLInputElement) {
-            dateInput.disabled = !show || isNo || !isYes;
-            if (show && isNo) dateInput.value = "";
+            dateInput.disabled = !show;
             const shell = dateInput.closest(".field__date");
             if (shell) {
               const btn = shell.querySelector(".field__date-btn");
@@ -9972,19 +10367,61 @@ if (typeof window !== "undefined") {
         });
       };
 
-      const syncYesNoButtons = () => {
-        const btns = Array.from(regRoot.querySelectorAll("[data-yesno]"));
-        btns.forEach((btn) => {
-          const input = btn.querySelector('input[type="radio"]');
-          const selected = input instanceof HTMLInputElement && input.checked;
-          btn.classList.toggle("is-selected", Boolean(selected));
-        });
-      };
-
       // Run once after render (ensures initial checked state is reflected)
       syncAppointmentTypeCards();
       syncHealthierSgExtra();
-      syncYesNoButtons();
+      syncMammogramAppointmentPreferences(regRoot);
+      syncHpvLastPapOtherVisibility(regRoot);
+
+      regRoot.addEventListener(
+        "input",
+        (e) => {
+          const t = e.target;
+          if (t instanceof HTMLElement && t.id === "preferredScreeningDate") {
+            syncMammogramAppointmentPreferences(regRoot);
+          }
+        },
+        true
+      );
+      regRoot.addEventListener(
+        "change",
+        (e) => {
+          const t = e.target;
+          if (t instanceof HTMLElement && t.id === "preferredScreeningDate") {
+            syncMammogramAppointmentPreferences(regRoot);
+            return;
+          }
+          if (t instanceof HTMLInputElement && t.classList.contains("field__date-native")) {
+            const wrap = t.closest(".field__date");
+            if (wrap && wrap.querySelector("#preferredScreeningDate")) {
+              syncMammogramAppointmentPreferences(regRoot);
+            }
+          }
+        },
+        true
+      );
+
+      regRoot.addEventListener("click", (e) => {
+        const raw = e.target;
+        const el = raw instanceof Element ? raw : raw?.parentElement;
+        const chip = el?.closest?.("button[data-time-chip]");
+        if (chip instanceof HTMLButtonElement && regRoot.contains(chip)) {
+          if (chip.disabled) return;
+          const val = chip.getAttribute("data-slot-value") || "";
+          applyMammogramTimeChipSelection(regRoot, val);
+          return;
+        }
+        const waitBtn = el?.closest?.("button[data-waitlist-toggle]");
+        if (waitBtn instanceof HTMLButtonElement && regRoot.contains(waitBtn)) {
+          const cb = regRoot.querySelector("#mammobusJoinWaitlist");
+          if (cb instanceof HTMLInputElement) {
+            cb.checked = !cb.checked;
+            cb.dispatchEvent(new Event("change", { bubbles: true }));
+          }
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      });
 
       // Click on card → check radio + sync highlight.
       regRoot.addEventListener("click", (e) => {
@@ -10000,6 +10437,7 @@ if (typeof window !== "undefined") {
         }
         syncAppointmentTypeCards();
         syncHealthierSgExtra();
+        syncMammogramAppointmentPreferences(regRoot);
         e.preventDefault();
         e.stopPropagation();
       });
@@ -10007,34 +10445,22 @@ if (typeof window !== "undefined") {
       // Also sync on direct radio changes (keyboard navigation / accessibility)
       regRoot.addEventListener("change", (e) => {
         const t = e.target;
+        if (t instanceof HTMLSelectElement && t.id === "hpvLastPapHpvTest") {
+          syncHpvLastPapOtherVisibility(regRoot);
+          return;
+        }
+        if (t instanceof HTMLInputElement && t.id === "mammobusJoinWaitlist") {
+          syncMammogramAppointmentPreferences(regRoot);
+          return;
+        }
         if (!(t instanceof HTMLInputElement)) return;
         if (t.type === "radio" && t.name === "appointmentType") {
           syncAppointmentTypeCards();
           syncHealthierSgExtra();
+          syncMammogramAppointmentPreferences(regRoot);
           return;
         }
-        if (t.type === "radio" && (t.name === "healthierSgBooked" || t.name === "hpvHealthierSgBooked")) {
-          syncYesNoButtons();
-          syncHealthierSgExtra();
-        }
-      });
-
-      // Click yes/no button → ensure selected styling updates immediately
-      regRoot.addEventListener("click", (e) => {
-        const raw = e.target;
-        const el = raw instanceof Element ? raw : raw?.parentElement;
-        const btn = el?.closest?.("[data-yesno]");
-        if (!(btn instanceof HTMLElement)) return;
-        const input = btn.querySelector('input[type="radio"][name="healthierSgBooked"], input[type="radio"][name="hpvHealthierSgBooked"]');
-        if (!(input instanceof HTMLInputElement)) return;
-        if (!input.checked) {
-          input.checked = true;
-          input.dispatchEvent(new Event("change", { bubbles: true }));
-        }
-        syncYesNoButtons();
-        syncHealthierSgExtra();
-        e.preventDefault();
-        e.stopPropagation();
+        // (Healthier SG Programme no longer has Q1 yes/no; only date field.)
       });
     }
 
