@@ -6490,7 +6490,6 @@ if (typeof window !== "undefined") {
     ["reg-hpv-appointment-type", "Appointment Type"],
     ["reg-hpv-healthier-sg", "Healthier SG Programme"],
     ["reg-hpv-appointment", "Appointment Preferences"],
-    ["reg-hpv-screening", "Screening Questions"],
     ["reg-hpv-engagement", "Engagement"],
     ["reg-hpv-consent", "Consent"],
   ];
@@ -8147,7 +8146,7 @@ if (typeof window !== "undefined") {
               <section id="reg-hpv-appointment-type" class="registration-card" tabindex="-1">
                 <h2 class="registration__section-label">Appointment Type</h2>
                 <p class="registration__appointment-type-lead">
-                  There are several avenues where you can sign up for an HPV screening. Please select one of the options below.
+                  There are several avenues where you can sign up for a Cervical screening. Please select one of the options below.
                 </p>
                 <div class="registration__appointment-type" role="radiogroup" aria-label="Appointment Type">
                   <label class="registration__option-card registration__option-card--selected" data-option-card>
@@ -8158,7 +8157,7 @@ if (typeof window !== "undefined") {
                         <span class="registration__option-card-ring" aria-hidden="true"></span>
                       </div>
                       <div class="registration__option-card-desc">
-                        <div class="registration__option-card-subtitle">Yes, I would like to book an HPV screening appointment at SCS Clinic @ Bishan</div>
+                        <div class="registration__option-card-subtitle">Yes, I would like to book a Cervical screening appointment at SCS Clinic @ Bishan</div>
                       </div>
                     </div>
                   </label>
@@ -8204,39 +8203,6 @@ if (typeof window !== "undefined") {
                       <option value="afternoon">Afternoon</option>
                       <option value="evening">Evening</option>
                     </select>
-                  </div>
-                </div>
-              </section>
-
-              <section id="reg-hpv-screening" class="registration-card" tabindex="-1">
-                <h2 class="registration__section-label">Screening Questions</h2>
-                <div class="form-grid form-grid--reg">
-                  <div class="field field--full">
-                    <label for="hpvRecentMenstruation">First Day of Most Recent Menstruation</label>
-                    ${registrationDateInput("hpvRecentMenstruation", "hpvRecentMenstruation", false)}
-                  </div>
-                  <div class="field field--full">
-                    <label for="hpvLastPapHpvTest">Date of Last Pap/HPV Test</label>
-                    <select id="hpvLastPapHpvTest" name="hpvLastPapHpvTest">
-                      <option value="">Select</option>
-                      <option value="na">NA</option>
-                      <option value="others">Others (please specify)</option>
-                    </select>
-                  </div>
-                  <div class="field field--full" data-hpv-last-test-other-wrap hidden>
-                    <input
-                      id="hpvLastPapHpvTestOther"
-                      name="hpvLastPapHpvTestOther"
-                      type="text"
-                      disabled
-                      placeholder="When was your last Pap/HPV Test? (Indicate the year here)"
-                      autocomplete="off"
-                      aria-label="When was your last Pap/HPV Test? Indicate the year here"
-                    />
-                  </div>
-                  <div class="field field--full">
-                    <label for="hpvSexualActivity">Have you ever had any sexual activity?</label>
-                    <input id="hpvSexualActivity" name="hpvSexualActivity" type="text" placeholder="" autocomplete="off" />
                   </div>
                 </div>
               </section>
@@ -10303,6 +10269,9 @@ if (typeof window !== "undefined") {
         const selected = regRoot.querySelector('input[type="radio"][name="appointmentType"][value="healthier-sg"]');
         const show = selected instanceof HTMLInputElement && selected.checked;
         const hideMammogramBishanApptPrefs = isMammogramRegistrationBishanClinicSelected(regRoot);
+        const apptChecked = regRoot.querySelector('input[type="radio"][name="appointmentType"]:checked');
+        const at = apptChecked instanceof HTMLInputElement ? String(apptChecked.value || "").trim().toLowerCase() : "";
+        const hideScsClinicApptPrefs = at === "scs-clinic";
 
         const pairs = [
           { extraId: "#reg-healthier-sg", extraTocId: null, dateId: "healthierSgScreeningDate", apptId: "#reg-appointment", tocId: "reg-appointment" },
@@ -10325,11 +10294,16 @@ if (typeof window !== "undefined") {
             });
           }
 
-          // Hide Appointment Preferences when Healthier SG is selected (or mammogram SCS Clinic @ Bishan).
-          const hideApptPref = apptId === "#reg-appointment" ? show || hideMammogramBishanApptPrefs : show;
+          // Hide Appointment Preferences when Healthier SG is selected.
+          // Also hide when SCS Clinic @ Bishan is selected (all screening forms).
+          const hideApptPref =
+            apptId === "#reg-appointment"
+              ? show || hideMammogramBishanApptPrefs || hideScsClinicApptPrefs
+              : show || hideScsClinicApptPrefs;
           const apptPref = regRoot.querySelector(apptId);
           if (apptPref instanceof HTMLElement) {
             apptPref.hidden = hideApptPref;
+            apptPref.style.display = hideApptPref ? "none" : "";
             apptPref.querySelectorAll("input, select, textarea, button").forEach((el) => {
               if (
                 el instanceof HTMLInputElement ||
