@@ -152,6 +152,7 @@ if (typeof window !== "undefined") {
     const dateFieldWrap = regRoot.querySelector("[data-appt-date-field]");
     const apptSection = regRoot.querySelector("#reg-appointment");
     const dateInpEarly = regRoot.querySelector("#preferredScreeningDate");
+    const mammobusLocBlock = regRoot.querySelector("[data-mammogram-screening-location-block]");
 
     const setMammogramApptPrefsLayout = (mode) => {
       const stackCls = "registration__appt-prefs registration__appt-prefs-stack";
@@ -212,6 +213,7 @@ if (typeof window !== "undefined") {
         scsSelect.removeAttribute("name");
         scsSelect.disabled = true;
       }
+      if (mammobusLocBlock instanceof HTMLElement) mammobusLocBlock.hidden = true;
       if (wrap instanceof HTMLElement) wrap.replaceChildren();
       if (mammTimeBlock instanceof HTMLElement) mammTimeBlock.hidden = true;
       if (scsTimeBlock instanceof HTMLElement) scsTimeBlock.hidden = true;
@@ -267,6 +269,7 @@ if (typeof window !== "undefined") {
       scsSelect.value = "";
       scsSelect.removeAttribute("name");
       scsSelect.disabled = true;
+      if (mammobusLocBlock instanceof HTMLElement) mammobusLocBlock.hidden = true;
       if (mammTimeBlock instanceof HTMLElement) mammTimeBlock.hidden = true;
       if (scsTimeBlock instanceof HTMLElement) scsTimeBlock.hidden = true;
       setMammogramApptPrefsLayout("mammobus");
@@ -275,6 +278,7 @@ if (typeof window !== "undefined") {
     }
 
     if (mammTimeBlock instanceof HTMLElement) mammTimeBlock.hidden = at !== "mammobus";
+    if (mammobusLocBlock instanceof HTMLElement) mammobusLocBlock.hidden = at !== "mammobus";
     if (scsTimeBlock instanceof HTMLElement) scsTimeBlock.hidden = at !== "scs-clinic";
 
     if (at === "mammobus") {
@@ -293,6 +297,7 @@ if (typeof window !== "undefined") {
       if (mammobusWaitlistBtn instanceof HTMLButtonElement) {
         mammobusWaitlistBtn.disabled = false;
       }
+      syncMammobusScreeningLocationDisplay(regRoot);
 
       const bookedStored = dateStr ? readMammobusBookedSlotsMap()[dateStr] : null;
       const bookedArr = Array.isArray(bookedStored) ? bookedStored : [];
@@ -890,6 +895,13 @@ if (typeof window !== "undefined") {
     /** Left nav active section id on registration page */
     regNavSection: null,
     addProspectMenuOpen: false,
+    /**
+     * Staff-facing registration values from Configuration (prototype: in-memory).
+     * Mammobus form shows `mammobusScreeningLocation` as read-only label text.
+     */
+    registrationConfig: {
+      mammobusScreeningLocation: "Community Health Roadshow - Bedok",
+    },
     /** details | medical-history | other-details when editing */
     detailFormEdit: null,
     detailFormDraft: null,
@@ -1494,6 +1506,20 @@ if (typeof window !== "undefined") {
 
   if (typeof window !== "undefined") {
     window.__WD_PORTAL_STATE__ = state;
+  }
+
+  function getConfiguredMammobusScreeningLocation() {
+    const raw = state.registrationConfig?.mammobusScreeningLocation;
+    return String(raw != null ? raw : "").trim();
+  }
+
+  function syncMammobusScreeningLocationDisplay(regRoot) {
+    if (!(regRoot instanceof HTMLElement)) return;
+    const el = regRoot.querySelector("[data-mammobus-screening-location-text]");
+    if (!(el instanceof HTMLElement)) return;
+    const t = getConfiguredMammobusScreeningLocation();
+    el.textContent = t || "Not configured";
+    el.classList.toggle("cell-muted", !t);
   }
 
   const PROSPECT_V3_TAB_IDS = ["overview", "screenings", "biodata", "eligibility", "documents", "notes"];
@@ -7867,6 +7893,15 @@ if (typeof window !== "undefined") {
                     <label for="preferredScreeningDate"><span data-appt-pref-date-label>Screening Date</span><span class="field__req" aria-hidden="true">*</span></label>
                     ${registrationDateInput("preferredScreeningDate", "preferredScreeningDate", true)}
                   </div>
+                  <div class="field field--full" data-mammogram-screening-location-block>
+                    <div class="registration__screening-location-label" id="mammobusScreeningLocation-label">Screening location</div>
+                    <p
+                      class="registration__screening-location-value"
+                      data-mammobus-screening-location-text
+                      role="status"
+                      aria-labelledby="mammobusScreeningLocation-label"
+                    >—</p>
+                  </div>
                   <div class="field field--full registration__screening-time-field" data-mammogram-appt-time-block>
                     <div class="registration__screening-time-head">
                       <span id="preferredTimeSlot-label" class="registration__screening-time-heading" data-appt-pref-time-heading>Screening Time</span>
@@ -9913,6 +9948,10 @@ if (typeof window !== "undefined") {
       if (prefDate) row.preferredScreeningDate = prefDate;
       if (prefSlot) row.preferredTimeSlot = prefSlot;
       if (appointmentTypeRaw === "mammobus" && joinWl) row.joinWaitlist = true;
+      if (appointmentTypeRaw === "mammobus") {
+        const loc = getConfiguredMammobusScreeningLocation();
+        if (loc) row.screeningLocationEvent = loc;
+      }
     }
 
     const regClient = {
@@ -11775,6 +11814,12 @@ if (typeof window !== "undefined") {
       kanbanCardProgress,
       kanbanCardMetaLine,
       kanbanProgramPillText,
+      getMammobusScreeningLocation: getConfiguredMammobusScreeningLocation,
+      setMammobusScreeningLocation: (value) => {
+        if (!state.registrationConfig) state.registrationConfig = {};
+        state.registrationConfig.mammobusScreeningLocation = String(value ?? "").trim();
+        renderApp();
+      },
       isFirstTimeScreenerProspect,
       riskLevelIndicator,
       pickClassicScreeningRecordIdForListProgram,

@@ -6306,6 +6306,22 @@ button.app-header__back {
   gap: 1.25rem;
 }
 
+.registration__screening-location-label {
+  display: block;
+  font-size: var(--text-body-m);
+  font-weight: var(--weight-medium);
+  margin-bottom: 0.35rem;
+  color: var(--color-neutral-9);
+}
+
+.registration__screening-location-value {
+  margin: 0;
+  font-size: var(--text-body-l);
+  line-height: var(--lh-body-l);
+  font-weight: var(--weight-regular);
+  color: var(--color-neutral-9);
+}
+
 .registration__screening-time-field {
   margin: 0;
 }
